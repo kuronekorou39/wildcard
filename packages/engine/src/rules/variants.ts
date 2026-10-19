@@ -378,8 +378,9 @@ export const CASUAL_TABLE: Variant = {
   name: 'カジュアル卓',
   description:
     '勝負が流れたら「続きどうなってた？」を見られる（ラビットハント）。' +
+    'オールインで決着するときは2本走らせられる。' +
     '決着後や降りた後に手札を1枚だけ見せることもできる。',
-  options: { rabbitHunt: true, showCards: 'one' },
+  options: { rabbitHunt: true, showCards: 'one', runItTwice: { max: 2 } },
 };
 
 /**

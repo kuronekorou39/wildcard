@@ -1,4 +1,4 @@
-import { type VisibleState, boardSize, streetName } from '@wildcard/engine';
+import { type VisibleState, boardSize, boardsOf, streetName } from '@wildcard/engine';
 import { CardSlot, PlayingCard } from './PlayingCard.js';
 import { Seat } from './Seat.js';
 import { displaySlot } from '../seatLayout.js';
@@ -11,6 +11,7 @@ import { displaySlot } from '../seatLayout.js';
  */
 function phaseLabel(state: VisibleState): string {
   if (state.phase === 'waiting') return '開始待ち';
+  if (state.phase === 'runChoice') return '何本走る?';
   if (state.phase === 'showdown') return 'ショーダウン';
   return streetName(state.variant, state.streetIndex);
 }
@@ -40,13 +41,17 @@ export function PokerTable({ state, viewerId }: PokerTableProps) {
       <div className="table-center">
         <div className="table-phase">{phaseLabel(state)}</div>
 
-        <div className="community-cards">
-          {/* 枠の数はバリアントが決める。フロップ6枚なら場は8枚になる。 */}
-          {Array.from({ length: boardSize(state.variant.structure) }, (_, i) => {
-            const card = state.communityCards[i];
-            return card ? <PlayingCard key={i} card={card} /> : <CardSlot key={i} />;
-          })}
-        </div>
+        {/* 2本走ったら、ボードの数だけ並ぶ。1本なら今までどおり1列。 */}
+        {boardsOf(state).map((board, run) => (
+          <div key={run} className="community-cards">
+            {run > 0 && <span className="community-run">{run + 1}本目</span>}
+            {/* 枠の数はバリアントが決める。フロップ6枚なら場は8枚になる。 */}
+            {Array.from({ length: boardSize(state.variant.structure) }, (_, i) => {
+              const card = board[i];
+              return card ? <PlayingCard key={i} card={card} /> : <CardSlot key={i} />;
+            })}
+          </div>
+        ))}
 
         <div className="table-pot">ポット {state.pot.toLocaleString()}</div>
       </div>

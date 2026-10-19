@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { STANDARD_VARIANT, type Variant } from '@wildcard/engine';
 import { MSG, PROTO_VERSION } from '../src/net/protocol.js';
 import { GuestTransport } from '../src/transport/guest.js';
 import { HostTransport } from '../src/transport/host.js';
@@ -13,7 +14,7 @@ interface Table {
 /** host と指定人数の guest を繋いだ卓を用意する。 */
 async function setupTable(
   guestNames: readonly string[],
-  options: { readonly hostPlays?: boolean } = {},
+  options: { readonly hostPlays?: boolean; readonly variant?: Variant } = {},
 ): Promise<Table> {
   const net = new FakeNetwork();
   const host = new HostTransport({
@@ -25,6 +26,7 @@ async function setupTable(
     seatCount: 10,
     smallBlind: 10,
     bigBlind: 20,
+    ...(options.variant ? { variant: options.variant } : {}),
   });
   await host.start();
 
@@ -190,6 +192,81 @@ describe('認可', () => {
     });
 
     expect(host.rawState().players.find((p) => p.id === victimId)!.chips).toBe(chipsBefore);
+  });
+
+  it('「2本走る」を他人の代わりに答えられない', async () => {
+    // 答えは金の動き方を変える。手番でない人が代わりに答えられてはいけない。
+    const { host, guests } = await setupTable(['あかり', 'ばしょう'], {
+      variant: {
+        ...STANDARD_VARIANT,
+        options: { ...STANDARD_VARIANT.options, runItTwice: { max: 2 } },
+      },
+    });
+    host.dispatch({ type: 'startHand', seed: 1 });
+
+    // ヘッズアップで両者オールイン。
+    for (let i = 0; i < 4 && host.rawState().phase === 'betting'; i++) {
+      const turn = host.rawState().turnPlayerId;
+      if (!turn) break;
+      const player = host.rawState().players.find((p) => p.id === turn)!;
+      host.dispatch(
+        host.rawState().currentBet > player.bet && player.bet > 0
+          ? { type: 'call', playerId: turn }
+          : { type: 'raise', playerId: turn, to: player.bet + player.chips },
+      );
+    }
+    expect(host.rawState().phase).toBe('runChoice');
+
+    const askedId = host.rawState().turnPlayerId!;
+    const attacker = guests.find((g) => g.transport.snapshot().viewerId !== askedId);
+    expect(attacker, '聞かれていない guest がいること').toBeDefined();
+
+    attacker!.link.injectToPeer({
+      type: MSG.ACTION,
+      action: { type: 'runItTwice', playerId: askedId, agree: false },
+    });
+
+    // 勝手に断られていない。まだ同じ人に聞いている。
+    expect(host.rawState().phase).toBe('runChoice');
+    expect(host.rawState().turnPlayerId).toBe(askedId);
+  });
+
+  it('自分の番なら答えが通る', async () => {
+    const { host, guests } = await setupTable(['あかり', 'ばしょう'], {
+      variant: {
+        ...STANDARD_VARIANT,
+        options: { ...STANDARD_VARIANT.options, runItTwice: { max: 2 } },
+      },
+    });
+    host.dispatch({ type: 'startHand', seed: 1 });
+
+    for (let i = 0; i < 4 && host.rawState().phase === 'betting'; i++) {
+      const turn = host.rawState().turnPlayerId;
+      if (!turn) break;
+      const player = host.rawState().players.find((p) => p.id === turn)!;
+      host.dispatch(
+        host.rawState().currentBet > player.bet && player.bet > 0
+          ? { type: 'call', playerId: turn }
+          : { type: 'raise', playerId: turn, to: player.bet + player.chips },
+      );
+    }
+
+    const askedId = host.rawState().turnPlayerId!;
+    const owner = guests.find((g) => g.transport.snapshot().viewerId === askedId);
+
+    if (owner) {
+      owner.link.injectToPeer({
+        type: MSG.ACTION,
+        action: { type: 'runItTwice', playerId: askedId, agree: false },
+      });
+    } else {
+      // 聞かれているのが host 自身なら、こちらから答える。
+      host.dispatch({ type: 'runItTwice', playerId: askedId, agree: false });
+    }
+
+    // 断ったので1本で決着する。
+    expect(host.rawState().phase).toBe('showdown');
+    expect(host.rawState().extraBoards).toHaveLength(0);
   });
 
   it('他人を離席させることもできない', async () => {

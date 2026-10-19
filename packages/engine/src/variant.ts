@@ -33,7 +33,15 @@ export function requiredCards(
 /** そのバリアントで余分に要りうる枚数。 */
 export function extraCardsFor(variant: Variant): number {
   const mayExpose = exposedCardChanceOf(variant) > 0;
-  return mayExpose && !exposedCardBecomesBurnOf(variant) ? 1 : 0;
+  const forExposure = mayExpose && !exposedCardBecomesBurnOf(variant) ? 1 : 0;
+
+  // 複数本走るなら、場とバーンをその回数ぶん引く。プリフロップで全員
+  // オールインになるのが最悪で、そのとき全ストリートを開き直す。
+  const perRun =
+    boardSize(variant.structure) +
+    variant.structure.streets.reduce((sum, street) => sum + (street.burn ?? 0), 0);
+
+  return forExposure + perRun * (maxRunsOf(variant) - 1);
 }
 
 /** 手札から使う枚数の許容範囲。省略時は「何枚でも」。 */
@@ -165,7 +173,10 @@ export function maxPlayersFor(variant: Variant): number {
   const { structure } = variant;
   if (structure.holeCards <= 0) return Number.POSITIVE_INFINITY;
   const have = deckSize(variant.deck);
-  const fixed = requiredCards(structure, 0);
+  // 余分に要りうる枚数（露出の引き直し・複数本走らせるぶん）も込みで数える。
+  // ここで多めに言うと、編集画面が「10人まで」と出したのに
+  // 始めようとして弾かれる、という食い違いになる。
+  const fixed = requiredCards(structure, 0, extraCardsFor(variant));
   return Math.max(0, Math.floor((have - fixed) / structure.holeCards));
 }
 
@@ -194,6 +205,18 @@ export const misdealChanceOf = (variant: Variant): number =>
 /** 流れた後に配られるはずだった札を見せるか。 */
 export const rabbitHuntEnabled = (variant: Variant): boolean =>
   variant.options?.rabbitHunt ?? false;
+
+/**
+ * オールインで決着するとき、残りの札を2本走らせるか。
+ *
+ * **全員の同意が要る。** 1人でも断れば1本で、これは実際の卓の作法どおり。
+ * 分散が下がるので、大きなポットほど持ちかけられる。
+ */
+export const runItTwiceEnabled = (variant: Variant): boolean => maxRunsOf(variant) > 1;
+
+/** 何本まで走れるか。1 なら普通どおり1本で、聞くこともしない。 */
+export const maxRunsOf = (variant: Variant): number =>
+  Math.max(1, Math.floor(variant.options?.runItTwice?.max ?? 1));
 
 /** 自分の手札をどこまで見せられるか。 */
 export const showCardsPolicyOf = (variant: Variant): ShowCardsPolicy =>

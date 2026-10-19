@@ -45,6 +45,19 @@ export function decide(
   seed: number,
   style: CpuStyle = DEFAULT_STYLE,
 ): CpuDecision | null {
+  // 「2本走るか」を聞かれている場面。CPU は断らない。
+  // 分散が下がるだけで期待値は変わらないので、断る理由がない。
+  // 人間の側が「断られて1本になった」を味わう必要もない。
+  if (state.phase === 'runChoice') {
+    if (state.turnPlayerId !== playerId) return null;
+    return {
+      action: { type: 'runItTwice', playerId, agree: true },
+      equity: 0,
+      potOdds: 0,
+      reason: '2本走ることに同意（分散が下がるだけで損はしない）',
+    };
+  }
+
   const legal = legalActions(state, playerId);
   if (legal === null) return null;
 

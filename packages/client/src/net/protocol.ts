@@ -12,7 +12,7 @@ import type { Action, NonceEntry, VisibleState } from '@wildcard/engine';
  */
 
 /** スキーマを変えたら上げる。版が違う相手とは繋がない。 */
-export const PROTO_VERSION = 2;
+export const PROTO_VERSION = 3;
 
 export const MSG = {
   // guest → host
@@ -296,6 +296,11 @@ function parseAction(raw: unknown): Action | null {
       if (!isString(raw['playerId'], SESSION_ID_MAX_LEN)) return null;
       if (!isFiniteNumber(raw['index'])) return null;
       return { type: 'showCard', playerId: raw['playerId'], index: raw['index'] };
+
+    case 'runItTwice':
+      if (!isString(raw['playerId'], SESSION_ID_MAX_LEN)) return null;
+      if (typeof raw['agree'] !== 'boolean') return null;
+      return { type: 'runItTwice', playerId: raw['playerId'], agree: raw['agree'] };
 
     case 'leave':
     case 'fold':

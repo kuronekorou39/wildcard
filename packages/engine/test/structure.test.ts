@@ -6,6 +6,7 @@ import { STANDARD_VARIANT } from '../src/rules/presets.js';
 import { OMAHA, SIX_CARD_FLOP } from '../src/rules/variants.js';
 import {
   boardSize,
+  extraCardsFor,
   boardUsageOf,
   holeUsageOf,
   maxPlayersFor,
@@ -374,5 +375,24 @@ describe('デッキが大きすぎるとき', () => {
   it('上限ちょうどは作れる', () => {
     const ok = { suits: ['spades'] as const, ranks: ['2'] as const, copies: MAX_DECK_SIZE };
     expect(buildDeck(ok)).toHaveLength(MAX_DECK_SIZE);
+  });
+});
+
+describe('余分に要る枚数と着席できる人数', () => {
+  const twice: Variant = {
+    ...STANDARD_VARIANT,
+    options: { ...STANDARD_VARIANT.options, runItTwice: { max: 2 } },
+  };
+
+  it('本数ぶんの枚数を見込む', () => {
+    // 場5枚＋バーン3枚を、もう一度ぶん。
+    expect(extraCardsFor(twice)).toBe(8);
+    expect(extraCardsFor(STANDARD_VARIANT)).toBe(0);
+  });
+
+  it('着席できる人数にも反映される', () => {
+    // 「10人まで」と出したのに始めようとして弾かれる、を防ぐ。
+    expect(maxPlayersFor(twice)).toBeLessThan(maxPlayersFor(STANDARD_VARIANT));
+    expect(maxPlayersFor(twice)).toBe(Math.floor((52 - 8 - 8) / 2));
   });
 });

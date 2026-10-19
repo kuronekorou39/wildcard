@@ -431,6 +431,18 @@ function parseSelector(value: unknown, path: string, p: Problems): WildSelector 
 
 const SHOW_CARDS: readonly ShowCardsPolicy[] = ['none', 'one', 'any'];
 
+function parseRuns(
+  value: unknown,
+  path: string,
+  p: Problems,
+): { readonly max: number } | undefined {
+  if (value === undefined) return undefined;
+  const runs = p.object(value, path);
+  if (!runs) return undefined;
+  const max = p.number(runs['max'], `${path}.max`);
+  return max === undefined ? undefined : { max };
+}
+
 function parseOptions(value: unknown, path: string, p: Problems): TableOptions | undefined {
   if (value === undefined) return undefined;
   const options = p.object(value, path);
@@ -444,7 +456,7 @@ function parseOptions(value: unknown, path: string, p: Problems): TableOptions |
     ...num('misdealChance'),
     ...bool('exposedCardBecomesBurn'),
     ...bool('rabbitHunt'),
-    ...bool('runItTwice'),
+    ...optional('runItTwice', parseRuns(options['runItTwice'], `${path}.runItTwice`, p)),
     ...optional(
       'showCards',
       options['showCards'] === undefined

@@ -34,13 +34,42 @@ export function HandSummaryPanel({
                   <PlayingCard key={i} card={card} size="sm" />
                 ))}
               </span>
-              <span className="summary-hand-ranking">{hand.rankingName}</span>
+              {/* 2本走ったなら、役は走りごとに違う。下の内訳で出す。 */}
+              {summary.runs === undefined && (
+                <span className="summary-hand-ranking">{hand.rankingName}</span>
+              )}
             </li>
           ))}
         </ul>
       ) : (
         <p className="summary-note">全員が降りたため、手は公開されません。</p>
       )}
+
+      {/* 走りごとの勝ち負け。2本以上走ったときだけ。 */}
+      {summary.runs?.map((run, i) => (
+        <div key={i} className="summary-run">
+          <div className="summary-run-head">
+            <span className="summary-run-label">{i + 1}本目</span>
+            <span className="summary-run-board">
+              {run.board.map((card, at) => (
+                <PlayingCard key={at} card={card} size="sm" />
+              ))}
+            </span>
+          </div>
+          <ul className="summary-run-hands">
+            {run.revealed.map((hand) => (
+              <li key={hand.playerId}>
+                {nameOf(hand.playerId)} <span className="summary-hand-ranking">{hand.rankingName}</span>
+                {run.payouts.some((p) => p.playerId === hand.playerId) && (
+                  <strong className="summary-run-win">
+                    +{run.payouts.find((p) => p.playerId === hand.playerId)!.amount.toLocaleString()}
+                  </strong>
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
 
       {summary.rabbit.length > 0 && (
         <div className="summary-rabbit">

@@ -258,7 +258,12 @@ export interface TableOptions {
   readonly rabbitHunt?: boolean;
   /** 自分の手札を見せられるか。既定は 'none'。 */
   readonly showCards?: ShowCardsPolicy;
-  /** オールイン決着で複数回配る。未実装。 */
+  /**
+   * オールイン決着で、残りの札を何本まで走らせるか。
+   *
+   * 省略または 1 なら普通どおり1本。2 を指定すると「2本走るか」を
+   * 全員に聞けるようになる（1人でも断れば1本）。3 以上も同じ仕組みで動く。
+   */
   readonly runItTwice?: { readonly max: number };
 }
 
@@ -289,7 +294,7 @@ export interface Variant {
  * ストリート名（フロップ・ターン・リバー）はここに焼き込まない。
  * バリアントが決めるものなので、どのストリートにいるかは streetIndex で持つ。
  */
-export type Phase = 'waiting' | 'betting' | 'showdown';
+export type Phase = 'waiting' | 'betting' | 'runChoice' | 'showdown';
 
 /** 場が開く前（ホールデムのプリフロップ）を表す streetIndex。 */
 export const PREFLOP = -1;
@@ -357,6 +362,27 @@ export interface RevealedHand {
   readonly rankingName: string;
 }
 
+/**
+ * 何本走るかの合意。
+ *
+ * 全員オールインで残りの札を開くだけになったとき、
+ * 「2本走るか」を1人ずつ聞く。**1人でも断れば1本**（実際の卓の作法）。
+ */
+export interface RunChoice {
+  /** まだ答えていない人。席順に並ぶ。 */
+  readonly pending: readonly string[];
+  /** 同意した人。 */
+  readonly agreed: readonly string[];
+}
+
+/** 1本の走りの結果。2本以上走ったときだけ summary に入る。 */
+export interface RunResult {
+  readonly board: readonly Card[];
+  readonly revealed: readonly RevealedHand[];
+  /** この走りぶんの配当。ポットを本数で割ったものが元になる。 */
+  readonly payouts: readonly Payout[];
+}
+
 /** ハンドの決着内容。 */
 export interface HandSummary {
   readonly payouts: readonly Payout[];
@@ -370,6 +396,14 @@ export interface HandSummary {
    * 途中で終わったハンドで、卓の作法として有効なときだけ埋まる。
    */
   readonly rabbit: readonly Card[];
+  /**
+   * 走りごとの結果。**2本以上走ったときだけ**入る。
+   *
+   * 1本しか走らないのが普通なので、いつも配列にすると読む側が
+   * 常に [0] を書くことになる。payouts と revealed は1本目のものが
+   * そのまま入っているので、2本走ったときだけここを見ればよい。
+   */
+  readonly runs?: readonly RunResult[];
 }
 
 export interface GameState {
@@ -383,6 +417,16 @@ export interface GameState {
   readonly seatCount: number;
   readonly players: readonly Player[];
   readonly communityCards: readonly Card[];
+  /**
+   * 2本目以降のボード。1本しか走らなければ空。
+   *
+   * すでに開いている札は共有されるので、ここに入るのは**各走りの
+   * ボード全体**（共有部分＋その走りで開いた札）。評価のとき
+   * 「1本目か2本目か」で場合分けせずに済む。
+   */
+  readonly extraBoards: readonly (readonly Card[])[];
+  /** 何本走るかを聞いている最中なら、その状況。 */
+  readonly runChoice: RunChoice | null;
   /** 未配の山札。project() で視点に応じて伏せられる。 */
   readonly deck: readonly Card[];
   /**
@@ -446,7 +490,9 @@ export type Action =
   | { readonly type: 'raise'; readonly playerId: string; readonly to: number }
   | { readonly type: 'timeout'; readonly playerId: string }
   /** 自分のホールカードを1枚表にする。index は手札の何枚目か。 */
-  | { readonly type: 'showCard'; readonly playerId: string; readonly index: number };
+  | { readonly type: 'showCard'; readonly playerId: string; readonly index: number }
+  /** 2本走ることに同意するか。1人でも断れば1本になる。 */
+  | { readonly type: 'runItTwice'; readonly playerId: string; readonly agree: boolean };
 
 /** 不正な Action は状態を変えずに理由を返す。 */
 export interface RejectedAction {

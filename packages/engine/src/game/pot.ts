@@ -134,6 +134,48 @@ export function awardPots(
   return [...totals.entries()].map(([playerId, amount]) => ({ playerId, amount }));
 }
 
+/**
+ * 複数本走ったときの配当。
+ *
+ * **各層を本数で等分し、1本ごとに勝者へ配る。** 割り切れない端数は
+ * 先の走りから1枚ずつ乗せる（合計は必ず元の額に戻る）。
+ * 1本なら awardPots をそのまま呼ぶのと同じ結果になるので、
+ * 走りの数で呼び分ける必要はない。
+ */
+export function awardPotsAcrossRuns(
+  layers: readonly PotLayer[],
+  handsPerRun: readonly ReadonlyMap<string, HandResult>[],
+  seatOf: ReadonlyMap<string, number>,
+  dealerSeat: number,
+  seatCount: number,
+): { readonly payouts: Payout[]; readonly perRun: Payout[][] } {
+  const runs = Math.max(1, handsPerRun.length);
+
+  const perRun = handsPerRun.map((hands, run) => {
+    const share = layers.map((layer) => ({
+      ...layer,
+      amount: splitShare(layer.amount, runs, run),
+    }));
+    return awardPots(share, hands, seatOf, dealerSeat, seatCount);
+  });
+
+  const totals = new Map<string, number>();
+  for (const payouts of perRun) {
+    for (const { playerId, amount } of payouts) {
+      totals.set(playerId, (totals.get(playerId) ?? 0) + amount);
+    }
+  }
+
+  return {
+    payouts: [...totals.entries()].map(([playerId, amount]) => ({ playerId, amount })),
+    perRun,
+  };
+}
+
+/** amount を runs 等分したうちの run 本目のぶん。端数は先の走りから。 */
+const splitShare = (amount: number, runs: number, run: number): number =>
+  Math.floor(amount / runs) + (run < amount % runs ? 1 : 0);
+
 /** 候補のうち最強の手を持つプレイヤー。引き分けなら複数返す。 */
 function bestAmong(
   playerIds: readonly string[],

@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import type { Action } from '@wildcard/engine';
 import type { TableSnapshot } from '../transport/types.js';
 import { ActionBar } from './ActionBar.js';
+import { RunChoiceBar } from './RunChoiceBar.js';
 import { RuleSheet } from './RulePicker.js';
 import { ShowCardsControl } from './ShowCardsControl.js';
 import { HandSummaryPanel } from './HandSummaryPanel.js';
@@ -107,9 +108,17 @@ export function TableView({
 
         {turnPlayer && (
           <>
-            <div className="turn-label">{turnPlayer.name} の番</div>
+            <div className="turn-label">
+              {state.phase === 'runChoice'
+                ? `${turnPlayer.name} に聞いています`
+                : `${turnPlayer.name} の番`}
+            </div>
             {canAct ? (
-              <ActionBar state={state} playerId={turnPlayer.id} onAction={onAction} />
+              state.phase === 'runChoice' ? (
+                <RunChoiceBar state={state} playerId={turnPlayer.id} onAction={onAction} />
+              ) : (
+                <ActionBar state={state} playerId={turnPlayer.id} onAction={onAction} />
+              )
             ) : (
               <p className="hint centered-actions">相手の行動を待っています…</p>
             )}

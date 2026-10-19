@@ -1410,3 +1410,74 @@ button {
   line-height: 1.5;
   resize: vertical;
 }
+
+/* ---------- ランイットトゥワイス ---------- */
+
+.community-run {
+  align-self: center;
+  margin-right: 4px;
+  color: var(--text-dim);
+  font-size: 0.62rem;
+  font-weight: 700;
+}
+
+.run-choice {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.run-choice-note {
+  margin: 0;
+  color: var(--text-dim);
+  font-size: 0.8rem;
+  line-height: 1.6;
+  text-align: center;
+}
+
+.run-choice-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.run-choice-buttons .btn {
+  flex: 1 1 0;
+}
+
+.summary-run {
+  margin-top: 10px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.22);
+}
+
+.summary-run-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.summary-run-label {
+  color: var(--gold);
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.summary-run-board {
+  display: flex;
+  gap: 3px;
+}
+
+.summary-run-hands {
+  margin: 6px 0 0;
+  padding-left: 1.1em;
+  font-size: 0.78rem;
+  line-height: 1.7;
+  /* 親が中央寄せなので、箇条書きだけ左に戻す。 */
+  text-align: left;
+}
+
+.summary-run-win {
+  margin-left: 6px;
+  color: var(--gold);
+}

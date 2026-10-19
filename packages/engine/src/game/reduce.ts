@@ -7,6 +7,7 @@ import {
   type Player,
   type RejectedAction,
   type RevealedHand,
+  type RunResult,
   type Variant,
   PREFLOP,
 } from '../types.js';
@@ -18,13 +19,15 @@ import {
   exposedCardBecomesBurnOf,
   exposedCardChanceOf,
   extraCardsFor,
+  maxRunsOf,
   misdealChanceOf,
   rabbitCards,
   rabbitHuntEnabled,
   requiredCards,
+  runItTwiceEnabled,
   showCardsPolicyOf,
 } from '../variant.js';
-import { awardPots, buildPotLayers, returnUncalledBets } from './pot.js';
+import { awardPotsAcrossRuns, buildPotLayers, returnUncalledBets } from './pot.js';
 import { blindPositions, firstClockwise, orderClockwise } from './seats.js';
 
 export interface CreateGameOptions {
@@ -38,6 +41,8 @@ export interface CreateGameOptions {
 export function createGame(options: CreateGameOptions = {}): GameState {
   return {
     phase: 'waiting',
+    extraBoards: [],
+    runChoice: null,
     streetIndex: PREFLOP,
     seatCount: options.seatCount ?? 10,
     players: [],
@@ -186,11 +191,21 @@ export function validate(state: GameState, action: Action): RejectedAction | nul
       return null;
     }
 
+    case 'runItTwice': {
+      if (state.phase !== 'runChoice') return { reason: '今は聞いていない' };
+      if (state.turnPlayerId !== action.playerId) return { reason: '手番ではない' };
+      return null;
+    }
+
     case 'fold':
     case 'check':
     case 'call':
     case 'raise':
     case 'timeout': {
+      // 合意を待っている最中の時間切れは「断った」こと。
+      if (action.type === 'timeout' && state.phase === 'runChoice') {
+        return state.turnPlayerId === action.playerId ? null : { reason: '手番ではない' };
+      }
       const legal = legalActions(state, action.playerId);
       if (!legal) return { reason: '手番ではない' };
       if (action.type === 'check' && !legal.canCheck) return { reason: 'チェックできない' };
@@ -240,7 +255,11 @@ export function reduce(state: GameState, action: Action): GameState {
         ...p,
         exposedHoleCards: [...p.exposedHoleCards, action.index],
       }));
+    case 'runItTwice':
+      return applyRunChoice(state, action.playerId, action.agree);
     case 'timeout':
+      // 合意を待っている最中なら「断った」こと。少ないほうに倒す。
+      if (state.phase === 'runChoice') return applyRunChoice(state, action.playerId, false);
       // 時間切れは「払う必要がなければチェック、あればフォールド」。
       return state.currentBet > (byId(state, action.playerId)?.bet ?? 0)
         ? reduce(state, { type: 'fold', playerId: action.playerId })
@@ -372,6 +391,8 @@ function startHand(state: GameState, seed: number): GameState {
     streetIndex: PREFLOP,
     players,
     communityCards: [],
+    extraBoards: [],
+    runChoice: null,
     deck: dealt.deck,
     burned: [],
     exposedCards: dealt.exposedCards,
@@ -613,10 +634,24 @@ function nextActorFrom(state: GameState, fromSeat: number): Player | undefined {
  */
 function advanceStreet(state: GameState): GameState {
   const streets = state.variant.structure.streets;
-  const nextIndex = state.streetIndex + 1;
-  if (nextIndex >= streets.length) return settle(state);
+  if (state.streetIndex + 1 >= streets.length) return settle(state);
 
-  const street = streets[nextIndex]!;
+  // これ以上ベッティングが無いなら、開く前に「何本走るか」を聞く。
+  const asking = askRuns(state);
+  if (asking) return asking;
+
+  const opened = openStreet(state);
+
+  // 行動できるのが1人以下ならベッティングは成立しない。次のストリートへ。
+  if (canActPlayers(opened).length <= 1) return advanceStreet(opened);
+
+  // フロップ以降はディーラーの次から。ヘッズアップならそれが BB になり、これも正しい。
+  return assignTurn(opened, (opened.dealerSeat + 1) % opened.seatCount);
+}
+
+/** 次のストリートを1つ開く。ベッティングの手番は決めない。 */
+function openStreet(state: GameState): GameState {
+  const street = state.variant.structure.streets[state.streetIndex + 1]!;
   const burn = street.burn ?? 0;
 
   // ディーラーが表にしてしまった札は、最初のバーンの席に収まる（既定）。
@@ -628,9 +663,9 @@ function advanceStreet(state: GameState): GameState {
     : 0;
   const fromDeck = burn - fromExposed;
 
-  const opened: GameState = {
+  return {
     ...state,
-    streetIndex: nextIndex,
+    streetIndex: state.streetIndex + 1,
     // バーンに使うかどうかに関わらず、露出した札は死んでいる。
     burned: [...state.burned, ...pending, ...state.deck.slice(0, fromDeck)],
     communityCards: [
@@ -643,53 +678,174 @@ function advanceStreet(state: GameState): GameState {
     turnPlayerId: null,
     players: state.players.map((p) => ({ ...p, bet: 0, hasActed: false })),
   };
+}
 
-  // 行動できるのが1人以下ならベッティングは成立しない。次のストリートへ。
-  if (canActPlayers(opened).length <= 1) return advanceStreet(opened);
+// ============================================================
+// ランイットトゥワイス
+// ============================================================
 
-  // フロップ以降はディーラーの次から。ヘッズアップならそれが BB になり、これも正しい。
-  return assignTurn(opened, (opened.dealerSeat + 1) % opened.seatCount);
+/**
+ * 「何本走るか」を聞くべき場面なら、聞き始めた state を返す。
+ *
+ * 聞くのは **これ以上ベッティングが無く、まだ開く札が残っている**とき。
+ * つまり全員がオールイン（か、降りずに残っているのが1人ぶんの行動だけ）で、
+ * あとは札をめくるだけになった場面。そこが実際の卓でも持ちかける場面になる。
+ */
+function askRuns(state: GameState): GameState | null {
+  if (!runItTwiceEnabled(state.variant)) return null;
+  if (state.runChoice !== null) return null;
+  if (contenders(state).length < 2) return null;
+  // まだ2人以上が行動できるなら、ベッティングが続く。聞くのは早い。
+  if (canActPlayers(state).length > 1) return null;
+
+  // 席順に聞く。順番が決まっていないと、誰から聞いたかで結果が変わって見える。
+  const seats = orderClockwise(
+    contenders(state).map((p) => p.seat),
+    (state.dealerSeat + 1) % state.seatCount,
+    state.seatCount,
+  );
+  const pending = seats.map((seat) => state.players.find((p) => p.seat === seat)!.id);
+
+  return {
+    ...state,
+    phase: 'runChoice',
+    runChoice: { pending, agreed: [] },
+    turnPlayerId: pending[0] ?? null,
+  };
+}
+
+/**
+ * 合意の返事。**1人でも断れば1本**。
+ *
+ * 全員が同意して初めて複数本になる。実際の卓の作法どおりで、
+ * 「2人のうち1人が嫌がったのに2本走った」が起きない。
+ */
+function applyRunChoice(state: GameState, playerId: string, agree: boolean): GameState {
+  const choice = state.runChoice;
+  if (!choice) return state;
+
+  if (!agree) return dealOutRuns(state, 1);
+
+  const pending = choice.pending.filter((id) => id !== playerId);
+  if (pending.length === 0) return dealOutRuns(state, maxRunsOf(state.variant));
+
+  return {
+    ...state,
+    runChoice: { pending, agreed: [...choice.agreed, playerId] },
+    turnPlayerId: pending[0]!,
+  };
+}
+
+/** 残りのストリートを全部開く。ベッティングは起きない。 */
+function dealRemaining(state: GameState): GameState {
+  let current = state;
+  while (current.streetIndex + 1 < current.variant.structure.streets.length) {
+    current = openStreet(current);
+  }
+  return current;
+}
+
+/**
+ * 残りの札を runs 本ぶん走らせて決着する。
+ *
+ * すでに開いている札は共有で、**開き直すのは残りのストリートだけ**。
+ * 山札は走るたびに続きから使うので、同じ札が2本のボードに出ることはない。
+ */
+function dealOutRuns(state: GameState, runs: number): GameState {
+  const start: GameState = {
+    ...state,
+    phase: 'betting',
+    runChoice: null,
+    turnPlayerId: null,
+  };
+
+  const first = dealRemaining(start);
+  if (runs <= 1) return settle(first);
+
+  const extraBoards: (readonly Card[])[] = [];
+  let deck = first.deck;
+  let burned = first.burned;
+
+  for (let run = 1; run < runs; run++) {
+    const again = dealRemaining({
+      ...start,
+      deck,
+      burned,
+      // 表にしてしまった札は1枚しかない。1本目のバーンで使い切っている。
+      exposedCards: [],
+    });
+    extraBoards.push(again.communityCards);
+    deck = again.deck;
+    burned = again.burned;
+  }
+
+  return settle({ ...first, deck, burned, extraBoards });
 }
 
 // ============================================================
 // 決着
 // ============================================================
 
+/**
+ * そのハンドで走ったボード全部。1本なら要素1つ。
+ *
+ * 「1本目か2本目か」で場合分けせずに読めるようにするための入口。
+ * VisibleState からも同じように呼べる。
+ */
+export const boardsOf = (
+  state: Pick<GameState, 'communityCards' | 'extraBoards'>,
+): readonly (readonly Card[])[] => [state.communityCards, ...(state.extraBoards ?? [])];
+
 function settle(state: GameState): GameState {
   const { players: refunded, refunds } = returnUncalledBets(state.players);
   const live = refunded.filter((p) => p.inHand && !p.folded);
 
-  const hands = new Map<string, HandResult>();
-  let revealed: RevealedHand[] = [];
+  // 2本走ったなら、ボードの数だけ勝負がある。1本なら要素1つの配列。
+  const boards = boardsOf(state);
+  const handsPerRun: Map<string, HandResult>[] = [];
+  const revealedPerRun: RevealedHand[][] = [];
 
   if (live.length > 1) {
-    for (const player of live) {
-      // 使用枚数の制約は evaluateHand が見る。オマハなら手札2枚＋場3枚に限られる。
-      const result = evaluateHand(player.holeCards, state.communityCards, state.variant);
-      if (result) hands.set(player.id, result);
+    for (const board of boards) {
+      const hands = new Map<string, HandResult>();
+      for (const player of live) {
+        // 使用枚数の制約は evaluateHand が見る。オマハなら手札2枚＋場3枚に限られる。
+        const result = evaluateHand(player.holeCards, board, state.variant);
+        if (result) hands.set(player.id, result);
+      }
+      handsPerRun.push(hands);
+      revealedPerRun.push(
+        live
+          .map<RevealedHand | null>((player) => {
+            const result = hands.get(player.id);
+            if (!result) return null;
+            return {
+              playerId: player.id,
+              holeCards: player.holeCards,
+              rankingId: result.rankingId,
+              rankingName: result.rankingName,
+            };
+          })
+          .filter((r): r is RevealedHand => r !== null),
+      );
     }
-    revealed = live
-      .map<RevealedHand | null>((player) => {
-        const result = hands.get(player.id);
-        if (!result) return null;
-        return {
-          playerId: player.id,
-          holeCards: player.holeCards,
-          rankingId: result.rankingId,
-          rankingName: result.rankingName,
-        };
-      })
-      .filter((r): r is RevealedHand => r !== null);
   }
 
+  const revealed = revealedPerRun[0] ?? [];
   const layers = buildPotLayers(refunded);
   const seatOf = new Map(refunded.map((p) => [p.id, p.seat]));
 
-  const winnings: Payout[] =
+  const awarded =
     live.length === 1
       ? // 全員が降りたので役を見る必要がない。勝者は手を見せずに取る。
-        [{ playerId: live[0]!.id, amount: layers.reduce((sum, l) => sum + l.amount, 0) }]
-      : awardPots(layers, hands, seatOf, state.dealerSeat, state.seatCount);
+        {
+          payouts: [
+            { playerId: live[0]!.id, amount: layers.reduce((sum, l) => sum + l.amount, 0) },
+          ] as Payout[],
+          perRun: [] as Payout[][],
+        }
+      : awardPotsAcrossRuns(layers, handsPerRun, seatOf, state.dealerSeat, state.seatCount);
+  const winnings: Payout[] = awarded.payouts;
 
   const credited = new Map<string, number>();
   for (const { playerId, amount } of [...refunds, ...winnings]) {
@@ -714,13 +870,34 @@ function settle(state: GameState): GameState {
     ? rabbitCards(state.variant.structure, state.streetIndex, state.deck)
     : [];
 
+  // 走りごとの内訳は、2本以上走ったときだけ残す。
+  // 1本しか走らないのが普通なので、いつも入れると読む側が常に [0] を書くことになる。
+  const runs: RunResult[] | undefined =
+    boards.length > 1
+      ? boards.map((board, i) => ({
+          board,
+          revealed: revealedPerRun[i] ?? [],
+          payouts: awarded.perRun[i] ?? [],
+        }))
+      : undefined;
+
   const summary: HandSummary = {
     payouts: [...credited.entries()].map(([playerId, amount]) => ({ playerId, amount })),
     revealed,
     rabbit,
+    ...(runs ? { runs } : {}),
   };
 
-  return { ...state, phase: 'showdown', players, pot: 0, currentBet: 0, turnPlayerId: null, summary };
+  return {
+    ...state,
+    phase: 'showdown',
+    players,
+    pot: 0,
+    currentBet: 0,
+    turnPlayerId: null,
+    runChoice: null,
+    summary,
+  };
 }
 
 // ============================================================

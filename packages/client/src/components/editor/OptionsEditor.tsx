@@ -17,6 +17,11 @@ const SHOW_CARDS: readonly { readonly value: ShowCardsPolicy; readonly label: st
  * 露出とミスディールは別物として扱っている。1枚だけ表にしてしまったのは
  * ミスディールではなく、回収して引き直す手順になる（→ docs/variants.md）。
  */
+function omit<T extends object, K extends keyof T>(value: T, key: K): Omit<T, K> {
+  const { [key]: _removed, ...rest } = value;
+  return rest;
+}
+
 export function OptionsEditor({ options, onChange }: OptionsEditorProps) {
   const set = (patch: Partial<TableOptions>) => onChange({ ...options, ...patch });
   const percent = (value: number | undefined) => Math.round((value ?? 0) * 100);
@@ -74,6 +79,34 @@ export function OptionsEditor({ options, onChange }: OptionsEditorProps) {
         />
         <p className="hint">2枚以上表になった場合。手札を回収して最初から配り直します。</p>
       </label>
+
+      <div className="field">
+        <span className="field-label">オールイン決着で走らせる本数</span>
+        <div className="segmented">
+          {[1, 2, 3].map((runs) => (
+            <button
+              key={runs}
+              type="button"
+              className={`segment ${(options?.runItTwice?.max ?? 1) === runs ? 'segment-active' : ''}`}
+              onClick={() =>
+                // 1本は「しない」こと。項目ごと消しておくと、
+                // 書き出した JSON に意味の無い設定が残らない。
+                onChange(
+                  runs === 1
+                    ? omit({ ...options }, 'runItTwice')
+                    : { ...options, runItTwice: { max: runs } },
+                )
+              }
+            >
+              {runs}本
+            </button>
+          ))}
+        </div>
+        <p className="hint">
+          全員がオールインしたあと、残りの札を複数回めくってポットを分けます。
+          全員の同意が要ります（1人でも断れば1本）。必要なデッキ枚数が本数ぶん増えます。
+        </p>
+      </div>
 
       <label className="checkline">
         <input
