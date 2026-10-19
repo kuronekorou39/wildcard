@@ -1,9 +1,27 @@
-import { type Action, type VisibleState, createGame, project } from '@wildcard/engine';
+import {
+  type Action,
+  type HandRecord,
+  type NonceEntry,
+  type VisibleState,
+  createGame,
+  project,
+  randomHex,
+} from '@wildcard/engine';
 import { NET_CONFIG } from '../net/config.js';
 import { diagLog } from '../net/diag.js';
 import type { PeerLink } from '../net/peerLink.js';
 import { MSG, PROTO_VERSION, parseHostMessage } from '../net/protocol.js';
 import type { ConnectionStatus, TableSnapshot, Transport } from './types.js';
+
+/** 記録は commit → seed → 公開 の順に埋まっていく。 */
+interface MutableRecord {
+  readonly handNo: number;
+  readonly commit: string;
+  nonces: NonceEntry[];
+  seedHex: string | null;
+  aborted: boolean;
+  secret: string | null;
+}
 
 export interface GuestTransportOptions {
   readonly link: PeerLink;
@@ -33,6 +51,8 @@ export class GuestTransport implements Transport {
   private lastHeard = 0;
   private silenceTimer: ReturnType<typeof setInterval> | null = null;
   private readonly emptyState: VisibleState;
+  /** 配牌の記録。host が秘密を公開したら、これで全ハンドを検証できる。 */
+  private readonly fairLog = new Map<number, MutableRecord>();
 
   constructor(options: GuestTransportOptions) {
     this.options = options;
@@ -120,7 +140,75 @@ export class GuestTransport implements Transport {
         this.setStatus('closed', 'host が部屋を閉じました。');
         this.link.leave();
         break;
+
+      case MSG.DEAL_COMMIT:
+        this.onDealCommit(message.handNo, message.commit);
+        break;
+
+      case MSG.DEAL_SEED: {
+        const record = this.fairLog.get(message.handNo);
+        if (record) {
+          record.nonces = [...message.nonces];
+          record.seedHex = message.seedHex;
+        }
+        break;
+      }
+
+      case MSG.DEAL_ABORT: {
+        const record = this.fairLog.get(message.handNo);
+        if (record) {
+          record.nonces = [...message.nonces];
+          record.aborted = true;
+        }
+        break;
+      }
+
+      case MSG.DEAL_REVEAL:
+        for (const { handNo, secret } of message.secrets) {
+          const record = this.fairLog.get(handNo);
+          if (record) record.secret = secret;
+        }
+        this.publish(this.cached.state);
+        break;
     }
+  }
+
+  /**
+   * 配る前のコミットを受け取り、自分の乱数を返す。
+   *
+   * host はこの時点で秘密を固定しているので、こちらの乱数を見てから
+   * 秘密を選び直すことはできない。だから seed を狙えない。
+   */
+  private onDealCommit(handNo: number, commit: string): void {
+    if (this.fairLog.has(handNo)) return; // 同じハンドのコミットは一度だけ
+    this.fairLog.set(handNo, {
+      handNo,
+      commit,
+      nonces: [],
+      seedHex: null,
+      aborted: false,
+      secret: null,
+    });
+    this.link.send({ type: MSG.DEAL_NONCE, handNo, nonce: randomHex() });
+  }
+
+  /** 検証用の記録。 */
+  fairnessRecords(): HandRecord[] {
+    return [...this.fairLog.values()]
+      .sort((a, b) => a.handNo - b.handNo)
+      .map((r) => ({
+        handNo: r.handNo,
+        commit: r.commit,
+        nonces: r.nonces,
+        seedHex: r.seedHex,
+        aborted: r.aborted,
+        secret: r.secret,
+      }));
+  }
+
+  /** 自分の playerId。検証で「自分の乱数が使われたか」を見るのに要る。 */
+  selfPlayerId(): string | null {
+    return this.playerId;
   }
 
   /**

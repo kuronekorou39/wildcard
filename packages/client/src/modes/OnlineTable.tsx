@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { type Action, findPreset, validate } from '@wildcard/engine';
+import { useEffect, useMemo, useState } from 'react';
+import { type Action, type HandRecord, findPreset, validate } from '@wildcard/engine';
+import { FairnessPanel } from '../components/FairnessPanel.js';
 import { TableView } from '../components/TableView.js';
 import { useTable } from '../hooks/useTable.js';
 import { createPeerLink } from '../net/peerLink.js';
@@ -61,23 +62,41 @@ export function OnlineTable({ settings, onExit }: OnlineTableProps) {
   }, [transport]);
 
   const snapshot = useTable(transport);
-  const handCounter = useRef(0);
-
   const isHost = transport instanceof HostTransport;
 
+  const [dealing, setDealing] = useState(false);
+  const [dealNote, setDealNote] = useState<string | null>(null);
+  const [records, setRecords] = useState<readonly HandRecord[]>([]);
+  const [revealed, setRevealed] = useState(false);
+
+  // 配牌の記録は Transport の中で増えるので、画面が変わるたびに取り直す。
+  useEffect(() => {
+    setRecords(transport.fairnessRecords());
+  }, [transport, snapshot, dealing, revealed]);
+
+  /**
+   * ハンドを開始する。
+   *
+   * host はすぐには配らない。秘密をコミットして全員の乱数を集めてから
+   * seed を決めるので、ここは待ちが入る（詳細は HostTransport.startHand）。
+   */
   const startHand = () => {
     if (!isHost) return;
-    handCounter.current += 1;
-    // seed は外から与える。エンジンは乱数を持たない（原則1）。
-    const seed = (Date.now() ^ (handCounter.current * 2654435761)) >>> 0;
-    transport.dispatch({ type: 'startHand', seed });
+    setDealing(true);
+    setDealNote(null);
+    void transport.startHand().then((result) => {
+      setDealing(false);
+      setDealNote(result.ok ? null : result.reason);
+    });
   };
 
   const act = (action: Action) => transport.dispatch(action);
 
-  const startRejection = isHost
-    ? (validate(transport.rawState(), { type: 'startHand', seed: 0 })?.reason ?? null)
-    : null;
+  const startRejection = !isHost
+    ? null
+    : dealing
+      ? '全員の乱数を集めています…'
+      : (dealNote ?? validate(transport.rawState(), { type: 'startHand', seed: 0 })?.reason ?? null);
 
   // オンラインでは自分の番のときだけ操作できる。
   const myId = snapshot.viewerId;
@@ -94,7 +113,27 @@ export function OnlineTable({ settings, onExit }: OnlineTableProps) {
       controllablePlayerId={controllablePlayerId}
       onStartHand={isHost ? startHand : null}
       startRejection={startRejection}
-      banner={<ConnectionBanner snapshot={snapshot} isHost={isHost} hostPlays={settings.hostPlays} />}
+      banner={
+        <>
+          <ConnectionBanner snapshot={snapshot} isHost={isHost} hostPlays={settings.hostPlays} />
+          <div className="rule-bar">
+            <FairnessPanel
+              records={records}
+              selfPlayerId={isHost ? null : transport.selfPlayerId()}
+              expectedNonceCount={Math.max(0, snapshot.state.players.length - (settings.hostPlays ? 1 : 0))}
+              onReveal={
+                isHost
+                  ? () => {
+                      transport.revealAll();
+                      setRevealed(true);
+                    }
+                  : null
+              }
+              revealed={isHost ? revealed : records.some((r) => r.secret !== null)}
+            />
+          </div>
+        </>
+      }
       ruleSetId={snapshot.state.ruleSet.id}
     />
   );

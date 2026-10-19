@@ -2,8 +2,13 @@ import {
   type Action,
   type CreateGameOptions,
   type GameState,
+  type HandRecord,
+  type NonceEntry,
+  commitOf,
   createGame,
+  deriveSeed,
   project,
+  randomHex,
   reduce,
   validate,
 } from '@wildcard/engine';
@@ -33,12 +38,37 @@ export interface HostTransportOptions extends CreateGameOptions {
    */
   readonly hostPlays: boolean;
   readonly startingChips: number;
+  /** 乱数を待つ時間。既定は NET_CONFIG.nonceTimeoutMs。テストで縮める。 */
+  readonly nonceTimeoutMs?: number;
 }
 
 interface PeerInfo {
   readonly sessionId: string;
   readonly playerId: string;
   name: string;
+}
+
+/** 記録は後から埋まるので、書き換えられる形で持つ。 */
+interface MutableRecord {
+  readonly handNo: number;
+  readonly commit: string;
+  readonly secret: string;
+  nonces: NonceEntry[];
+  seedHex: string | null;
+  aborted: boolean;
+}
+
+/** 乱数を集めている最中の状態。 */
+interface PendingDeal {
+  readonly handNo: number;
+  readonly collected: Map<string, string>;
+  readonly expected: number;
+  resolve: (() => void) | null;
+}
+
+export interface StartHandResult {
+  readonly ok: boolean;
+  readonly reason: string | null;
 }
 
 /**
@@ -61,6 +91,12 @@ export class HostTransport implements Transport {
   private readonly seatsBySession = new Map<string, string>();
   private readonly hostPlayerId: string;
   private heartbeat: ReturnType<typeof setInterval> | null = null;
+
+  /** 配牌の記録。セッション終了時にまとめて公開して検証してもらう。 */
+  private readonly fairLog: MutableRecord[] = [];
+  private pendingDeal: PendingDeal | null = null;
+  private handCounter = 0;
+  private revealed = false;
 
   constructor(options: HostTransportOptions) {
     const { link, roomCode, hostName, hostPlays, startingChips, ...gameOptions } = options;
@@ -127,6 +163,111 @@ export class HostTransport implements Transport {
     return this.state.players.length;
   }
 
+  // ---- 配牌の公正さ ----
+
+  /**
+   * ハンドを始める。
+   *
+   * 配る前に秘密をコミットし、全員の乱数を集めてから seed を決める。
+   * host は乱数を知らずに秘密を固定しているので、seed を狙えない。
+   * 詳しい手順は engine の fair/commit.ts を参照。
+   */
+  async startHand(): Promise<StartHandResult> {
+    if (this.pendingDeal !== null) {
+      return { ok: false, reason: '前のハンドの準備中です' };
+    }
+    const rejection = validate(this.state, { type: 'startHand', seed: 0 });
+    if (rejection !== null) return { ok: false, reason: rejection.reason };
+
+    const handNo = ++this.handCounter;
+    const secret = randomHex();
+    const commit = await commitOf(secret);
+
+    const record: MutableRecord = {
+      handNo,
+      commit,
+      secret,
+      nonces: [],
+      seedHex: null,
+      aborted: false,
+    };
+    this.fairLog.push(record);
+
+    // 配る前にコミットを配る。これより後に届く乱数しか採らない。
+    const expected = this.peers.size;
+    const pending: PendingDeal = { handNo, collected: new Map(), expected, resolve: null };
+    this.pendingDeal = pending;
+    this.sendTo(undefined, { type: MSG.DEAL_COMMIT, handNo, commit });
+
+    await this.waitForNonces(pending);
+    this.pendingDeal = null;
+
+    record.nonces = [...pending.collected.entries()].map(([playerId, nonce]) => ({
+      playerId,
+      nonce,
+    }));
+
+    if (record.nonces.length < expected) {
+      // 揃わないまま配ると、誰かの乱数を外した seed になってしまう。
+      record.aborted = true;
+      this.sendTo(undefined, { type: MSG.DEAL_ABORT, handNo, nonces: record.nonces });
+      diagLog('配牌中断', `hand=${handNo} ${record.nonces.length}/${expected}`);
+      return { ok: false, reason: '全員の乱数が揃わなかったので配りませんでした' };
+    }
+
+    const { seed, seedHex } = await deriveSeed(secret, record.nonces);
+    record.seedHex = seedHex;
+
+    // 先に seed を知らせてから配る。guest 側の記録が state より後にならないように。
+    this.sendTo(undefined, { type: MSG.DEAL_SEED, handNo, nonces: record.nonces, seedHex });
+    this.apply({ type: 'startHand', seed });
+    return { ok: true, reason: null };
+  }
+
+  /** 秘密を全員に公開する。これで全ハンドを検証できるようになる。 */
+  revealAll(): void {
+    this.revealed = true;
+    this.sendTo(undefined, {
+      type: MSG.DEAL_REVEAL,
+      secrets: this.fairLog.map((r) => ({ handNo: r.handNo, secret: r.secret })),
+    });
+    diagLog('秘密を公開', `${this.fairLog.length}ハンド`);
+  }
+
+  hasRevealed(): boolean {
+    return this.revealed;
+  }
+
+  /** 検証用の記録。host 側は自分の秘密を最初から持っている。 */
+  fairnessRecords(): HandRecord[] {
+    return this.fairLog.map((r) => ({
+      handNo: r.handNo,
+      commit: r.commit,
+      nonces: r.nonces,
+      seedHex: r.seedHex,
+      aborted: r.aborted,
+      secret: this.revealed ? r.secret : null,
+    }));
+  }
+
+  private waitForNonces(pending: PendingDeal): Promise<void> {
+    if (pending.expected === 0) return Promise.resolve();
+    // 相手が速いと、ここへ来る前に全部届いていることがある。
+    // 先に確かめないと、揃っているのにタイムアウトまで待ってしまう。
+    if (pending.collected.size >= pending.expected) return Promise.resolve();
+
+    return new Promise((resolve) => {
+      const timeout = this.options.nonceTimeoutMs ?? NET_CONFIG.nonceTimeoutMs;
+      const timer = setTimeout(finish, timeout);
+      function finish() {
+        clearTimeout(timer);
+        pending.resolve = null;
+        resolve();
+      }
+      pending.resolve = finish;
+    });
+  }
+
   // ---- 内部 ----
 
   private onMessage(raw: unknown, peerId: string): void {
@@ -142,7 +283,12 @@ export class HostTransport implements Transport {
     }
 
     const peer = this.peers.get(peerId);
-    if (peer === undefined) return; // hello 前のアクションは無視
+    if (peer === undefined) return; // hello 前のメッセージは無視
+
+    if (message.type === MSG.DEAL_NONCE) {
+      this.onNonce(message.handNo, message.nonce, peer.playerId);
+      return;
+    }
 
     // 形が正しいだけでは足りない。その席の持ち主かどうかを必ず確かめる。
     // ここを抜かすと「他人の名前で降りる」ができてしまう。
@@ -152,6 +298,15 @@ export class HostTransport implements Transport {
     }
 
     this.apply(message.action);
+  }
+
+  /** 配る前に集めている乱数を受け取る。 */
+  private onNonce(handNo: number, nonce: string, playerId: string): void {
+    const pending = this.pendingDeal;
+    if (pending === null || pending.handNo !== handNo) return; // 古い・知らないハンド
+    if (pending.collected.has(playerId)) return; // 二重送信は最初のものだけ採る
+    pending.collected.set(playerId, nonce);
+    if (pending.collected.size >= pending.expected) pending.resolve?.();
   }
 
   private onHello(proto: number, sessionId: string, name: string, peerId: string): void {

@@ -44,6 +44,9 @@ async function launch() {
 
 const say = (m) => console.log(m);
 
+/** 複数行のテキストを1行に畳む。ログを1行1項目に保つため。 */
+const flatten = (text, joiner) => text.split(String.fromCharCode(10)).join(joiner);
+
 const browser = await launch();
 // 別々のコンテキストにすることで localStorage が分かれ、別端末として扱われる。
 const hostCtx = await browser.newContext({ viewport: { width: 390, height: 844 } });
@@ -189,6 +192,31 @@ if (await host.locator('.summary').count()) {
 } else {
   say('--- ショーダウンに到達しなかった ---');
 }
+
+// ---- 配牌の検証 ----
+say('--- 配牌の検証 ---');
+for (const [label, page] of [
+  ['host', host],
+  ['guest', guest],
+]) {
+  await page.locator('.fair-panel .rule-sheet-summary').click();
+  say(`[${label}] ${flatten(await page.locator('.fair-summary').innerText(), ' / ')}`);
+}
+
+// host が秘密を公開すると、guest 側で検証が通るようになる
+await host.getByRole('button', { name: /秘密を公開/ }).click();
+await host.waitForTimeout(800);
+
+for (const [label, page] of [
+  ['host', host],
+  ['guest', guest],
+]) {
+  say(`[${label}] 公開後: ${flatten(await page.locator('.fair-summary').innerText(), ' / ')}`);
+  const rows = await page.locator('.fair-row').allInnerTexts();
+  for (const row of rows) say(`   ${flatten(row, ' ')}`);
+}
+await snap(host, 'host-fairness');
+await snap(guest, 'guest-fairness');
 
 // ---- 切断と復帰 ----
 say('--- guest のタブを閉じて切断を起こす ---');

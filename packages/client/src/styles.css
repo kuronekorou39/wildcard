@@ -873,3 +873,85 @@ button {
   width: 100%;
   accent-color: var(--accent);
 }
+
+/* ---------- 配牌の検証 ---------- */
+
+.fair-panel {
+  margin-top: 0;
+}
+
+.fair-flag {
+  color: #ffbf7a;
+  font-weight: 800;
+}
+
+.fair-note {
+  margin: 0 0 10px;
+  color: var(--text-dim);
+  font-size: 0.76rem;
+  line-height: 1.7;
+}
+
+.fair-summary {
+  list-style: none;
+  margin: 0 0 10px;
+  padding: 0;
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.fair-failed {
+  color: #ffbf7a;
+  font-weight: 700;
+}
+
+.fair-list {
+  list-style: none;
+  margin: 0 0 10px;
+  padding: 0;
+  max-height: 180px;
+  overflow-y: auto;
+  font-size: 0.74rem;
+}
+
+.fair-row {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  padding: 3px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.fair-hand {
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+  min-width: 2.5em;
+}
+
+.fair-status {
+  font-weight: 700;
+  min-width: 7em;
+}
+
+.fair-verified .fair-status {
+  color: var(--accent);
+}
+
+.fair-unrevealed .fair-status {
+  color: var(--text-dim);
+}
+
+.fair-commit-mismatch .fair-status,
+.fair-seed-mismatch .fair-status,
+.fair-nonce-missing .fair-status,
+.fair-suspicious-abort .fair-status {
+  color: var(--danger);
+}
+
+.fair-detail {
+  color: var(--text-dim);
+  line-height: 1.5;
+}

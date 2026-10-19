@@ -1,4 +1,4 @@
-import type { Action, VisibleState } from '@wildcard/engine';
+import type { Action, NonceEntry, VisibleState } from '@wildcard/engine';
 
 /**
  * 卓のネットワークプロトコル。
@@ -12,7 +12,7 @@ import type { Action, VisibleState } from '@wildcard/engine';
  */
 
 /** スキーマを変えたら上げる。版が違う相手とは繋がない。 */
-export const PROTO_VERSION = 1;
+export const PROTO_VERSION = 2;
 
 export const MSG = {
   // guest → host
@@ -30,6 +30,18 @@ export const MSG = {
   STATE: 'state',
   /** host が部屋を閉じた。単なる切断と区別して、戻りを待たせない。 */
   CLOSED: 'closed',
+
+  // 配牌の公正さ（fair/commit.ts の手順）
+  /** host→guest: 配る前のコミット。これを受けたら乱数を返す。 */
+  DEAL_COMMIT: 'deal_commit',
+  /** guest→host: 自分の乱数。 */
+  DEAL_NONCE: 'deal_nonce',
+  /** host→guest: 実際に使った乱数一覧と seed。 */
+  DEAL_SEED: 'deal_seed',
+  /** host→guest: 乱数が揃わず配らずに終わった。 */
+  DEAL_ABORT: 'deal_abort',
+  /** host→guest: 秘密の公開。これで全ハンドを検証できる。 */
+  DEAL_REVEAL: 'deal_reveal',
 } as const;
 
 export interface HelloMessage {
@@ -68,8 +80,51 @@ export interface ClosedMessage {
   readonly type: typeof MSG.CLOSED;
 }
 
-export type GuestMessage = HelloMessage | ActionMessage;
-export type HostMessage = WelcomeMessage | RejectedMessage | StateMessage | ClosedMessage;
+export interface DealCommitMessage {
+  readonly type: typeof MSG.DEAL_COMMIT;
+  readonly handNo: number;
+  readonly commit: string;
+}
+
+export interface DealNonceMessage {
+  readonly type: typeof MSG.DEAL_NONCE;
+  readonly handNo: number;
+  readonly nonce: string;
+}
+
+export interface DealSeedMessage {
+  readonly type: typeof MSG.DEAL_SEED;
+  readonly handNo: number;
+  readonly nonces: readonly NonceEntry[];
+  readonly seedHex: string;
+}
+
+export interface DealAbortMessage {
+  readonly type: typeof MSG.DEAL_ABORT;
+  readonly handNo: number;
+  readonly nonces: readonly NonceEntry[];
+}
+
+export interface RevealedSecret {
+  readonly handNo: number;
+  readonly secret: string;
+}
+
+export interface DealRevealMessage {
+  readonly type: typeof MSG.DEAL_REVEAL;
+  readonly secrets: readonly RevealedSecret[];
+}
+
+export type GuestMessage = HelloMessage | ActionMessage | DealNonceMessage;
+export type HostMessage =
+  | WelcomeMessage
+  | RejectedMessage
+  | StateMessage
+  | ClosedMessage
+  | DealCommitMessage
+  | DealSeedMessage
+  | DealAbortMessage
+  | DealRevealMessage;
 
 // ============================================================
 // 受信の検証
@@ -114,9 +169,27 @@ export function parseGuestMessage(raw: unknown): GuestMessage | null {
       return action === null ? null : { type: MSG.ACTION, action };
     }
 
+    case MSG.DEAL_NONCE:
+      if (!isFiniteNumber(raw['handNo'])) return null;
+      if (!isString(raw['nonce'], 128)) return null;
+      return { type: MSG.DEAL_NONCE, handNo: raw['handNo'], nonce: raw['nonce'] };
+
     default:
       return null;
   }
+}
+
+/** nonce の一覧。要素の形が合わないものは落とす。 */
+function parseNonces(raw: unknown): NonceEntry[] | null {
+  if (!Array.isArray(raw) || raw.length > 32) return null;
+  const entries: NonceEntry[] = [];
+  for (const item of raw) {
+    if (!isRecord(item)) return null;
+    if (!isString(item['playerId'], SESSION_ID_MAX_LEN)) return null;
+    if (!isString(item['nonce'], 128)) return null;
+    entries.push({ playerId: item['playerId'], nonce: item['nonce'] });
+  }
+  return entries;
 }
 
 /** host から届いたメッセージを検証する。 */
@@ -152,6 +225,39 @@ export function parseHostMessage(raw: unknown): HostMessage | null {
 
     case MSG.CLOSED:
       return { type: MSG.CLOSED };
+
+    case MSG.DEAL_COMMIT:
+      if (!isFiniteNumber(raw['handNo'])) return null;
+      if (!isString(raw['commit'], 128)) return null;
+      return { type: MSG.DEAL_COMMIT, handNo: raw['handNo'], commit: raw['commit'] };
+
+    case MSG.DEAL_SEED: {
+      if (!isFiniteNumber(raw['handNo'])) return null;
+      if (!isString(raw['seedHex'], 128)) return null;
+      const nonces = parseNonces(raw['nonces']);
+      return nonces === null
+        ? null
+        : { type: MSG.DEAL_SEED, handNo: raw['handNo'], nonces, seedHex: raw['seedHex'] };
+    }
+
+    case MSG.DEAL_ABORT: {
+      if (!isFiniteNumber(raw['handNo'])) return null;
+      const nonces = parseNonces(raw['nonces']);
+      return nonces === null ? null : { type: MSG.DEAL_ABORT, handNo: raw['handNo'], nonces };
+    }
+
+    case MSG.DEAL_REVEAL: {
+      const raws = raw['secrets'];
+      if (!Array.isArray(raws) || raws.length > 1000) return null;
+      const secrets: RevealedSecret[] = [];
+      for (const item of raws) {
+        if (!isRecord(item)) return null;
+        if (!isFiniteNumber(item['handNo'])) return null;
+        if (!isString(item['secret'], 128)) return null;
+        secrets.push({ handNo: item['handNo'], secret: item['secret'] });
+      }
+      return { type: MSG.DEAL_REVEAL, secrets };
+    }
 
     default:
       return null;
