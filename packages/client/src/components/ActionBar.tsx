@@ -31,7 +31,13 @@ export function ActionBar({ state, playerId, onAction }: ActionBarProps) {
 
   if (raising && legal.canRaise) {
     const isAllIn = amount >= legal.maxRaiseTo;
-    const quick = quickAmounts(legal.minRaiseTo, legal.maxRaiseTo, state.pot, player.bet);
+    const quick = quickAmounts({
+      min: legal.minRaiseTo,
+      max: legal.maxRaiseTo,
+      pot: state.pot,
+      ownBet: player.bet,
+      currentBet: state.currentBet,
+    });
 
     return (
       <div className="action-bar">
@@ -115,17 +121,38 @@ export function ActionBar({ state, playerId, onAction }: ActionBarProps) {
   );
 }
 
-interface QuickAmount {
+export interface QuickAmount {
   readonly label: string;
   readonly value: number;
 }
 
-/** よく使う額のショートカット。下限と上限の外には出さない。 */
-function quickAmounts(min: number, max: number, pot: number, ownBet: number): QuickAmount[] {
+export interface QuickAmountInput {
+  readonly min: number;
+  readonly max: number;
+  readonly pot: number;
+  readonly ownBet: number;
+  readonly currentBet: number;
+}
+
+/**
+ * よく使うレイズ額のショートカット。
+ *
+ * ポットサイズレイズは「コールしてからポットぶんを上乗せする」額である。
+ * コールした時点でポットは pot + toCall になるので、
+ *   レイズ先 = currentBet + (pot + toCall)
+ * となる。コール額を無視して pot だけ足すと、相手のベットが大きいほど
+ * 実際のポットサイズから外れていく。
+ *
+ * 値は必ず legalActions が出した下限・上限に収める。重複した候補は畳む。
+ */
+export function quickAmounts({ min, max, pot, ownBet, currentBet }: QuickAmountInput): QuickAmount[] {
+  const toCall = Math.max(0, currentBet - ownBet);
+  const potAfterCall = pot + toCall;
+
   const candidates: QuickAmount[] = [
     { label: '最小', value: min },
-    { label: '1/2 ポット', value: ownBet + Math.round(pot / 2) },
-    { label: 'ポット', value: ownBet + pot },
+    { label: '1/2 ポット', value: currentBet + Math.round(potAfterCall / 2) },
+    { label: 'ポット', value: currentBet + potAfterCall },
     { label: 'オールイン', value: max },
   ];
 

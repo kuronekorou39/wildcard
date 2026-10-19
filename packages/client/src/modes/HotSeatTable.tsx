@@ -87,7 +87,9 @@ export function HotSeatTable({ settings, onExit }: HotSeatTableProps) {
         </span>
       </header>
 
-      <PokerTable state={state} viewerId={viewerId} />
+      <main className="table-wrap">
+        <PokerTable state={state} viewerId={viewerId} />
+      </main>
 
       <footer className="bottombar">
         {state.phase === 'waiting' && (

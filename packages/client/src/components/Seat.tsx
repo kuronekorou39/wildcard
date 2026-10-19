@@ -37,7 +37,8 @@ export function Seat({ slot, seatCount, player, isTurn, isDealer, isViewer }: Se
 
       <div className="seat-cards">
         {Array.from({ length: player.holeCardCount }, (_, i) => (
-          <PlayingCard key={i} card={player.holeCards[i] ?? null} size="sm" />
+          // 自分の手札は読めなければ意味がないので一段大きく出す。
+          <PlayingCard key={i} card={player.holeCards[i] ?? null} size={isViewer ? 'md' : 'sm'} />
         ))}
       </div>
 

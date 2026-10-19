@@ -109,11 +109,27 @@ button {
 
 /* ---------- 卓 ---------- */
 
+/* 卓は操作エリアとの間で縦に中央寄せする。下に空白が溜まると間延びする。 */
+.table-wrap {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+  padding: calc(var(--seat-h) * 0.6) 0;
+}
+
 .table-area {
   position: relative;
-  width: min(72vw, 330px);
-  aspect-ratio: 3 / 4;
-  margin: calc(var(--seat-h) * 0.7) auto calc(var(--seat-h) * 0.75);
+  /*
+   * 縦長の画面では卓も縦長にして使える高さを拾う。
+   * サイズは必ず「幅起点 + aspect-ratio」で決めること。height: 100% は
+   * 親（.table-wrap）の高さが flex で後から決まるため解決できず、
+   * 要素が潰れて卓ごと消える。
+   */
+  aspect-ratio: 2 / 3;
+  width: min(78vw, 360px);
+  max-height: 72vh;
   flex: 0 0 auto;
 }
 
@@ -198,6 +214,8 @@ button {
 .seat-viewer {
   border-color: var(--accent);
   background: rgba(24, 74, 54, 0.95);
+  width: calc(var(--seat-w) * 1.2);
+  padding: 6px 4px;
 }
 
 .seat-turn {
@@ -653,7 +671,7 @@ button {
   }
 
   .table-area {
-    width: min(52vw, 420px);
+    width: min(52vw, 440px);
     aspect-ratio: 4 / 3;
   }
 
