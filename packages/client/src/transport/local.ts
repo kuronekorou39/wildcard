@@ -77,7 +77,7 @@ export class LocalTransport implements Transport {
 
   private compute(): TableSnapshot {
     const viewerId = this.viewerId();
-    return { state: project(this.state, viewerId), viewerId };
+    return { state: project(this.state, viewerId), viewerId, status: 'local', note: null };
   }
 
   private emit(): void {

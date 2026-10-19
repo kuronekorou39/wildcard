@@ -2,10 +2,8 @@ import { useMemo, useRef, useState } from 'react';
 import { type Action, validate } from '@wildcard/engine';
 import { LocalTransport } from '../transport/local.js';
 import { useTable } from '../hooks/useTable.js';
-import { ActionBar } from '../components/ActionBar.js';
-import { HandSummaryPanel } from '../components/HandSummaryPanel.js';
 import { PassDeviceGate } from '../components/PassDeviceGate.js';
-import { PokerTable } from '../components/PokerTable.js';
+import { TableView } from '../components/TableView.js';
 
 export interface HotSeatSettings {
   readonly names: readonly string[];
@@ -22,7 +20,7 @@ interface HotSeatTableProps {
 /**
  * ホットシート（1台を回して遊ぶ）。
  *
- * サーバーは一切使わず、同じタブの中でエンジンが回っている。
+ * サーバーも通信も使わず、同じタブの中でエンジンが回っている。
  * 視点は手番とともに動き（LocalTransport の followTurn）、手番が移るたびに
  * 目隠しを挟むことで、1台でもホールカードの秘匿が成立する。
  */
@@ -46,7 +44,7 @@ export function HotSeatTable({ settings, onExit }: HotSeatTableProps) {
     });
   }, [settings]);
 
-  const { state, viewerId } = useTable(transport);
+  const snapshot = useTable(transport);
 
   /** 今カードを見せてよい相手。手番が移ると食い違い、目隠しが入る。 */
   const [revealedFor, setRevealedFor] = useState<string | null>(null);
@@ -65,10 +63,12 @@ export function HotSeatTable({ settings, onExit }: HotSeatTableProps) {
     setRevealedFor(null);
   };
 
-  const startRejection = validate(transport.rawState(), { type: 'startHand', seed: 0 });
-  const turnPlayer = state.players.find((p) => p.id === state.turnPlayerId);
+  const startRejection =
+    validate(transport.rawState(), { type: 'startHand', seed: 0 })?.reason ?? null;
+  const turnPlayer = snapshot.state.players.find((p) => p.id === snapshot.state.turnPlayerId);
 
   // 手番が移った直後は、本人が「見る」を押すまで卓を描かない。
+  // オーバーレイで覆うだけだと DOM に次の人のホールカードが載ってしまう。
   if (turnPlayer && revealedFor !== turnPlayer.id) {
     return (
       <PassDeviceGate playerName={turnPlayer.name} onReveal={() => setRevealedFor(turnPlayer.id)} />
@@ -76,56 +76,17 @@ export function HotSeatTable({ settings, onExit }: HotSeatTableProps) {
   }
 
   return (
-    <div className="screen">
-      <header className="topbar">
-        <button type="button" className="btn btn-muted btn-small" onClick={onExit}>
-          もどる
-        </button>
-        <span className="topbar-title">ホットシート</span>
-        <span className="topbar-blinds">
-          SB {settings.smallBlind} / BB {settings.bigBlind}
-        </span>
-      </header>
-
-      <main className="table-wrap">
-        <PokerTable state={state} viewerId={viewerId} />
-      </main>
-
-      <footer className="bottombar">
-        {state.phase === 'waiting' && (
-          <div className="centered-actions">
-            <button
-              type="button"
-              className="btn btn-primary btn-large"
-              onClick={startHand}
-              disabled={startRejection !== null}
-            >
-              ゲーム開始
-            </button>
-            {startRejection && <p className="hint">{startRejection.reason}</p>}
-          </div>
-        )}
-
-        {state.phase === 'showdown' && (
-          <HandSummaryPanel
-            state={state}
-            onNextHand={startHand}
-            canStartNextHand={startRejection === null}
-            blockedReason={
-              startRejection
-                ? `次のハンドを開始できません: ${startRejection.reason}`
-                : null
-            }
-          />
-        )}
-
-        {turnPlayer && (
-          <>
-            <div className="turn-label">{turnPlayer.name} の番</div>
-            <ActionBar state={state} playerId={turnPlayer.id} onAction={act} />
-          </>
-        )}
-      </footer>
-    </div>
+    <TableView
+      snapshot={snapshot}
+      title="ホットシート"
+      subtitle={`SB ${settings.smallBlind} / BB ${settings.bigBlind}`}
+      onExit={onExit}
+      onAction={act}
+      // 1台を回しているので、手番の人は誰でも操作できる。
+      controllablePlayerId={snapshot.state.turnPlayerId}
+      onStartHand={startHand}
+      startRejection={startRejection}
+      banner={null}
+    />
   );
 }

@@ -683,3 +683,123 @@ button {
     border-top: 2px solid var(--accent);
   }
 }
+
+/* ---------- タブと選択肢 ---------- */
+
+.tabs {
+  display: flex;
+  gap: 6px;
+  background: rgba(0, 0, 0, 0.25);
+  padding: 4px;
+  border-radius: 12px;
+}
+
+.tab {
+  flex: 1;
+  padding: 10px;
+  border: none;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--text-dim);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.tab-active {
+  background: rgba(63, 167, 118, 0.25);
+  color: var(--text);
+}
+
+.segmented {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+.segment {
+  flex: 1;
+  padding: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text-dim);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.segment-active {
+  border-color: var(--accent);
+  background: rgba(63, 167, 118, 0.22);
+  color: var(--text);
+}
+
+.checkline {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  margin-bottom: 14px;
+  cursor: pointer;
+}
+
+.checkline input {
+  margin-top: 3px;
+  accent-color: var(--accent);
+  flex: 0 0 auto;
+}
+
+.checkline-note {
+  display: block;
+  margin-top: 4px;
+  color: var(--text-dim);
+  font-size: 0.78rem;
+  line-height: 1.6;
+}
+
+.input-code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 1.3rem;
+  letter-spacing: 0.3em;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+/* ---------- 卓の知らせ ---------- */
+
+.banner {
+  padding: 8px 14px;
+  font-size: 0.8rem;
+  text-align: center;
+  line-height: 1.5;
+}
+
+.banner-note {
+  background: rgba(0, 0, 0, 0.2);
+  color: var(--text-dim);
+}
+
+.banner-wait {
+  background: rgba(63, 167, 118, 0.2);
+  color: var(--text);
+}
+
+.banner-warn {
+  background: rgba(217, 83, 79, 0.25);
+  color: #ffd9d7;
+}
+
+.room-code {
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(0, 0, 0, 0.25);
+  color: var(--gold);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.86rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  padding: 5px 9px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.room-code:hover {
+  border-color: var(--accent);
+}

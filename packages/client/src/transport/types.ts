@@ -1,10 +1,25 @@
 import type { Action, VisibleState } from '@wildcard/engine';
 
+/**
+ * 通信の状態。ローカル実装では常に 'local'。
+ * UI はこれを見て「接続中」「切断」を出す。
+ */
+export type ConnectionStatus =
+  | 'local'
+  | 'connecting'
+  | 'connected'
+  | 'disconnected'
+  | 'rejected'
+  | 'closed';
+
 export interface TableSnapshot {
   /** この視点から見える状態。見えないカードはエンジン側で伏せられている。 */
   readonly state: VisibleState;
   /** 視点の持ち主。観戦なら null。 */
   readonly viewerId: string | null;
+  readonly status: ConnectionStatus;
+  /** 拒否理由や切断の説明。無ければ null。 */
+  readonly note: string | null;
 }
 
 /**
