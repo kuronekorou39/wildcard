@@ -1012,3 +1012,16 @@ button {
   display: inline-flex;
   gap: 3px;
 }
+
+/* ---------- ジョーカー ---------- */
+
+.card-joker {
+  background: linear-gradient(140deg, #4b2a6b, #6b3f96);
+  color: #ffe9a8;
+}
+
+.card-joker-label {
+  font-size: 0.42em;
+  letter-spacing: 0.04em;
+  line-height: 1;
+}

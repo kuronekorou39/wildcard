@@ -20,6 +20,14 @@ export type Rank = (typeof RANKS)[number];
 export interface Card {
   readonly rank: Rank;
   readonly suit: Suit;
+  /**
+   * ジョーカーの通し番号。通常のカードでは undefined。
+   *
+   * **ジョーカーの rank と suit には意味がない。** 置き換え前の仮の値なので、
+   * 役の判定に使ってはいけない（評価の前にワイルドの規則で別のカードへ
+   * 置き換える）。同一性の比較には必ず cardKey() を使うこと。
+   */
+  readonly joker?: number;
 }
 
 // ============================================================
@@ -54,6 +62,8 @@ export interface DeckRules {
   readonly suitRanking?: readonly Suit[];
   /** 直積で作る各カードの枚数。2 にすると全部2枚ずつ。既定1。 */
   readonly copies?: number;
+  /** ジョーカーの枚数。既定0。何に化けるかは ranking.wilds が決める。 */
+  readonly jokers?: number;
   /**
    * カード単位の上書き。直積の結果より優先される。
    *
@@ -179,9 +189,32 @@ export interface HandRanking {
   readonly pattern: HandPattern;
 }
 
+/** どのカードがワイルドか。 */
+export type WildSelector =
+  /** ジョーカー（deck.jokers で入れた札）。 */
+  | { readonly kind: 'joker' }
+  /** 特定のランクの札すべて（「2がワイルド」など）。 */
+  | { readonly kind: 'rank'; readonly ranks: readonly Rank[] }
+  /** 特定のカードだけ（「ハートのQだけワイルド」など）。 */
+  | { readonly kind: 'card'; readonly cards: readonly { readonly rank: Rank; readonly suit: Suit }[] };
+
+export interface WildRule {
+  readonly cards: WildSelector;
+  /**
+   * 何に化けられるか。省略するとデッキにある任意のカード。
+   * 絞ると「スートは変えられるがランクは変えられない」といった制限も書ける。
+   */
+  readonly becomes?: {
+    readonly ranks?: readonly Rank[];
+    readonly suits?: readonly Suit[];
+  };
+}
+
 export interface RankingRules {
   /** 役を強い順に並べたもの。index 0 が最強。 */
   readonly hands: readonly HandRanking[];
+  /** ワイルドカードの扱い。省略するとワイルドなし。 */
+  readonly wilds?: readonly WildRule[];
 }
 
 // ============================================================

@@ -1,6 +1,7 @@
 import type { Card, Variant } from '../types.js';
 import { boardUsageOf, holeUsageOf } from '../variant.js';
 import { type PatternMatch, compareTiebreak, matchPattern } from './pattern.js';
+import { hasWilds, substitutionsForPattern, wildPositions } from './wild.js';
 
 export interface HandResult {
   readonly rankingId: string;
@@ -66,26 +67,50 @@ export function evaluateBest(cards: readonly Card[], variant: Variant): HandResu
   return best;
 }
 
-/** ちょうど handSize 枚に対して、成立する最強の役を返す。 */
+/**
+ * ちょうど handSize 枚に対して、成立する最強の役を返す。
+ *
+ * ワイルドが混ざっていれば、**役ごとに**その役に要る候補だけで置き換えを試す。
+ * 全種類で総当たりすると3枚で5秒かかって使い物にならなかった（→ wild.ts）。
+ */
 export function evaluateExact(cards: readonly Card[], variant: Variant): HandResult | null {
   const hands = variant.ranking.hands;
+  const wildAt = hasWilds(variant) ? wildPositions(cards, variant) : [];
 
   for (let i = 0; i < hands.length; i++) {
     const ranking = hands[i]!;
     if (!ranking.enabled) continue;
 
-    const match: PatternMatch | null = matchPattern(cards, ranking.pattern, variant.deck);
-    if (!match) continue;
+    let best: PatternMatch | null = null;
+
+    if (wildAt.length === 0) {
+      best = matchPattern(cards, ranking.pattern, variant.deck);
+    } else {
+      for (const substituted of substitutionsForPattern(
+        cards,
+        wildAt,
+        ranking.pattern,
+        variant,
+      )) {
+        const match = matchPattern(substituted, ranking.pattern, variant.deck);
+        if (match && (best === null || compareTiebreak(match.tiebreak, best.tiebreak) > 0)) {
+          best = match;
+        }
+      }
+    }
+
+    if (!best) continue;
 
     // hands は強い順に並んでいるので、最初に成立したものが最強。
     return {
       rankingId: ranking.id,
       rankingName: ranking.name,
       rankingIndex: i,
+      // 画面には引いた札をそのまま出したいので、置き換え前を返す。
       cards,
-      matched: match.matched,
-      kickers: match.kickers,
-      tiebreak: match.tiebreak,
+      matched: best.matched,
+      kickers: best.kickers,
+      tiebreak: best.tiebreak,
     };
   }
   return null;

@@ -280,6 +280,94 @@ export const PRIME_RULES: Variant = {
 };
 
 // ============================================================
+// ワイルドカード
+// ============================================================
+
+/**
+ * ファイブカード。
+ *
+ * 通常のデッキでは成立しないが、ワイルドがあると起きる。
+ * ストレートフラッシュより強い（同じランク5枚のほうが揃いにくい）。
+ */
+const FIVE_OF_A_KIND: HandRanking = {
+  id: 'five_of_a_kind',
+  name: 'ファイブカード',
+  enabled: true,
+  pattern: {
+    cards: [
+      variableRank('X'),
+      variableRank('X'),
+      variableRank('X'),
+      variableRank('X'),
+      variableRank('X'),
+    ],
+    global: [],
+  },
+};
+
+/** ワイルドを入れるなら、ファイブカードを最強の役として足す必要がある。 */
+const WITH_FIVE_OF_A_KIND = [FIVE_OF_A_KIND, ...STANDARD_HAND_RANKINGS];
+
+/** ジョーカー1枚入り。何にでも化ける。 */
+export const JOKER_WILD: Variant = {
+  ...STANDARD_VARIANT,
+  id: 'joker-wild',
+  name: 'ジョーカー1枚',
+  description:
+    '53枚。ジョーカーは何にでも化ける。同じランク5枚（ファイブカード）が' +
+    '成立するようになり、ストレートフラッシュより強い。',
+  deck: { suits: SUITS, ranks: RANKS, jokers: 1 },
+  ranking: {
+    hands: WITH_FIVE_OF_A_KIND,
+    wilds: [{ cards: { kind: 'joker' } }],
+  },
+};
+
+/** 2がワイルド。4枚もワイルドがあるので役がかなり派手になる。 */
+export const DEUCES_WILD: Variant = {
+  ...STANDARD_VARIANT,
+  id: 'deuces-wild',
+  name: '2がワイルド',
+  description:
+    '4枚ある2がすべて何にでも化ける。役が派手になり、ツーペア程度では勝てなくなる。',
+  deck: { suits: SUITS, ranks: RANKS },
+  ranking: {
+    hands: WITH_FIVE_OF_A_KIND,
+    wilds: [{ cards: { kind: 'rank', ranks: ['2'] } }],
+  },
+};
+
+/**
+ * 片目のジャック（J♠ と J♥）だけがワイルド。
+ *
+ * 実在のハウスルール。絵柄が横を向いていて片目に見えるジャックが対象。
+ * 「特定のカードだけワイルド」が書けることの見本でもある。
+ */
+export const ONE_EYED_JACKS: Variant = {
+  ...STANDARD_VARIANT,
+  id: 'one-eyed-jacks',
+  name: '片目のジャック',
+  description:
+    'スペードとハートのJだけが何にでも化ける。実在のハウスルール。' +
+    'ワイルドが2枚しかないので、派手さと読みやすさのバランスが取れている。',
+  deck: { suits: SUITS, ranks: RANKS },
+  ranking: {
+    hands: WITH_FIVE_OF_A_KIND,
+    wilds: [
+      {
+        cards: {
+          kind: 'card',
+          cards: [
+            { rank: 'J', suit: 'spades' },
+            { rank: 'J', suit: 'hearts' },
+          ],
+        },
+      },
+    ],
+  },
+};
+
+// ============================================================
 // 卓の作法を変える変種
 // ============================================================
 
@@ -331,6 +419,9 @@ export const VARIANT_PRESETS: readonly Variant[] = [
   SUIT_RANKED,
   HOUSE_HANDS,
   PRIME_RULES,
+  JOKER_WILD,
+  DEUCES_WILD,
+  ONE_EYED_JACKS,
   CASUAL_TABLE,
   CLUMSY_DEALER,
 ];

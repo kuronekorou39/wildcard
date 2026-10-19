@@ -4,6 +4,18 @@ import { createRng } from './rng.js';
 const keyOf = (rank: Rank, suit: Suit) => `${rank}/${suit}`;
 
 /**
+ * カードの同一性。
+ *
+ * ジョーカーは rank と suit に意味がないので、通し番号で区別する。
+ * `${rank}${suit}` で比べると、ジョーカーが実在のカードと衝突する。
+ */
+export const cardKey = (card: Card): string =>
+  card.joker === undefined ? `${card.rank}/${card.suit}` : `joker/${card.joker}`;
+
+/** 表示用の仮の値。ジョーカーの rank と suit には意味がない。 */
+const JOKER_PLACEHOLDER = { rank: 'A' as Rank, suit: 'spades' as Suit };
+
+/**
  * デッキを組む。
  *
  * 「スート × ランク × copies」の直積を土台にして、overrides でカード単位に
@@ -31,6 +43,11 @@ export function buildDeck(rules: DeckRules): Card[] {
   for (const { card, count } of counts.values()) {
     for (let i = 0; i < count; i++) cards.push(card);
   }
+
+  for (let i = 0; i < (rules.jokers ?? 0); i++) {
+    cards.push({ ...JOKER_PLACEHOLDER, joker: i });
+  }
+
   return cards;
 }
 

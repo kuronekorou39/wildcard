@@ -1,5 +1,5 @@
 import type { Card, Variant } from '../types.js';
-import { buildDeck, shuffle } from '../deck.js';
+import { buildDeck, cardKey, shuffle } from '../deck.js';
 import { compareHands, evaluateHand } from '../rules/evaluate.js';
 import { boardSize } from '../variant.js';
 
@@ -41,12 +41,9 @@ export function estimateEquity(input: EquityInput): number {
   if (opponents <= 0) return 1;
   if (samples <= 0) return 0;
 
-  const known = new Set(
-    [...holeCards, ...communityCards].map((card) => `${card.rank}${card.suit}`),
-  );
-  const unknown = buildDeck(variant.deck).filter(
-    (card) => !known.has(`${card.rank}${card.suit}`),
-  );
+  // ジョーカーは rank と suit に意味がないので、同一性は cardKey で見る。
+  const known = new Set([...holeCards, ...communityCards].map(cardKey));
+  const unknown = buildDeck(variant.deck).filter((card) => !known.has(cardKey(card)));
 
   const boardToCome = Math.max(0, finalBoard - communityCards.length);
   const needed = boardToCome + opponents * holeCards.length;
