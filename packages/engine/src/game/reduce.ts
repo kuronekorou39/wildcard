@@ -58,6 +58,23 @@ const contenders = (state: GameState): Player[] =>
 const canActPlayers = (state: GameState): Player[] =>
   state.players.filter((p) => p.inHand && !p.folded && !p.allIn);
 
+/**
+ * legalActions が必要とする最小の情報。
+ *
+ * GameState でも、伏せ済みの VisibleState でも満たせるようにしてある。
+ * こうしておくと UI はホールカードの見えない状態からでも同じ関数を呼べるので、
+ * ベット額の下限・上限を自前で計算し直す必要がなくなる。
+ */
+export interface BettingView {
+  readonly currentBet: number;
+  readonly minRaise: number;
+  readonly turnPlayerId: string | null;
+  readonly players: readonly Pick<
+    Player,
+    'id' | 'bet' | 'chips' | 'inHand' | 'folded' | 'allIn'
+  >[];
+}
+
 export interface LegalActions {
   readonly canFold: boolean;
   readonly canCheck: boolean;
@@ -77,8 +94,8 @@ export interface LegalActions {
  * UI がベット額の下限・上限を自前で計算し直すと、必ずどこかでエンジンと食い違う。
  * ルールの判断はここに集約して、UI は結果を表示するだけにする。
  */
-export function legalActions(state: GameState, playerId: string): LegalActions | null {
-  const player = byId(state, playerId);
+export function legalActions(state: BettingView, playerId: string): LegalActions | null {
+  const player = state.players.find((p) => p.id === playerId);
   if (!player || state.turnPlayerId !== playerId) return null;
   if (!player.inHand || player.folded || player.allIn) return null;
 

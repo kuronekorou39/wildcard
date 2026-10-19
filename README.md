@@ -12,7 +12,7 @@
 | パッケージ | 内容 | 状態 |
 |---|---|---|
 | `packages/engine` | ゲームエンジン（純粋TS・依存ゼロ） | 完了（役評価・進行・ポット分配・視点投影） |
-| `packages/client` | React + Vite の卓UI | 未着手 |
+| `packages/client` | React + Vite の卓UI | ホットシートで遊べる。CPU相手とルールエディタが未実装 |
 | `packages/server` | WebSocket アダプタ（段階1以降） | 未着手 |
 
 ### 役評価について
@@ -37,14 +37,30 @@
 UI や通信層に秘匿の判断をさせないので、サーバーのない段階0でもホールカードの
 秘匿が成立する。
 
+### 遊べるモード
+
+| モード | サーバー | 状態 |
+|---|---|---|
+| ホットシート（1台を順番に回す） | 不要 | ✅ 遊べる |
+| ソロ（CPU相手） | 不要 | 未実装 |
+| オンライン対戦 | 必要 | 未実装（段階1以降） |
+
+ホットシートでは手番が移るたびに目隠しを挟む。このとき卓そのものを描画しないので、
+オーバーレイで覆う実装と違って DOM にも次の人のホールカードが載らない。
+
 ## 開発
 
 ```bash
 npm install
-npm test          # エンジンのテスト（137件）
+npm run dev       # クライアントを起動
+npm test          # 全テスト（エンジン137件 + クライアント26件）
 npm run typecheck
-npm run bench --workspace @wildcard/engine   # 役評価の速度
+npm run build     # 静的ビルド（packages/client/dist）
+npm run bench     # 役評価の速度
 ```
+
+`main` に push すると GitHub Actions が型チェック・テスト・ビルドを通して
+GitHub Pages にデプロイする（`.github/workflows/deploy.yml`）。
 
 ## なぜ GitHub Pages で「対戦」ではないのか
 

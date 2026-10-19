@@ -7,7 +7,11 @@
     "packages/*"
   ],
   "scripts": {
-    "test": "npm run test --workspace @wildcard/engine",
-    "typecheck": "npm run typecheck --workspaces --if-present"
+    "dev": "npm run dev --workspace @wildcard/client",
+    "build": "npm run build --workspace @wildcard/client",
+    "preview": "npm run preview --workspace @wildcard/client",
+    "test": "npm run test --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "bench": "npm run bench --workspace @wildcard/engine"
   }
 }
