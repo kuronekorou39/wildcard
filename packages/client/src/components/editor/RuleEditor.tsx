@@ -18,6 +18,7 @@ import {
   deleteCustomVariant,
   isCustomVariant,
   newCustomId,
+  resolveVariant,
   saveCustomVariant,
 } from '../../rules/customVariants.js';
 
@@ -178,7 +179,18 @@ export function RuleEditor({ source, onClose, onPlay }: RuleEditorProps) {
         </section>
       )}
 
-      <ShareBox variant={draft} />
+      <ShareBox
+        variant={draft}
+        onImported={(id) => {
+          // 取り込んだものをそのまま開く。中身を見ずに保存だけされると、
+          // 何が入っているのか分からないまま卓に出すことになる。
+          const imported = resolveVariant(id);
+          if (imported) {
+            setDraft(imported);
+            setSaved(true);
+          }
+        }}
+      />
 
       <div className="editor-actions">
         <button type="button" className="btn btn-primary" disabled={!ready} onClick={save}>
