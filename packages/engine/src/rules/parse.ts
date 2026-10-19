@@ -247,6 +247,7 @@ function parseBetting(value: unknown, path: string, p: Problems): BettingRules {
       'maxRaisesPerRound',
       p.optionalNumber(betting['maxRaisesPerRound'], `${path}.maxRaisesPerRound`),
     ),
+    ...optional('bigBetFrom', p.optionalNumber(betting['bigBetFrom'], `${path}.bigBetFrom`)),
   };
 }
 

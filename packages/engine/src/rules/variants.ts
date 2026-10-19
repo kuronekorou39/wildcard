@@ -1,4 +1,5 @@
 import {
+  PREFLOP,
   RANKS,
   SUITS,
   type HandRanking,
@@ -88,14 +89,64 @@ const OMAHA_STRUCTURE: HandStructure = {
 
 export const OMAHA: Variant = {
   id: 'omaha',
-  name: 'オマハ',
+  name: 'オマハ（ポットリミット）',
   description:
     '手札が4枚になるが、役に使えるのは手札からちょうど2枚と場からちょうど3枚。' +
-    '手札が多いぶん強い役が出やすく、「使えない2枚」の読みが効く。',
+    '手札が多いぶん強い役が出やすく、「使えない2枚」の読みが効く。' +
+    '賭けはポットの額まで——実際のオマハもほぼこの形で行われる。',
   deck: { suits: SUITS, ranks: RANKS },
   structure: OMAHA_STRUCTURE,
-  betting: NO_LIMIT,
+  // ノーリミットだと手札4枚の強さに賭けが追いつかず、毎回オールインになる。
+  betting: { limit: 'pot-limit' },
   ranking: { hands: STANDARD_HAND_RANKINGS },
+};
+
+/**
+ * リミットホールデム。賭け額が刻みで決まっている。
+ *
+ * 1回に動く額が小さいので、オールインの応酬ではなく積み重ねの勝負になる。
+ * ターンから額が倍になるのが昔ながらの形。
+ */
+export const FIXED_LIMIT: Variant = {
+  ...STANDARD_VARIANT,
+  id: 'fixed-limit',
+  name: 'リミットホールデム',
+  description:
+    '賭け額が刻みで決まっていて、ターンから倍になる。1ラウンドのレイズは4回まで。' +
+    '一度に大きく動かせないぶん、降り際の判断が効いてくる。',
+  betting: { limit: 'fixed-limit', bigBetFrom: 1, maxRaisesPerRound: 4 },
+};
+
+/**
+ * ストラドルあり。
+ *
+ * BB の左隣が自主的に倍の賭け金を出す。**出した人が最後に行動する**ので、
+ * 順番そのものが変わる。額が倍になるのはその結果にすぎない。
+ */
+export const STRADDLE_TABLE: Variant = {
+  ...STANDARD_VARIANT,
+  id: 'straddle',
+  name: 'ストラドルあり',
+  description:
+    'BB の左隣が、カードを見ずに倍の賭け金を出せる。出した人がプリフロップで' +
+    '最後に行動する。2回まで重ねられる。',
+  betting: { limit: 'no-limit', straddle: { max: 2 } },
+};
+
+/**
+ * プリフロップでオールイン禁止。
+ *
+ * 配られた瞬間に全部入れる勝負を避けたい卓向け。**縛るのはレイズだけ**で、
+ * コールは縛らない——縛ると相手のベットに応じられない人が出て勝負が進まない。
+ */
+export const NO_PREFLOP_ALLIN: Variant = {
+  ...STANDARD_VARIANT,
+  id: 'no-preflop-allin',
+  name: 'プリフロップはオールイン禁止',
+  description:
+    'プリフロップでは手持ちを全部は出せない（最低1枚は残す）。フロップを見るまで' +
+    '勝負が終わらないので、カードが開く回数が増える。',
+  betting: { limit: 'no-limit', streetCaps: [{ street: PREFLOP, noAllIn: true }] },
 };
 
 /** フロップが6枚開く。場が広いぶん強い役が出やすい。 */
@@ -423,6 +474,9 @@ export const VARIANT_PRESETS: readonly Variant[] = [
   JOKER_WILD,
   DEUCES_WILD,
   ONE_EYED_JACKS,
+  FIXED_LIMIT,
+  STRADDLE_TABLE,
+  NO_PREFLOP_ALLIN,
   CASUAL_TABLE,
   CLUMSY_DEALER,
 ];

@@ -302,6 +302,11 @@ function parseAction(raw: unknown): Action | null {
       if (typeof raw['agree'] !== 'boolean') return null;
       return { type: 'runItTwice', playerId: raw['playerId'], agree: raw['agree'] };
 
+    case 'setStraddle':
+      if (!isString(raw['playerId'], SESSION_ID_MAX_LEN)) return null;
+      if (typeof raw['on'] !== 'boolean') return null;
+      return { type: 'setStraddle', playerId: raw['playerId'], on: raw['on'] };
+
     case 'leave':
     case 'fold':
     case 'check':

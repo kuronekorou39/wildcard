@@ -5,6 +5,7 @@ import { ActionBar } from './ActionBar.js';
 import { RunChoiceBar } from './RunChoiceBar.js';
 import { RuleSheet } from './RulePicker.js';
 import { ShowCardsControl } from './ShowCardsControl.js';
+import { StraddleControl } from './StraddleControl.js';
 import { HandSummaryPanel } from './HandSummaryPanel.js';
 import { PlayingCard } from './PlayingCard.js';
 import { PokerTable } from './PokerTable.js';
@@ -105,6 +106,7 @@ export function TableView({
         )}
 
         <ShowCardsControl state={state} viewerId={viewerId} onAction={onAction} />
+        <StraddleControl state={state} viewerId={viewerId} onAction={onAction} />
 
         {turnPlayer && (
           <>

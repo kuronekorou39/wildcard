@@ -118,7 +118,12 @@ export type LimitKind = 'no-limit' | 'pot-limit' | 'fixed-limit';
 export interface StreetCap {
   /** PREFLOP(-1) がプリフロップ、0 以降は streets の index。 */
   readonly street: number;
-  /** そのストリートでのオールインを禁じる。 */
+  /**
+   * そのストリートでのオールインを禁じる（最低1枚は残す）。
+   *
+   * **レイズだけを縛る。** コールは縛らない——縛ると、相手のベットに
+   * 応じられない人が出て勝負が進まなくなる。
+   */
   readonly noAllIn?: boolean;
   /** そのストリートで1人が出せる合計額の上限。 */
   readonly maxTotal?: number;
@@ -132,10 +137,24 @@ export interface StreetCap {
  */
 export interface BettingRules {
   readonly limit: LimitKind;
-  /** ストラドルの重ね回数。省略すると不可。 */
+  /**
+   * ストラドルの重ね回数。省略すると不可。
+   *
+   * ストラドルは BB の左隣が自主的に出す「見ずに倍の賭け金」。
+   * 出すと**その人が最後に行動する**ので、順番そのものが変わる。
+   */
   readonly straddle?: { readonly max: number };
   readonly streetCaps?: readonly StreetCap[];
+  /**
+   * 1ラウンドのレイズ回数の上限。省略すると無制限。
+   * フィックスリミットでは4回（ベット＋レイズ3回）が普通。
+   */
   readonly maxRaisesPerRound?: number;
+  /**
+   * フィックスリミットで賭け額が倍になるストリート（0 起点）。
+   * 省略すると倍にならない。ホールデムのリミットは1（ターン）から倍。
+   */
+  readonly bigBetFrom?: number;
 }
 
 // ============================================================
@@ -341,6 +360,13 @@ export interface Player {
   /** 離席・切断中。手番が来たら自動フォールドされ、新しいハンドには参加しない。 */
   readonly away: boolean;
   /**
+   * 次のハンドでストラドルを出す意思。
+   *
+   * ストラドルは配る前に決めるものなので、ハンドの途中では効かない。
+   * 実際の卓でも「次から straddle する」と宣言しておく形になる。
+   */
+  readonly straddleOn: boolean;
+  /**
    * ハンド進行中に退席を申し出た状態。即座に席から消すと、その人が
    * ポットに出した額の記録まで失われてサイドポットの計算が狂う。
    * フォールド扱いのまま席に残し、次のハンド開始時に実際に取り除く。
@@ -451,6 +477,11 @@ export interface GameState {
   readonly currentBet: number;
   /** 次のレイズで最低限上乗せしなければならない額。 */
   readonly minRaise: number;
+  /**
+   * このラウンドで入ったレイズの回数。
+   * ブラインドとストラドルは数えない（自主的な上乗せではないため）。
+   */
+  readonly raisesThisRound: number;
   readonly dealerSeat: number;
   /** 手番のプレイヤーID。誰の手番でもないときは null。 */
   readonly turnPlayerId: string | null;
@@ -491,6 +522,8 @@ export type Action =
   | { readonly type: 'timeout'; readonly playerId: string }
   /** 自分のホールカードを1枚表にする。index は手札の何枚目か。 */
   | { readonly type: 'showCard'; readonly playerId: string; readonly index: number }
+  /** 次のハンドでストラドルを出すかどうか。 */
+  | { readonly type: 'setStraddle'; readonly playerId: string; readonly on: boolean }
   /** 2本走ることに同意するか。1人でも断れば1本になる。 */
   | { readonly type: 'runItTwice'; readonly playerId: string; readonly agree: boolean };
 

@@ -1481,3 +1481,7 @@ button {
   margin-left: 6px;
   color: var(--gold);
 }
+
+.straddle-control {
+  margin-top: 8px;
+}

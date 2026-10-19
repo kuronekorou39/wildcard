@@ -29,14 +29,20 @@ export function ActionBar({ state, playerId, onAction }: ActionBarProps) {
   const player = state.players.find((p) => p.id === playerId);
   if (!player) return null;
 
-  if (raising && legal.canRaise) {
-    const isAllIn = amount >= legal.maxRaiseTo;
+  // 額が1つしかない制度（フィックスリミット）では、選ばせる意味がない。
+  const fixedAmount = legal.canRaise && legal.minRaiseTo === legal.maxRaiseTo;
+
+  if (raising && legal.canRaise && !fixedAmount) {
+    // ポットリミットでは上限がポットで決まる。手持ちが残っていれば
+    // 上限いっぱいでもオールインではない。
+    const isAllIn = amount >= player.bet + player.chips;
     const quick = quickAmounts({
       min: legal.minRaiseTo,
       max: legal.maxRaiseTo,
       pot: state.pot,
       ownBet: player.bet,
       currentBet: state.currentBet,
+      allIn: player.bet + player.chips,
     });
 
     return (
@@ -112,8 +118,16 @@ export function ActionBar({ state, playerId, onAction }: ActionBarProps) {
         )}
 
         {legal.canRaise && (
-          <button type="button" className="btn btn-raise" onClick={() => setRaising(true)}>
-            レイズ
+          <button
+            type="button"
+            className="btn btn-raise"
+            onClick={() =>
+              fixedAmount
+                ? onAction({ type: 'raise', playerId, to: legal.minRaiseTo })
+                : setRaising(true)
+            }
+          >
+            {fixedAmount ? `レイズ ${legal.minRaiseTo.toLocaleString()}` : 'レイズ'}
           </button>
         )}
       </div>
@@ -132,6 +146,14 @@ export interface QuickAmountInput {
   readonly pot: number;
   readonly ownBet: number;
   readonly currentBet: number;
+  /**
+   * 手持ちを全部出したときの額。
+   *
+   * 上限と一致するとは限らない。ポットリミットでは上限がポットで決まるし、
+   * 「オールイン禁止」の卓では1枚残す上限になる。**上限を「オールイン」と
+   * 書いてしまうと嘘になる**ので、本当の全額をここで受け取る。
+   */
+  readonly allIn: number;
 }
 
 /**
@@ -145,7 +167,14 @@ export interface QuickAmountInput {
  *
  * 値は必ず legalActions が出した下限・上限に収める。重複した候補は畳む。
  */
-export function quickAmounts({ min, max, pot, ownBet, currentBet }: QuickAmountInput): QuickAmount[] {
+export function quickAmounts({
+  min,
+  max,
+  pot,
+  ownBet,
+  currentBet,
+  allIn,
+}: QuickAmountInput): QuickAmount[] {
   const toCall = Math.max(0, currentBet - ownBet);
   const potAfterCall = pot + toCall;
 
@@ -153,7 +182,8 @@ export function quickAmounts({ min, max, pot, ownBet, currentBet }: QuickAmountI
     { label: '最小', value: min },
     { label: '1/2 ポット', value: currentBet + Math.round(potAfterCall / 2) },
     { label: 'ポット', value: currentBet + potAfterCall },
-    { label: 'オールイン', value: max },
+    // 上限が手持ち全部とは限らない。違うなら「オールイン」とは書かない。
+    { label: max >= allIn ? 'オールイン' : '上限', value: max },
   ];
 
   const seen = new Set<number>();

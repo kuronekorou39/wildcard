@@ -27,6 +27,7 @@ function p(
     hasActed: true,
     waiting: false,
     away: false,
+    straddleOn: false,
     leaving: false,
   };
 }

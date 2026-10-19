@@ -1,5 +1,6 @@
 import {
   type Action,
+  type BettingRules,
   type Card,
   type GameState,
   type HandSummary,
@@ -28,7 +29,7 @@ import {
   showCardsPolicyOf,
 } from '../variant.js';
 import { awardPotsAcrossRuns, buildPotLayers, returnUncalledBets } from './pot.js';
-import { blindPositions, firstClockwise, orderClockwise } from './seats.js';
+import { blindPositions, firstClockwise, nextClockwise, orderClockwise } from './seats.js';
 
 export interface CreateGameOptions {
   readonly seatCount?: number;
@@ -54,6 +55,7 @@ export function createGame(options: CreateGameOptions = {}): GameState {
     pot: 0,
     currentBet: 0,
     minRaise: options.bigBlind ?? 20,
+    raisesThisRound: 0,
     dealerSeat: options.dealerSeat ?? 0,
     turnPlayerId: null,
     smallBlind: options.smallBlind ?? 10,
@@ -93,6 +95,16 @@ export interface BettingView {
     Player,
     'id' | 'bet' | 'chips' | 'inHand' | 'folded' | 'allIn'
   >[];
+  /** 制度（ノーリミット／ポットリミット／フィックスリミット）はここから読む。 */
+  readonly variant: Variant;
+  /** ストリートごとの上限を引くのに要る。 */
+  readonly streetIndex: number;
+  /** ポットリミットの計算に要る。committed の合計。 */
+  readonly pot: number;
+  /** フィックスリミットの賭け額の単位。 */
+  readonly bigBlind: number;
+  /** レイズ回数の上限を見るのに要る。 */
+  readonly raisesThisRound: number;
 }
 
 export interface LegalActions {
@@ -119,21 +131,62 @@ export function legalActions(state: BettingView, playerId: string): LegalActions
   if (!player || state.turnPlayerId !== playerId) return null;
   if (!player.inHand || player.folded || player.allIn) return null;
 
+  const rules = state.variant.betting;
   const toCall = Math.max(0, state.currentBet - player.bet);
   const callAmount = Math.min(toCall, player.chips);
-  const maxRaiseTo = player.bet + player.chips;
+
+  // 上限は4つの縛りの最小値。どれも「このラウンドで出す合計額」で表す。
+  const allIn = player.bet + player.chips;
+  let maxRaiseTo = allIn;
+
+  const cap = streetCapOf(rules, state.streetIndex);
+  if (cap?.noAllIn) {
+    // オールイン禁止。最低1枚は残す。コールは縛らない（下の callAmount は別物）。
+    maxRaiseTo = Math.min(maxRaiseTo, allIn - 1);
+  }
+  if (cap?.maxTotal !== undefined) maxRaiseTo = Math.min(maxRaiseTo, cap.maxTotal);
+
+  if (rules.limit === 'pot-limit') {
+    // コールしたあとのポットぶんまで上乗せできる。
+    // 「コールしてからポットサイズでレイズ」が1回の操作になるので、
+    // コール額を足し忘れると上限が小さくなる（よくある間違い）。
+    maxRaiseTo = Math.min(maxRaiseTo, state.currentBet + state.pot + toCall);
+  } else if (rules.limit === 'fixed-limit') {
+    maxRaiseTo = Math.min(maxRaiseTo, state.currentBet + betSizeOf(rules, state));
+  }
+
+  // 刻みが決まっている制度では、下限も同じ額になる。
+  const increment = rules.limit === 'fixed-limit' ? betSizeOf(rules, state) : state.minRaise;
   // 本来の下限に手が届かない場合でも、オールインなら出せる（ショートオールイン）。
-  const minRaiseTo = Math.min(state.currentBet + state.minRaise, maxRaiseTo);
+  const minRaiseTo = Math.min(state.currentBet + increment, maxRaiseTo);
+
+  const raisesLeft =
+    rules.maxRaisesPerRound === undefined || state.raisesThisRound < rules.maxRaisesPerRound;
 
   return {
     canFold: true,
     canCheck: toCall === 0,
     canCall: toCall > 0,
     callAmount,
-    canRaise: maxRaiseTo > state.currentBet,
+    canRaise: raisesLeft && maxRaiseTo > state.currentBet,
     minRaiseTo,
     maxRaiseTo,
   };
+}
+
+/** そのストリートに掛かっている上限。無ければ undefined。 */
+const streetCapOf = (rules: BettingRules, streetIndex: number) =>
+  rules.streetCaps?.find((cap) => cap.street === streetIndex);
+
+/**
+ * フィックスリミットでの賭け額の単位。
+ *
+ * ホールデムのリミットはターンから倍になる。どのストリートから倍にするかは
+ * ルール側が決める（bigBetFrom）ので、エンジンに「ターンから」は書かない。
+ */
+function betSizeOf(rules: BettingRules, state: Pick<BettingView, 'bigBlind' | 'streetIndex'>): number {
+  const doubled = rules.bigBetFrom !== undefined && state.streetIndex >= rules.bigBetFrom;
+  return state.bigBlind * (doubled ? 2 : 1);
 }
 
 /** 不正な Action の理由。問題がなければ null。 */
@@ -187,6 +240,14 @@ export function validate(state: GameState, action: Action): RejectedAction | nul
       }
       if (showCardsPolicyOf(state.variant) === 'one' && player.exposedHoleCards.length >= 1) {
         return { reason: 'この卓では1枚までしか見せられない' };
+      }
+      return null;
+    }
+
+    case 'setStraddle': {
+      if (!byId(state, action.playerId)) return { reason: '着席していない' };
+      if ((state.variant.betting.straddle?.max ?? 0) < 1) {
+        return { reason: 'この卓ではストラドルを出せない' };
       }
       return null;
     }
@@ -255,6 +316,9 @@ export function reduce(state: GameState, action: Action): GameState {
         ...p,
         exposedHoleCards: [...p.exposedHoleCards, action.index],
       }));
+    case 'setStraddle':
+      // 配る前に決めるものなので、いま進行中のハンドには効かない。
+      return updatePlayer(state, action.playerId, (p) => ({ ...p, straddleOn: action.on }));
     case 'runItTwice':
       return applyRunChoice(state, action.playerId, action.agree);
     case 'timeout':
@@ -294,6 +358,7 @@ function applySit(
     // ハンド進行中に座った人は現ハンドには混ぜず、次のハンドから参加させる。
     waiting: state.phase === 'betting',
     away: false,
+    straddleOn: false,
     leaving: false,
   };
   return { ...state, players: [...state.players, player] };
@@ -385,6 +450,9 @@ function startHand(state: GameState, seed: number): GameState {
     return p;
   });
 
+  const straddled = postStraddles(players, seats, blinds, state);
+  players = straddled.players;
+
   const started: GameState = {
     ...state,
     phase: 'betting',
@@ -399,8 +467,9 @@ function startHand(state: GameState, seed: number): GameState {
     misdeals: dealt.misdeals,
     pot: totalCommitted(players),
     // ショートオールインでブラインドを払いきれなくても、コール額はブラインドのまま。
-    currentBet: state.bigBlind,
-    minRaise: state.bigBlind,
+    currentBet: straddled.currentBet,
+    minRaise: straddled.currentBet,
+    raisesThisRound: 0,
     dealerSeat,
     turnPlayerId: null,
     summary: null,
@@ -408,7 +477,44 @@ function startHand(state: GameState, seed: number): GameState {
 
   // ブラインドで全員オールインになった場合など、誰も行動できなければ
   // assignTurn がそのまま次のストリートへ送る。
-  return assignTurn(started, blinds.firstToActSeat);
+  return assignTurn(started, straddled.firstToActSeat);
+}
+
+/**
+ * ストラドルを出させる。
+ *
+ * BB の左隣（UTG）から時計回りに、出す意思のある人が続く限り重ねる。
+ * **出した人は最後に行動する**ので、最初に行動する席がその次へずれる。
+ * 順番が変わることがストラドルの本質で、額が倍になるのはその結果にすぎない。
+ */
+function postStraddles(
+  players: readonly Player[],
+  seats: readonly number[],
+  blinds: { readonly firstToActSeat: number },
+  state: GameState,
+): { players: Player[]; currentBet: number; firstToActSeat: number } {
+  const max = state.variant.betting.straddle?.max ?? 0;
+  let current: Player[] = [...players];
+  let currentBet = state.bigBlind;
+  let firstToActSeat = blinds.firstToActSeat;
+  let seat = blinds.firstToActSeat;
+
+  for (let i = 0; i < max; i++) {
+    const player = current.find((p) => p.seat === seat);
+    if (!player || !player.straddleOn || !player.inHand || player.chips <= 0) break;
+
+    // 重ねるごとに倍。払いきれなければその分だけ出してオールイン。
+    currentBet *= 2;
+    const target = currentBet;
+    current = current.map((p) => (p.seat === seat ? postTo(p, target) : p));
+
+    const next = nextClockwise(seats, seat, state.seatCount);
+    if (next === null) break;
+    firstToActSeat = next;
+    seat = next;
+  }
+
+  return { players: current, currentBet, firstToActSeat };
 }
 
 interface DealResult {
@@ -516,6 +622,25 @@ function postBlind(player: Player, amount: number): Player {
 // ============================================================
 
 /** このラウンドでの合計が target になるまで払う。手持ちが足りなければオールイン。 */
+/**
+ * target まで出す。ブラインドとストラドルで使う。
+ *
+ * payTo と違って hasActed を立てない。**ストラドルを出した人は
+ * 最後にもう一度行動できる**（出しただけでは行動したことにならない）。
+ */
+function postTo(player: Player, target: number): Player {
+  const need = Math.max(0, target - player.bet);
+  const paid = Math.min(need, player.chips);
+  const chips = player.chips - paid;
+  return {
+    ...player,
+    chips,
+    bet: player.bet + paid,
+    committed: player.committed + paid,
+    allIn: chips === 0,
+  };
+}
+
 function payTo(player: Player, target: number): Player {
   const need = Math.max(0, target - player.bet);
   const paid = Math.min(need, player.chips);
@@ -553,6 +678,9 @@ function applyRaise(state: GameState, playerId: string, to: number): GameState {
     currentBet: to,
     // ショートオールインで下限未満の上乗せだった場合、下限は下げない。
     minRaise: Math.max(state.minRaise, increment),
+    // 「ベット＋レイズ3回まで」のような上限はここで数える。
+    // 最初のベット（currentBet 0 からの上乗せ）も1回と数える。
+    raisesThisRound: state.raisesThisRound + 1,
     // レイズが入ったので、他のプレイヤーはもう一度行動しなければならない。
     players: raised.players.map((p) =>
       p.id === playerId || p.folded || !p.inHand || p.allIn ? p : { ...p, hasActed: false },
@@ -675,6 +803,8 @@ function openStreet(state: GameState): GameState {
     deck: state.deck.slice(fromDeck + street.cards),
     currentBet: 0,
     minRaise: state.bigBlind,
+    // レイズ回数の上限はラウンドごと。ストリートが変われば数え直す。
+    raisesThisRound: 0,
     turnPlayerId: null,
     players: state.players.map((p) => ({ ...p, bet: 0, hasActed: false })),
   };

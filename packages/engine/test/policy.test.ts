@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { DEFAULT_STYLE, decide } from '../src/ai/policy.js';
 import { createGame, legalActions, reduce, validate } from '../src/game/reduce.js';
 import { VARIANT_PRESETS } from '../src/rules/variants.js';
-import type { GameState, Variant } from '../src/types.js';
+import { STANDARD_VARIANT } from '../src/rules/presets.js';
+import { PREFLOP, type BettingRules, type GameState, type Variant } from '../src/types.js';
 
 /**
  * 速さ優先の設定。
@@ -211,5 +212,56 @@ describe('打ち方の傾向', () => {
 
   it('慎重な設定のほうがよく降りる', () => {
     expect(passive['fold']).toBeGreaterThan(aggressive['fold']!);
+  });
+});
+
+describe('制度に合わせて打つ', () => {
+  const withBetting = (betting: BettingRules): Variant => ({ ...STANDARD_VARIANT, betting });
+
+  function tableFor(variant: Variant, chips = 1000): GameState {
+    let state = createGame({ seatCount: 10, smallBlind: 10, bigBlind: 20, variant });
+    for (let i = 0; i < 3; i++) {
+      state = reduce(state, { type: 'sit', playerId: `p${i}`, name: `p${i}`, seat: i, chips });
+    }
+    return reduce(state, { type: 'startHand', seed: 5 });
+  }
+
+  /** CPU だけで1ハンド回す。決まらなければ進行が止まっている。 */
+  function playOut(variant: Variant): GameState {
+    let state = tableFor(variant);
+    for (let step = 0; step < 200 && state.phase !== 'showdown'; step++) {
+      const turn = state.turnPlayerId;
+      if (!turn) break;
+      const decision = decide(state, turn, step + 1, { ...DEFAULT_STYLE, samples: 20 });
+      if (!decision) break;
+      const next = reduce(state, decision.action);
+      // 弾かれたら同じ state が返る＝CPU が出せない手を選んでいる。
+      if (next === state) throw new Error(`CPU の手が弾かれた: ${JSON.stringify(decision.action)}`);
+      state = next;
+    }
+    return state;
+  }
+
+  it('フィックスリミットでも最後まで回る', () => {
+    // 刻みが決まっているので、ポットサイズのつもりで打つと弾かれる。
+    const state = playOut(withBetting({ limit: 'fixed-limit', bigBetFrom: 1, maxRaisesPerRound: 4 }));
+    expect(state.phase).toBe('showdown');
+  });
+
+  it('ポットリミットでも最後まで回る', () => {
+    const state = playOut(withBetting({ limit: 'pot-limit' }));
+    expect(state.phase).toBe('showdown');
+  });
+
+  it('レイズ回数の上限があっても止まらない', () => {
+    const state = playOut(withBetting({ limit: 'no-limit', maxRaisesPerRound: 2 }));
+    expect(state.phase).toBe('showdown');
+  });
+
+  it('オールイン禁止でも止まらない', () => {
+    const state = playOut(
+      withBetting({ limit: 'no-limit', streetCaps: [{ street: PREFLOP, noAllIn: true }] }),
+    );
+    expect(state.phase).toBe('showdown');
   });
 });

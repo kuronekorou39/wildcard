@@ -11,6 +11,7 @@ import {
 import { RuleSheet } from '../RulePicker.js';
 import { DeckEditor } from './DeckEditor.js';
 import { StructureEditor } from './StructureEditor.js';
+import { BettingEditor } from './BettingEditor.js';
 import { RankingEditor } from './RankingEditor.js';
 import { OptionsEditor } from './OptionsEditor.js';
 import { ShareBox } from './ShareBox.js';
@@ -118,6 +119,12 @@ export function RuleEditor({ source, onClose, onPlay }: RuleEditorProps) {
       <StructureEditor
         structure={draft.structure}
         onChange={(structure) => update({ structure })}
+      />
+
+      <BettingEditor
+        betting={draft.betting}
+        structure={draft.structure}
+        onChange={(betting) => update({ betting })}
       />
 
       <RankingEditor
