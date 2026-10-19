@@ -1,0 +1,13 @@
+{
+  "name": "wildcard",
+  "private": true,
+  "version": "0.0.1",
+  "description": "ルールを自分で決めるポーカー",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "test": "npm run test --workspace @wildcard/engine",
+    "typecheck": "npm run typecheck --workspaces --if-present"
+  }
+}
