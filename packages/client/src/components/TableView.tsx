@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import type { Action } from '@wildcard/engine';
 import type { TableSnapshot } from '../transport/types.js';
 import { ActionBar } from './ActionBar.js';
+import { RuleSheet } from './RulePicker.js';
 import { HandSummaryPanel } from './HandSummaryPanel.js';
 import { PokerTable } from './PokerTable.js';
 
@@ -24,6 +25,8 @@ interface TableViewProps {
   readonly startRejection: string | null;
   /** 卓の上に出す知らせ（接続状態など）。 */
   readonly banner: ReactNode;
+  /** 使っているルール。卓から役の順位を確認できるようにする。 */
+  readonly ruleSetId: string;
 }
 
 /**
@@ -42,6 +45,7 @@ export function TableView({
   onStartHand,
   startRejection,
   banner,
+  ruleSetId,
 }: TableViewProps) {
   const { state, viewerId } = snapshot;
   const turnPlayer = state.players.find((p) => p.id === state.turnPlayerId);
@@ -56,6 +60,10 @@ export function TableView({
         <span className="topbar-title">{title}</span>
         <span className="topbar-blinds">{subtitle}</span>
       </header>
+
+      <div className="rule-bar">
+        <RuleSheet ruleSetId={ruleSetId} />
+      </div>
 
       {banner}
 

@@ -88,6 +88,8 @@ export interface HandRanking {
 export interface RuleSet {
   readonly id: string;
   readonly name: string;
+  /** 何が標準と違うのかの一行説明。遊ぶ前に読めるようにしておく。 */
+  readonly description?: string;
   readonly deck: DeckRules;
   /** 役を強い順に並べたもの。index 0 が最強。 */
   readonly handRankings: readonly HandRanking[];

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { HotSeatSettings } from '../modes/HotSeatTable.js';
 import type { OnlineSettings } from '../modes/OnlineTable.js';
+import { RulePicker } from './RulePicker.js';
 import {
   ROOM_CODE_LENGTH,
   createRoomCode,
@@ -83,6 +84,7 @@ function OnlinePanel({ onStart }: { readonly onStart: (settings: OnlineSettings)
   const [chips, setChips] = useState(1000);
   const [smallBlind, setSmallBlind] = useState(10);
   const [bigBlind, setBigBlind] = useState(20);
+  const [ruleSetId, setRuleSetId] = useState('standard');
 
   const trimmedName = name.trim();
   const badChars = invalidRoomCodeChars(code);
@@ -99,6 +101,7 @@ function OnlinePanel({ onStart }: { readonly onStart: (settings: OnlineSettings)
       smallBlind,
       bigBlind,
       hostPlays,
+      ruleSetId,
     });
   };
 
@@ -212,7 +215,13 @@ function OnlinePanel({ onStart }: { readonly onStart: (settings: OnlineSettings)
               ブラインドは SB ≦ BB ≦ 初期チップ になるように設定してください。
             </p>
           )}
+
+          <RulePicker value={ruleSetId} onChange={setRuleSetId} />
         </>
+      )}
+
+      {role === 'guest' && (
+        <p className="hint">ルールは部屋を作った人の設定が使われます。</p>
       )}
 
       <button
@@ -236,6 +245,7 @@ function HotSeatPanel({ onStart }: { readonly onStart: (settings: HotSeatSetting
   const [chips, setChips] = useState(1000);
   const [smallBlind, setSmallBlind] = useState(10);
   const [bigBlind, setBigBlind] = useState(20);
+  const [ruleSetId, setRuleSetId] = useState('standard');
 
   const setName = (index: number, value: string) => {
     setNames((current) => current.map((name, i) => (i === index ? value : name)));
@@ -335,11 +345,13 @@ function HotSeatPanel({ onStart }: { readonly onStart: (settings: HotSeatSetting
         </p>
       )}
 
+      <RulePicker value={ruleSetId} onChange={setRuleSetId} />
+
       <button
         type="button"
         className="btn btn-primary btn-large btn-block"
         disabled={!blindsValid}
-        onClick={() => onStart({ names, chips, smallBlind, bigBlind })}
+        onClick={() => onStart({ names, chips, smallBlind, bigBlind, ruleSetId })}
       >
         卓につく
       </button>

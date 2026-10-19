@@ -803,3 +803,68 @@ button {
 .room-code:hover {
   border-color: var(--accent);
 }
+
+/* ---------- ルール表示 ---------- */
+
+.rule-bar {
+  padding: 6px 14px 0;
+}
+
+.rule-description {
+  margin-top: 6px;
+  line-height: 1.6;
+}
+
+.rule-sheet {
+  margin-top: 10px;
+}
+
+.rule-sheet-summary {
+  display: inline-block;
+  padding: 5px 10px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-dim);
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  list-style: none;
+}
+
+.rule-sheet-summary::-webkit-details-marker {
+  display: none;
+}
+
+.rule-sheet-summary::before {
+  content: '▸ ';
+}
+
+.rule-sheet[open] .rule-sheet-summary::before {
+  content: '▾ ';
+}
+
+.rule-sheet-body {
+  margin-top: 8px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.25);
+}
+
+.rule-sheet-deck {
+  margin: 0 0 8px;
+  color: var(--text-dim);
+  font-size: 0.76rem;
+  line-height: 1.6;
+}
+
+.rule-sheet-list {
+  margin: 0;
+  padding-left: 1.4em;
+  font-size: 0.8rem;
+  line-height: 1.8;
+}
+
+.rule-sheet-list li::marker {
+  color: var(--text-dim);
+  font-size: 0.8em;
+}

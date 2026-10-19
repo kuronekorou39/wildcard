@@ -104,6 +104,7 @@ export const STANDARD_HAND_RANKINGS: readonly HandRanking[] = [
 export const STANDARD_RULESET: RuleSet = {
   id: 'standard',
   name: 'テキサスホールデム（標準）',
+  description: '52枚のデッキ、よく知られた9種類の役。迷ったらこれ。',
   deck: { suits: SUITS, ranks: RANKS },
   handRankings: STANDARD_HAND_RANKINGS,
 };

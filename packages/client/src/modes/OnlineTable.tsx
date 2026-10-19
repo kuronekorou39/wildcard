@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { type Action, validate } from '@wildcard/engine';
+import { type Action, findPreset, validate } from '@wildcard/engine';
 import { TableView } from '../components/TableView.js';
 import { useTable } from '../hooks/useTable.js';
 import { createPeerLink } from '../net/peerLink.js';
@@ -17,6 +17,7 @@ export interface OnlineSettings {
   readonly bigBlind: number;
   /** host のとき、自分も席に着くか。false なら中立のディーラー。 */
   readonly hostPlays: boolean;
+  readonly ruleSetId: string;
 }
 
 interface OnlineTableProps {
@@ -29,6 +30,7 @@ export function OnlineTable({ settings, onExit }: OnlineTableProps) {
     const link = createPeerLink({ role: settings.role });
 
     if (settings.role === 'host') {
+      const ruleSet = findPreset(settings.ruleSetId);
       return new HostTransport({
         link,
         roomCode: settings.roomCode,
@@ -38,6 +40,7 @@ export function OnlineTable({ settings, onExit }: OnlineTableProps) {
         seatCount: 10,
         smallBlind: settings.smallBlind,
         bigBlind: settings.bigBlind,
+        ...(ruleSet ? { ruleSet } : {}),
       });
     }
 
@@ -92,6 +95,7 @@ export function OnlineTable({ settings, onExit }: OnlineTableProps) {
       onStartHand={isHost ? startHand : null}
       startRejection={startRejection}
       banner={<ConnectionBanner snapshot={snapshot} isHost={isHost} hostPlays={settings.hostPlays} />}
+      ruleSetId={snapshot.state.ruleSet.id}
     />
   );
 }

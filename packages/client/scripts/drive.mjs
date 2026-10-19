@@ -11,6 +11,7 @@
  *   WILDCARD_URL      既定 http://localhost:5173/
  *   WILDCARD_SHOTS    スクリーンショットの出力先。既定 shots/
  *   WILDCARD_BROWSER  使う Chromium の実行ファイルパス
+ *   WILDCARD_RULE     使うルールのプリセット id（既定 standard）
  */
 import { chromium } from 'playwright';
 import { existsSync, mkdirSync, readdirSync } from 'node:fs';
@@ -74,13 +75,24 @@ say(`title: ${await page.title()}`);
 say(`H1: ${await page.locator('.hero-title').innerText()}`);
 await snap('setup');
 
-// 3人目を追加
+// 3人目を追加（ホットシートのタブに切り替えてから）
+await page.getByRole('tab', { name: 'ホットシート' }).click();
 await page.getByRole('button', { name: '＋ 追加' }).click();
 const nameInputs = page.locator('.player-row .input');
 say(`players: ${await nameInputs.count()}`);
 await nameInputs.nth(0).fill('あかり');
 await nameInputs.nth(1).fill('ばしょう');
 await nameInputs.nth(2).fill('ちとせ');
+
+// ホットシートのタブへ
+await page.getByRole('tab', { name: 'ホットシート' }).click();
+
+const ruleId = process.env.WILDCARD_RULE ?? 'standard';
+await page.locator('.field', { hasText: 'ルール' }).locator('select').selectOption(ruleId);
+say(`ルール: ${await page.locator('.rule-description').innerText()}`);
+await page.locator('.rule-sheet-summary').click();
+say(`役の数: ${await page.locator('.rule-sheet-list li').count()}`);
+say(`デッキ: ${await page.locator('.rule-sheet-deck').innerText()}`);
 
 await page.getByRole('button', { name: '卓につく' }).click();
 await page.waitForSelector('.table-area');
