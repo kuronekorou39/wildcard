@@ -210,6 +210,17 @@ export interface TableOptions {
    * こちらが本来の「ミスディール」。手札を回収して最初から配り直す。
    */
   readonly misdealChance?: number;
+  /**
+   * 表にしてしまった札を、最初のバーンカードとして使うか。既定 true。
+   *
+   * true（Robert's Rules）だと、引き直しに使う「山札の top」が本来バーンに
+   * なるはずだった札なので、**露出した札がバーンの席に収まり、場に出る札は
+   * 一切変わらない**。ディーラーのミスで場が変わらないよう組まれた手順。
+   *
+   * false にすると、露出した札は捨てたうえで通常どおり山札からも焼く。
+   * 場に出る札がずれ、1ハンドで消える枚数も1枚増える。
+   */
+  readonly exposedCardBecomesBurn?: boolean;
   /** ハンドが途中で終わったとき、配られるはずだった札を見せる。 */
   readonly rabbitHunt?: boolean;
   /** 自分の手札を見せられるか。既定は 'none'。 */

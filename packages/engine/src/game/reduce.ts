@@ -15,7 +15,9 @@ import { createRng } from '../rng.js';
 import { type HandResult, evaluateHand } from '../rules/evaluate.js';
 import { STANDARD_VARIANT } from '../rules/presets.js';
 import {
+  exposedCardBecomesBurnOf,
   exposedCardChanceOf,
+  extraCardsFor,
   misdealChanceOf,
   rabbitCards,
   rabbitHuntEnabled,
@@ -150,7 +152,11 @@ export function validate(state: GameState, action: Action): RejectedAction | nul
       if (players < 2) return { reason: '参加者が2人未満' };
 
       // 配り始めてから山札が尽きるより、始める前に弾く。
-      const need = requiredCards(state.variant.structure, players);
+      const need = requiredCards(
+        state.variant.structure,
+        players,
+        extraCardsFor(state.variant),
+      );
       const have = buildDeck(state.variant.deck).length;
       if (have < need) {
         return { reason: `${players}人で遊ぶには${need}枚必要だが、デッキは${have}枚しかない` };
@@ -613,20 +619,20 @@ function advanceStreet(state: GameState): GameState {
   const street = streets[nextIndex]!;
   const burn = street.burn ?? 0;
 
-  // ディーラーが表にしてしまった札は、実際の手順どおり最初のバーンに使う。
-  // そのぶん山札からは引かないので、消える枚数は露出が無かった場合と変わらない。
-  const fromExposed =
-    state.streetIndex === PREFLOP ? Math.min(burn, state.exposedCards.length) : 0;
+  // ディーラーが表にしてしまった札は、最初のバーンの席に収まる（既定）。
+  // 引き直しに使った「山札の top」が本来バーンになるはずだった札なので、
+  // こうすると**場に出る札が露出の有無で変わらない**。そのための手順。
+  const pending = state.streetIndex === PREFLOP ? state.exposedCards : [];
+  const fromExposed = exposedCardBecomesBurnOf(state.variant)
+    ? Math.min(burn, pending.length)
+    : 0;
   const fromDeck = burn - fromExposed;
 
   const opened: GameState = {
     ...state,
     streetIndex: nextIndex,
-    burned: [
-      ...state.burned,
-      ...state.exposedCards.slice(0, fromExposed),
-      ...state.deck.slice(0, fromDeck),
-    ],
+    // バーンに使うかどうかに関わらず、露出した札は死んでいる。
+    burned: [...state.burned, ...pending, ...state.deck.slice(0, fromDeck)],
     communityCards: [
       ...state.communityCards,
       ...state.deck.slice(fromDeck, fromDeck + street.cards),

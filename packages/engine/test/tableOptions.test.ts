@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { createGame, reduce, validate } from '../src/game/reduce.js';
 import { project } from '../src/game/project.js';
 import { STANDARD_VARIANT } from '../src/rules/presets.js';
-import { rabbitCards } from '../src/variant.js';
+import { extraCardsFor, rabbitCards } from '../src/variant.js';
 import type { Action, GameState, TableOptions, Variant } from '../src/types.js';
 
 function withOptions(options: TableOptions): Variant {
@@ -127,6 +127,56 @@ describe('札を1枚表にしてしまったとき（ミスディールではな
     expect(afterExposed.communityCards).toHaveLength(3);
   });
 
+  it('**露出が起きても場に出る札は変わらない**', () => {
+    // この手順の肝。引き直しに使う「山札の top」は、本来バーンになるはずだった札。
+    // だから露出した札がバーンの席に収まり、フロップ以降は丸ごと同じになる。
+    // ディーラーのミスで場が変わってしまわないよう、そう組まれている。
+    const plain = reduce(tableOf(3, STANDARD_VARIANT), { type: 'startHand', seed: 9 });
+    const exposed = reduce(tableOf(3, withOptions({ exposedCardChance: 1 })), {
+      type: 'startHand',
+      seed: 9,
+    });
+
+    let a = plain;
+    let b = exposed;
+    for (let i = 0; i < 4; i++) {
+      a = callAround(a);
+      b = callAround(b);
+    }
+
+    expect(b.communityCards).toEqual(a.communityCards);
+  });
+
+  it('別途焼く設定にすると、場に出る札がずれる', () => {
+    // ハウスによっては「露出した札は捨てて、バーンは通常どおり山札から取る」
+    // 運用もありうる。その場合は1枚余分に消えるので、場に出る札がずれる。
+    const plain = reduce(tableOf(3, STANDARD_VARIANT), { type: 'startHand', seed: 9 });
+    const separate = reduce(
+      tableOf(3, withOptions({ exposedCardChance: 1, exposedCardBecomesBurn: false })),
+      { type: 'startHand', seed: 9 },
+    );
+
+    let a = plain;
+    let b = separate;
+    for (let i = 0; i < 4; i++) {
+      a = callAround(a);
+      b = callAround(b);
+    }
+
+    expect(b.communityCards).not.toEqual(a.communityCards);
+    // 1枚余分に消えている
+    expect(b.deck.length).toBe(a.deck.length - 1);
+  });
+
+  it('別途焼く設定でも、表になった札は場に出ない', () => {
+    const variant = withOptions({ exposedCardChance: 1, exposedCardBecomesBurn: false });
+    let state = reduce(tableOf(3, variant), { type: 'startHand', seed: 4 });
+    const exposed = `${state.exposedCards[0]!.rank}${state.exposedCards[0]!.suit}`;
+
+    for (let i = 0; i < 4 && state.phase === 'betting'; i++) state = callAround(state);
+    expect(state.communityCards.map((c) => `${c.rank}${c.suit}`)).not.toContain(exposed);
+  });
+
   it('表になった札は場にも出ない', () => {
     const variant = withOptions({ exposedCardChance: 1 });
     let state = reduce(tableOf(3, variant), { type: 'startHand', seed: 4 });
@@ -166,6 +216,40 @@ describe('札を1枚表にしてしまったとき（ミスディールではな
     state = foldDown(state);
     state = reduce(state, { type: 'startHand', seed: 2 });
     expect(exposedCount(state)).toBe(1); // 前のが積み重なっていない
+  });
+});
+
+describe('必要枚数の見込み', () => {
+  it('別途焼く設定では1枚多く見込む', () => {
+    const standard = withOptions({ exposedCardChance: 0.5 });
+    const separate = withOptions({ exposedCardChance: 0.5, exposedCardBecomesBurn: false });
+    expect(extraCardsFor(standard)).toBe(0);
+    expect(extraCardsFor(separate)).toBe(1);
+  });
+
+  it('露出しない卓では余分を見込まない', () => {
+    expect(extraCardsFor(STANDARD_VARIANT)).toBe(0);
+    expect(extraCardsFor(withOptions({ exposedCardBecomesBurn: false }))).toBe(0);
+  });
+
+  it('ぎりぎりのデッキでは、余分のぶん開始が弾かれる', () => {
+    // 手札2枚×2人 + 場5 + バーン3 = 12枚ちょうどのデッキ
+    const tight = {
+      suits: ['spades', 'hearts', 'diamonds'] as const,
+      ranks: ['Q', 'K', 'A'] as const,
+    };
+    const exact: Variant = {
+      ...withOptions({ exposedCardChance: 0.5 }),
+      deck: { suits: [...tight.suits], ranks: [...tight.ranks] },
+    };
+    const needsMore: Variant = {
+      ...exact,
+      options: { ...exact.options, exposedCardBecomesBurn: false },
+    };
+
+    // 9枚のデッキでは2人でも足りない（12枚要る）ので、どちらも弾かれる
+    expect(reduce(tableOf(2, exact), { type: 'startHand', seed: 1 }).phase).toBe('waiting');
+    expect(reduce(tableOf(2, needsMore), { type: 'startHand', seed: 1 }).phase).toBe('waiting');
   });
 });
 

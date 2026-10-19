@@ -15,10 +15,25 @@ export function boardSize(structure: HandStructure): number {
   return structure.streets.reduce((sum, street) => sum + street.cards, 0);
 }
 
-/** 1ハンドで山札から消える枚数（バーン込み）。 */
-export function requiredCards(structure: HandStructure, players: number): number {
+/**
+ * 1ハンドで山札から消える枚数（バーン込み）。
+ *
+ * extra は、確率で余分に消えうる枚数。露出した札をバーンに使わない設定だと
+ * 引き直しのぶん1枚多く要るので、そこを見込んでおかないと稀に山札が尽きる。
+ */
+export function requiredCards(
+  structure: HandStructure,
+  players: number,
+  extra = 0,
+): number {
   const burned = structure.streets.reduce((sum, street) => sum + (street.burn ?? 0), 0);
-  return structure.holeCards * players + boardSize(structure) + burned;
+  return structure.holeCards * players + boardSize(structure) + burned + extra;
+}
+
+/** そのバリアントで余分に要りうる枚数。 */
+export function extraCardsFor(variant: Variant): number {
+  const mayExpose = exposedCardChanceOf(variant) > 0;
+  return mayExpose && !exposedCardBecomesBurnOf(variant) ? 1 : 0;
 }
 
 /** 手札から使う枚数の許容範囲。省略時は「何枚でも」。 */
@@ -161,6 +176,13 @@ export function maxPlayersFor(variant: Variant): number {
  */
 export const exposedCardChanceOf = (variant: Variant): number =>
   Math.min(1, Math.max(0, variant.options?.exposedCardChance ?? 0));
+
+/**
+ * 表にしてしまった札を最初のバーンに使うか。既定 true（Robert's Rules）。
+ * false にすると別途山札からも焼くので、1ハンドで消える枚数が1枚増える。
+ */
+export const exposedCardBecomesBurnOf = (variant: Variant): boolean =>
+  variant.options?.exposedCardBecomesBurn ?? true;
 
 /** 配り直し（ミスディール）になる確率。既定は0。 */
 export const misdealChanceOf = (variant: Variant): number =>
