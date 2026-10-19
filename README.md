@@ -2,6 +2,8 @@
 
 **ルールを自分で決めるポーカー。** 身内のホームゲームのための、カードの強さと役そのものを定義できるテキサスホールデム。
 
+**▶ 遊ぶ: https://kuronekorou39.github.io/wildcard/**
+
 - 思想・用途・段階計画 → [docs/concept.md](./docs/concept.md)
 - 設計 → [docs/architecture.md](./docs/architecture.md)
 
@@ -61,6 +63,19 @@ npm run bench     # 役評価の速度
 
 `main` に push すると GitHub Actions が型チェック・テスト・ビルドを通して
 GitHub Pages にデプロイする（`.github/workflows/deploy.yml`）。
+
+### 実際に動かして確かめる
+
+テストは「落ちない」ことまでしか見ない。遊べるかと見た目の崩れは実ブラウザで確かめる。
+
+```bash
+npx playwright install chromium   # 初回だけ
+npm run dev                        # 別のターミナルで
+npm run drive --workspace @wildcard/client
+```
+
+セットアップから1ハンド遊びきり、`packages/client/shots/` にスクリーンショットを残す。
+手順の詳細とつまずきどころは `.claude/skills/run-app/SKILL.md` にまとめてある。
 
 ## なぜ GitHub Pages で「対戦」ではないのか
 
