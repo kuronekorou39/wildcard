@@ -49,7 +49,7 @@ describe('配る前のやりとり', () => {
 
     const result = await host.startHand();
     expect(result.ok).toBe(true);
-    expect(host.rawState().phase).toBe('preflop');
+    expect(host.rawState().phase).toBe('betting');
 
     const [record] = host.fairnessRecords();
     expect(record!.nonces).toHaveLength(2);

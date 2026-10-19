@@ -26,7 +26,7 @@ interface TableViewProps {
   /** 卓の上に出す知らせ（接続状態など）。 */
   readonly banner: ReactNode;
   /** 使っているルール。卓から役の順位を確認できるようにする。 */
-  readonly ruleSetId: string;
+  readonly variantId: string;
 }
 
 /**
@@ -45,7 +45,7 @@ export function TableView({
   onStartHand,
   startRejection,
   banner,
-  ruleSetId,
+  variantId,
 }: TableViewProps) {
   const { state, viewerId } = snapshot;
   const turnPlayer = state.players.find((p) => p.id === state.turnPlayerId);
@@ -62,7 +62,7 @@ export function TableView({
       </header>
 
       <div className="rule-bar">
-        <RuleSheet ruleSetId={ruleSetId} />
+        <RuleSheet variantId={variantId} />
       </div>
 
       {banner}

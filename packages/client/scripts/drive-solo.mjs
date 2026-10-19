@@ -78,6 +78,29 @@ async function assertNoDuplicateCards(page, label) {
   say(`[${label}] 卓上のカード ${labels.length} 枚に重複なし`);
 }
 
+/**
+ * ショーダウンの内容を文字として読み出す。
+ *
+ * スクリーンショットではダイヤとハートを読み分けられず、役の判定が
+ * 正しいか目で確かめられない。aria-label は曖昧さがないのでこちらを使う。
+ */
+async function readShowdown(page) {
+  const board = await page
+    .locator('.table-center .card:not(.card-slot)')
+    .evaluateAll((nodes) => nodes.map((n) => n.getAttribute('aria-label')));
+
+  const rows = await page.locator('.summary-hand').evaluateAll((nodes) =>
+    nodes.map((row) => ({
+      name: row.querySelector('.summary-hand-name')?.textContent ?? '',
+      cards: [...row.querySelectorAll('.card')].map((c) => c.getAttribute('aria-label')),
+      ranking: row.querySelector('.summary-hand-ranking')?.textContent ?? '',
+    })),
+  );
+
+  say(`  ボード: ${board.join(' ')}`);
+  for (const row of rows) say(`  ${row.name}: ${row.cards.join(' ')} -> ${row.ranking}`);
+}
+
 await page.goto(URL, { waitUntil: 'networkidle' });
 await page.getByRole('tab', { name: 'ソロ' }).click();
 await page.locator('.field', { hasText: 'ルール' }).locator('select').selectOption(RULE);
@@ -131,7 +154,7 @@ say(`自分が行動した回数: ${myTurns}`);
 if (await page.locator('.summary').count()) {
   say('--- ショーダウン ---');
   await assertNoDuplicateCards(page, 'showdown');
-  say(await page.locator('.summary').innerText());
+  await readShowdown(page);
   await snap('showdown');
 } else {
   say('--- ショーダウンに到達しなかった ---');

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { estimateEquity, suggestedSamples } from '../src/ai/equity.js';
-import { STANDARD_RULESET } from '../src/rules/presets.js';
+import { STANDARD_VARIANT } from '../src/rules/presets.js';
 import { ACE_LOW, SHORT_DECK } from '../src/rules/variants.js';
 import { cards } from './helpers.js';
 
@@ -9,7 +9,7 @@ const equity = (hole: string, board: string, opponents: number, seed = 1, sample
     holeCards: cards(hole),
     communityCards: board === '' ? [] : cards(board),
     opponents,
-    ruleSet: STANDARD_RULESET,
+    variant: STANDARD_VARIANT,
     samples,
     seed,
   });
@@ -78,7 +78,7 @@ describe('ルールが変われば勝率も変わる', () => {
       holeCards: cards(hole),
       communityCards: [],
       opponents,
-      ruleSet: SHORT_DECK,
+      variant: SHORT_DECK,
       samples: 400,
       seed: 5,
     });
@@ -97,8 +97,8 @@ describe('ルールが変われば勝率も変わる', () => {
       samples: 400,
       seed: 11,
     };
-    const normal = estimateEquity({ ...base, ruleSet: STANDARD_RULESET });
-    const aceLow = estimateEquity({ ...base, ruleSet: ACE_LOW });
+    const normal = estimateEquity({ ...base, variant: STANDARD_VARIANT });
+    const aceLow = estimateEquity({ ...base, variant: ACE_LOW });
     expect(aceLow).toBeLessThan(normal);
   });
 
@@ -108,7 +108,7 @@ describe('ルールが変われば勝率も変わる', () => {
         holeCards: cards(hole),
         communityCards: [],
         opponents: 1,
-        ruleSet: ACE_LOW,
+        variant: ACE_LOW,
         samples: 400,
         seed: 13,
       });

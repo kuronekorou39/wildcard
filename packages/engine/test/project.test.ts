@@ -83,7 +83,8 @@ describe('視点ごとの秘匿（原則2）', () => {
     ]);
 
     const visible = project(state, 'p0');
-    expect(visible.phase).toBe('flop');
+    expect(visible.phase).toBe('betting');
+    expect(visible.streetIndex).toBe(0); // フロップ
     expect(visible.communityCards).toHaveLength(3);
     expect(visible.pot).toBe(state.pot);
     expect(visible.turnPlayerId).toBe(state.turnPlayerId);

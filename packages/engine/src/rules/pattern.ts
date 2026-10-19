@@ -121,7 +121,8 @@ function conditionOrder(conditions: readonly CardCondition[]): number[] {
 
   for (let i = 0; i < conditions.length; i++) {
     const cond = conditions[i]!;
-    if (cond.rank.type === 'fixed') {
+    if (cond.rank.type === 'fixed' || cond.rank.type === 'oneOf') {
+      // 候補が限られるので、変数より先に試すと枝が早く死ぬ。
       fixed.push(i);
     } else if (cond.rank.type === 'variable') {
       const bucket = byVariable.get(cond.rank.name);
@@ -162,6 +163,9 @@ function bindRank(
 
     case 'fixed':
       return card.rank === spec.value ? { added: null } : null;
+
+    case 'oneOf':
+      return spec.values.includes(card.rank) ? { added: null } : null;
 
     case 'variable': {
       const base = rankValue(card.rank, deck) - (spec.offset ?? 0);
@@ -219,6 +223,9 @@ function satisfiesGlobal(cards: readonly Card[], global: GlobalCondition, deck: 
       const values = cards.map((c) => rankValue(c.rank, deck)).sort((a, b) => a - b);
       return values.every((v, i) => i === 0 || v === values[i - 1]! + 1);
     }
+
+    case 'allDifferentRank':
+      return new Set(cards.map((c) => c.rank)).size === cards.length;
   }
 }
 
@@ -270,6 +277,9 @@ function groupKey(cond: CardCondition, index: number): string {
       return `var:${cond.rank.name}`;
     case 'fixed':
       return `fixed:${cond.rank.value}`;
+    // oneOf はどのランクが来るか分からないので、条件ごとに独立したグループにする。
+    case 'oneOf':
+      return `oneOf:${index}`;
     case 'any':
       return `any:${index}`;
   }

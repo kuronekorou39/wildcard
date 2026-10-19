@@ -93,7 +93,7 @@ function OnlinePanel({ onStart }: { readonly onStart: (settings: OnlineSettings)
   const [chips, setChips] = useState(1000);
   const [smallBlind, setSmallBlind] = useState(10);
   const [bigBlind, setBigBlind] = useState(20);
-  const [ruleSetId, setRuleSetId] = useState('standard');
+  const [variantId, setVariantId] = useState('standard');
 
   const trimmedName = name.trim();
   const badChars = invalidRoomCodeChars(code);
@@ -110,7 +110,7 @@ function OnlinePanel({ onStart }: { readonly onStart: (settings: OnlineSettings)
       smallBlind,
       bigBlind,
       hostPlays,
-      ruleSetId,
+      variantId,
     });
   };
 
@@ -225,7 +225,7 @@ function OnlinePanel({ onStart }: { readonly onStart: (settings: OnlineSettings)
             </p>
           )}
 
-          <RulePicker value={ruleSetId} onChange={setRuleSetId} />
+          <RulePicker value={variantId} onChange={setVariantId} />
         </>
       )}
 
@@ -254,7 +254,7 @@ function HotSeatPanel({ onStart }: { readonly onStart: (settings: HotSeatSetting
   const [chips, setChips] = useState(1000);
   const [smallBlind, setSmallBlind] = useState(10);
   const [bigBlind, setBigBlind] = useState(20);
-  const [ruleSetId, setRuleSetId] = useState('standard');
+  const [variantId, setVariantId] = useState('standard');
 
   const setName = (index: number, value: string) => {
     setNames((current) => current.map((name, i) => (i === index ? value : name)));
@@ -354,13 +354,13 @@ function HotSeatPanel({ onStart }: { readonly onStart: (settings: HotSeatSetting
         </p>
       )}
 
-      <RulePicker value={ruleSetId} onChange={setRuleSetId} />
+      <RulePicker value={variantId} onChange={setVariantId} />
 
       <button
         type="button"
         className="btn btn-primary btn-large btn-block"
         disabled={!blindsValid}
-        onClick={() => onStart({ names, chips, smallBlind, bigBlind, ruleSetId })}
+        onClick={() => onStart({ names, chips, smallBlind, bigBlind, variantId })}
       >
         卓につく
       </button>

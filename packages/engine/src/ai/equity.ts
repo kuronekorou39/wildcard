@@ -1,6 +1,7 @@
-import type { Card, RuleSet } from '../types.js';
+import type { Card, Variant } from '../types.js';
 import { buildDeck, shuffle } from '../deck.js';
 import { compareHands, evaluateHand } from '../rules/evaluate.js';
+import { boardSize } from '../variant.js';
 
 /**
  * 勝率の推定。
@@ -8,7 +9,7 @@ import { compareHands, evaluateHand } from '../rules/evaluate.js';
  * カスタムルールの下では「何が強い手か」をヒューリスティックで書けない。
  * 役の順位もカードの強さもデッキの中身も差し替わるので、「AAは強い」すら
  * 前提にできない。そこで実際に残りの札を配ってみて数える。
- * ルールを一切知らずに済むので、どんな RuleSet でもそのまま働く。
+ * ルールを一切知らずに済むので、どんな Variant でもそのまま働く。
  *
  * 入力は **そのプレイヤーが正当に知っていること** だけにしてある。
  * 相手のホールカードを受け取らないので、覗き見した推定は型として書けない。
@@ -20,12 +21,12 @@ export interface EquityInput {
   readonly communityCards: readonly Card[];
   /** まだ降りていない相手の人数。 */
   readonly opponents: number;
-  readonly ruleSet: RuleSet;
+  readonly variant: Variant;
   /** 試行回数。多いほど正確で遅い。 */
   readonly samples: number;
   /** 乱数の種。エンジンは乱数を持たない（原則1）。 */
   readonly seed: number;
-  /** 最終的に場に並ぶ枚数。標準のホールデムなら5。 */
+  /** 最終的に場に並ぶ枚数。省略するとバリアントの構造から決まる。 */
   readonly boardSize?: number;
 }
 
@@ -34,15 +35,8 @@ export interface EquityInput {
  * （3人で分け合うなら 1/3 勝ったものとして扱う）。
  */
 export function estimateEquity(input: EquityInput): number {
-  const {
-    holeCards,
-    communityCards,
-    opponents,
-    ruleSet,
-    samples,
-    seed,
-    boardSize = 5,
-  } = input;
+  const { holeCards, communityCards, opponents, variant, samples, seed } = input;
+  const finalBoard = input.boardSize ?? boardSize(variant.structure);
 
   if (opponents <= 0) return 1;
   if (samples <= 0) return 0;
@@ -50,11 +44,11 @@ export function estimateEquity(input: EquityInput): number {
   const known = new Set(
     [...holeCards, ...communityCards].map((card) => `${card.rank}${card.suit}`),
   );
-  const unknown = buildDeck(ruleSet.deck).filter(
+  const unknown = buildDeck(variant.deck).filter(
     (card) => !known.has(`${card.rank}${card.suit}`),
   );
 
-  const boardToCome = Math.max(0, boardSize - communityCards.length);
+  const boardToCome = Math.max(0, finalBoard - communityCards.length);
   const needed = boardToCome + opponents * holeCards.length;
   if (unknown.length < needed) return 0; // 配りきれない組み合わせ
 
@@ -68,7 +62,9 @@ export function estimateEquity(input: EquityInput): number {
     const board = [...communityCards];
     for (let i = 0; i < boardToCome; i++) board.push(drawn[cursor++]!);
 
-    const mine = evaluateHand([...holeCards, ...board], ruleSet);
+    // 使用枚数の制約を守って評価する。オマハで「9枚から好きな5枚」を
+    // 使ってしまうと勝率を大きく過大評価する。
+    const mine = evaluateHand(holeCards, board, variant);
     if (!mine) continue;
 
     let better = 0;
@@ -77,7 +73,7 @@ export function estimateEquity(input: EquityInput): number {
       const theirHole: Card[] = [];
       for (let i = 0; i < holeCards.length; i++) theirHole.push(drawn[cursor++]!);
 
-      const theirs = evaluateHand([...theirHole, ...board], ruleSet);
+      const theirs = evaluateHand(theirHole, board, variant);
       if (!theirs) continue;
 
       const diff = compareHands(theirs, mine);

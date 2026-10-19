@@ -14,7 +14,7 @@ const settings = {
   chips: 1000,
   smallBlind: 10,
   bigBlind: 20,
-  ruleSetId: 'standard',
+  variantId: 'standard',
 };
 
 describe('描画', () => {

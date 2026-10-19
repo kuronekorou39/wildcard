@@ -1,16 +1,19 @@
-import type { VisibleState } from '@wildcard/engine';
+import { type VisibleState, boardSize, streetName } from '@wildcard/engine';
 import { CardSlot, PlayingCard } from './PlayingCard.js';
 import { Seat } from './Seat.js';
 import { displaySlot } from '../seatLayout.js';
 
-const PHASE_LABEL: Record<VisibleState['phase'], string> = {
-  waiting: '開始待ち',
-  preflop: 'プリフロップ',
-  flop: 'フロップ',
-  turn: 'ターン',
-  river: 'リバー',
-  showdown: 'ショーダウン',
-};
+/**
+ * 今どの段階かの表示。
+ *
+ * 「フロップ」「ターン」といった名前はバリアントが持っているので、
+ * ここでは streetName に聞くだけ。フロップ6枚でも独自の段取りでも同じ。
+ */
+function phaseLabel(state: VisibleState): string {
+  if (state.phase === 'waiting') return '開始待ち';
+  if (state.phase === 'showdown') return 'ショーダウン';
+  return streetName(state.variant, state.streetIndex);
+}
 
 interface PokerTableProps {
   readonly state: VisibleState;
@@ -35,10 +38,11 @@ export function PokerTable({ state, viewerId }: PokerTableProps) {
       <div className="table-felt" />
 
       <div className="table-center">
-        <div className="table-phase">{PHASE_LABEL[state.phase]}</div>
+        <div className="table-phase">{phaseLabel(state)}</div>
 
         <div className="community-cards">
-          {Array.from({ length: 5 }, (_, i) => {
+          {/* 枠の数はバリアントが決める。フロップ6枚なら場は8枚になる。 */}
+          {Array.from({ length: boardSize(state.variant.structure) }, (_, i) => {
             const card = state.communityCards[i];
             return card ? <PlayingCard key={i} card={card} /> : <CardSlot key={i} />;
           })}

@@ -1,49 +1,49 @@
 import { describe, expect, it } from 'vitest';
-import { compareHands, evaluateHand } from '../src/rules/evaluate.js';
-import { STANDARD_RULESET } from '../src/rules/presets.js';
+import { compareHands, evaluateBest } from '../src/rules/evaluate.js';
+import { STANDARD_VARIANT } from '../src/rules/presets.js';
 import {
   ACE_LOW,
   FLUSH_OVER_FULL_HOUSE,
   HOUSE_HANDS,
-  RULE_PRESETS,
+  VARIANT_PRESETS,
   SHORT_DECK,
   SUIT_RANKED,
   activeRankings,
-  findPreset,
+  findVariant,
 } from '../src/rules/variants.js';
 import { buildDeck } from '../src/deck.js';
-import type { RuleSet } from '../src/types.js';
+import type { Variant } from '../src/types.js';
 import { cards } from './helpers.js';
 
-function hand(notation: string, ruleSet: RuleSet) {
-  const result = evaluateHand(cards(notation), ruleSet);
+function hand(notation: string, variant: Variant) {
+  const result = evaluateBest(cards(notation), variant);
   if (!result) throw new Error(`役が成立しなかった: ${notation}`);
   return result;
 }
 
 describe('プリセット一覧', () => {
   it('id が重複していない', () => {
-    const ids = RULE_PRESETS.map((p) => p.id);
+    const ids = VARIANT_PRESETS.map((p) => p.id);
     expect(new Set(ids).size).toBe(ids.length);
   });
 
   it('id から引ける', () => {
-    for (const preset of RULE_PRESETS) {
-      expect(findPreset(preset.id)).toBe(preset);
+    for (const preset of VARIANT_PRESETS) {
+      expect(findVariant(preset.id)).toBe(preset);
     }
-    expect(findPreset('存在しない')).toBeUndefined();
+    expect(findVariant('存在しない')).toBeUndefined();
   });
 
   it('どのプリセットでも役が判定できる', () => {
-    for (const preset of RULE_PRESETS) {
+    for (const preset of VARIANT_PRESETS) {
       const deck = buildDeck(preset.deck);
-      const five = deck.slice(0, 5);
-      expect(evaluateHand(five, preset), `${preset.name} で判定できない`).not.toBeNull();
+      const five = deck.slice(0, preset.structure.handSize);
+      expect(evaluateBest(five, preset), `${preset.name} で判定できない`).not.toBeNull();
     }
   });
 
   it('有効な役の一覧を取れる', () => {
-    expect(activeRankings(STANDARD_RULESET)).toHaveLength(12);
+    expect(activeRankings(STANDARD_VARIANT)).toHaveLength(12);
     // エース最弱はロイヤルと2種のホイールを落としている
     expect(activeRankings(ACE_LOW)).toHaveLength(9);
   });
@@ -61,7 +61,7 @@ describe('ショートデッキ（6+）', () => {
     expect(compareHands(flush, fullHouse)).toBeGreaterThan(0);
     // 標準では逆
     expect(
-      compareHands(hand('As Ks Qs Js 9s', STANDARD_RULESET), hand('Ah Ad Ac Kh Kd', STANDARD_RULESET)),
+      compareHands(hand('As Ks Qs Js 9s', STANDARD_VARIANT), hand('Ah Ad Ac Kh Kd', STANDARD_VARIANT)),
     ).toBeLessThan(0);
   });
 
@@ -109,7 +109,7 @@ describe('スートに強弱あり', () => {
     expect(compareHands(a, b)).toBeGreaterThan(0);
     // 標準なら引き分け
     expect(
-      compareHands(hand('As Ah Kc 3h 2s', STANDARD_RULESET), hand('Ad Ac Kd 3d 2d', STANDARD_RULESET)),
+      compareHands(hand('As Ah Kc 3h 2s', STANDARD_VARIANT), hand('Ad Ac Kd 3d 2d', STANDARD_VARIANT)),
     ).toBe(0);
   });
 });
@@ -146,7 +146,7 @@ describe('独自役入り', () => {
   it('役を足すと、今までワンペアだった手がミニストレートになる', () => {
     // Q-K-A が3枚連続になるので、標準ならただのAペアでも独自役が成立する。
     // 役を足すというのはこういう影響の出方をする、という記録。
-    expect(hand('As Ah Kc Qh 9s', STANDARD_RULESET).rankingId).toBe('one_pair');
+    expect(hand('As Ah Kc Qh 9s', STANDARD_VARIANT).rankingId).toBe('one_pair');
     expect(hand('As Ah Kc Qh 9s', HOUSE_HANDS).rankingId).toBe('mini_straight');
   });
 
@@ -162,6 +162,6 @@ describe('独自役入り', () => {
   });
 
   it('標準ルールでは独自役が成立しない', () => {
-    expect(hand('5h 6s 7d Kc 2s', STANDARD_RULESET).rankingId).toBe('high_card');
+    expect(hand('5h 6s 7d Kc 2s', STANDARD_VARIANT).rankingId).toBe('high_card');
   });
 });

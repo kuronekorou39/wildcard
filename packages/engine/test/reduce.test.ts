@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createGame, legalActions, reduce, validate } from '../src/game/reduce.js';
-import type { Action, GameState } from '../src/types.js';
+import { PREFLOP, type Action, type GameState } from '../src/types.js';
 
 const SB = 10;
 const BB = 20;
@@ -64,7 +64,8 @@ describe('ハンドの開始', () => {
   it('3人ならSBはディーラーの次、BBはその次、手番はBBの次', () => {
     const state = reduce(tableOf([0, 1, 2]), { type: 'startHand', seed: 1 });
 
-    expect(state.phase).toBe('preflop');
+    expect(state.phase).toBe('betting');
+    expect(state.streetIndex).toBe(PREFLOP);
     expect(state.dealerSeat).toBe(0);
     expect(player(state, 'p1').bet).toBe(SB);
     expect(player(state, 'p2').bet).toBe(BB);
@@ -154,7 +155,7 @@ describe('ベッティングラウンド', () => {
       { type: 'call', playerId: 'p1' },
     ]);
     // 額は揃っているが BB はまだ行動していないのでラウンドは閉じない
-    expect(state.phase).toBe('preflop');
+    expect(state.streetIndex).toBe(PREFLOP);
     expect(state.turnPlayerId).toBe('p2');
     expect(legalActions(state, 'p2')?.canCheck).toBe(true);
     expect(legalActions(state, 'p2')?.canRaise).toBe(true);
@@ -168,7 +169,7 @@ describe('ベッティングラウンド', () => {
       { type: 'check', playerId: 'p2' },
     ]);
 
-    expect(state.phase).toBe('flop');
+    expect(state.streetIndex).toBe(0); // フロップ
     expect(state.communityCards).toHaveLength(3);
     expect(state.currentBet).toBe(0);
     expect(state.players.every((p) => p.bet === 0)).toBe(true);
@@ -184,7 +185,7 @@ describe('ベッティングラウンド', () => {
       { type: 'raise', playerId: 'p2', to: 60 },
     ]);
 
-    expect(state.phase).toBe('preflop');
+    expect(state.streetIndex).toBe(PREFLOP);
     expect(state.currentBet).toBe(60);
     expect(player(state, 'p0').hasActed).toBe(false);
     expect(player(state, 'p1').hasActed).toBe(false);
@@ -216,14 +217,14 @@ describe('ベッティングラウンド', () => {
       { type: 'call', playerId: 'p0' },
       { type: 'check', playerId: 'p1' },
     ]);
-    expect(state.phase).toBe('flop');
+    expect(state.streetIndex).toBe(0);
 
-    for (const phase of ['turn', 'river'] as const) {
+    for (const street of [1, 2] as const) {
       state = run(state, [
         { type: 'check', playerId: state.turnPlayerId! },
         { type: 'check', playerId: state.turnPlayerId === 'p0' ? 'p1' : 'p0' },
       ]);
-      expect(state.phase).toBe(phase);
+      expect(state.streetIndex).toBe(street);
     }
 
     expect(state.communityCards).toHaveLength(5);
@@ -284,7 +285,7 @@ describe('時間切れ', () => {
     // BB は払う必要がない
     const after = reduce(state, { type: 'timeout', playerId: 'p2' });
     expect(player(after, 'p2').folded).toBe(false);
-    expect(after.phase).toBe('flop');
+    expect(after.streetIndex).toBe(0);
   });
 });
 
@@ -305,7 +306,7 @@ describe('ハンド途中の着席（waiting）', () => {
       { type: 'call', playerId: 'p0' },
       { type: 'check', playerId: 'p1' },
     ]);
-    expect(state.phase).toBe('flop');
+    expect(state.streetIndex).toBe(0);
     expect(state.turnPlayerId).not.toBe('late');
   });
 

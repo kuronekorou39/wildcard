@@ -117,7 +117,7 @@ describe('ホットシートの秘匿（followTurn）', () => {
     transport.dispatch({ type: 'check', playerId: 'p2' });
 
     // フロップ: 手番の人の2枚 + 場の3枚
-    expect(transport.snapshot().state.phase).toBe('flop');
+    expect(transport.snapshot().state.streetIndex).toBe(0); // フロップ
     expect(countCards()).toBe(2 + 3);
   });
 

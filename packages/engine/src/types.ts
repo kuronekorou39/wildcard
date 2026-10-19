@@ -1,9 +1,9 @@
 /**
  * Wildcard のドメイン型。
  *
- * 設計上の要点は docs/architecture.md の原則4 ——「ルールは設定データである」。
- * 役の強さや有効なカードはコードに焼き込まず、すべて RuleSet として外から渡す。
- * 標準のテキサスホールデムもまた一つの RuleSet（プリセット）にすぎない。
+ * 要点は docs/variants.md ——「エンジンのコードに『ホールデムならこう』という
+ * 分岐を一切書かない」。ホールデムもオマハもユーザーが作った変種も、すべて
+ * 同じ Variant というデータであり、エンジンはそれを読んで動くだけである。
  */
 
 // ============================================================
@@ -13,7 +13,7 @@
 export const SUITS = ['spades', 'hearts', 'diamonds', 'clubs'] as const;
 export type Suit = (typeof SUITS)[number];
 
-/** 標準の13ランク。弱い順。RuleSet 側でこの順序を差し替えられる。 */
+/** 標準の13ランク。弱い順。Variant 側でこの順序を差し替えられる。 */
 export const RANKS = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'] as const;
 export type Rank = (typeof RANKS)[number];
 
@@ -23,35 +23,127 @@ export interface Card {
 }
 
 // ============================================================
-// ルール定義 — デッキ
+// 軸1: デッキ — 何で遊ぶか
 // ============================================================
 
+/** 特定のカードの枚数を名指しで決める。 */
+export interface CardCount {
+  readonly rank: Rank;
+  readonly suit: Suit;
+  /** 枚数。0 にするとそのカードだけデッキから抜ける。 */
+  readonly count: number;
+}
+
 export interface DeckRules {
-  /** 使用するスート。減らせば 3スート・2スートのデッキになる。 */
+  /**
+   * 直積の素になるスート。ここから外せばそのスートが丸ごと消える
+   * （「クラブだけ抜く」はこれで足りる）。
+   */
   readonly suits: readonly Suit[];
-  /** 使用するランクを弱い順に並べたもの。この配列の index がそのまま強さになる。 */
+  /**
+   * 使用するランクを **弱い順** に並べたもの。この配列の index がそのまま強さ。
+   *
+   * 並び順がストレートの意味も決める点に注意。10 を A の上に移すと
+   * 「TT が AA より強い」が成立する代わりに、9-10-J-Q-K は連続でなくなる。
+   */
   readonly ranks: readonly Rank[];
   /**
    * スート間の強さ（強い順）。同ランクのタイブレークに使う。
    * 未指定ならスートに強弱を付けない（引き分けはチョップ）。
    */
   readonly suitRanking?: readonly Suit[];
+  /** 直積で作る各カードの枚数。2 にすると全部2枚ずつ。既定1。 */
+  readonly copies?: number;
+  /**
+   * カード単位の上書き。直積の結果より優先される。
+   *
+   * 「スペードのAを10枚」「ハートのKだけ抜く」といった偏ったデッキを作るための口。
+   * suits に無いスートを足すこともできる（例: スペードのみ + ハートのAを1枚）。
+   */
+  readonly overrides?: readonly CardCount[];
 }
 
 // ============================================================
-// ルール定義 — 役
+// 軸2: 構造 — どう配って、どう組むか
+// ============================================================
+
+export interface Street {
+  readonly name: string;
+  /** 場に開く枚数。0 でもよい（カードを開かないベッティングラウンド）。 */
+  readonly cards: number;
+  /**
+   * 開く前に山札から落とす枚数（バーンカード）。既定0。
+   *
+   * 結果の確率分布は変わらないが、必要なデッキ枚数は変わる。
+   * ルールとして指定できないと「52枚きっかりで回るはず」が狂う。
+   */
+  readonly burn?: number;
+}
+
+/** 使用枚数の範囲。 */
+export interface UsageRange {
+  readonly min: number;
+  readonly max: number;
+}
+
+export interface HandStructure {
+  /** 各プレイヤーに配る手札の枚数。ホールデム2、オマハ4。 */
+  readonly holeCards: number;
+  /** 場に開く段階。ホールデムは 3,1,1。空ならドロー系（場なし）。 */
+  readonly streets: readonly Street[];
+  /** 役を作る枚数。通常5。 */
+  readonly handSize: number;
+  /** 手札から使う枚数。省略すると「何枚使ってもよい」。オマハは {2,2}。 */
+  readonly holeUsage?: UsageRange;
+  /** 場から使う枚数。省略すると「何枚使ってもよい」。オマハは {3,3}。 */
+  readonly boardUsage?: UsageRange;
+}
+
+// ============================================================
+// 軸3: ベッティング — どう賭けるか
+// ============================================================
+
+export type LimitKind = 'no-limit' | 'pot-limit' | 'fixed-limit';
+
+export interface StreetCap {
+  /** PREFLOP(-1) がプリフロップ、0 以降は streets の index。 */
+  readonly street: number;
+  /** そのストリートでのオールインを禁じる。 */
+  readonly noAllIn?: boolean;
+  /** そのストリートで1人が出せる合計額の上限。 */
+  readonly maxTotal?: number;
+}
+
+/**
+ * 賭け方の制度。
+ *
+ * **掛け金（SB/BB/アンティ）はここに入れない。** 同じバリアントのまま
+ * 額だけ変えられる必要があるため、額は GameState 側に置く。
+ */
+export interface BettingRules {
+  readonly limit: LimitKind;
+  /** ストラドルの重ね回数。省略すると不可。 */
+  readonly straddle?: { readonly max: number };
+  readonly streetCaps?: readonly StreetCap[];
+  readonly maxRaisesPerRound?: number;
+}
+
+// ============================================================
+// 軸4: 役 — 何が強いか
 // ============================================================
 
 /**
- * 1枚のカードに課す条件のランク指定。
+ * 1枚のカードに課すランク条件。
  *
  * - fixed:    特定のランク（例: 'A'）
- * - variable: 変数。同名の変数は同じランクを指す。offset で相対指定できる。
- *             例) X, X, Y, Y+1, Y+2 = 「2枚のペア + 連続する3枚」
+ * - oneOf:    いずれか（例: 素数ランク 2,3,5,7,J,K）
+ * - variable: 変数。同名の変数は同じランクを指し、異なる名前は異なるランクを指す。
+ *             offset で相対指定できる。例) X, X, Y, Y+1, Y+2
  * - any:      任意
  */
 export type RankSpec =
   | { readonly type: 'fixed'; readonly value: Rank }
+  | { readonly type: 'oneOf'; readonly values: readonly Rank[] }
   | { readonly type: 'variable'; readonly name: string; readonly offset?: number }
   | { readonly type: 'any' };
 
@@ -70,10 +162,12 @@ export type GlobalCondition =
   /** 同一スートが n 枚以上 */
   | { readonly type: 'suitCount'; readonly count: number }
   /** ランクが連続している */
-  | { readonly type: 'consecutive' };
+  | { readonly type: 'consecutive' }
+  /** 全枚数が相異なるランク */
+  | { readonly type: 'allDifferentRank' };
 
 export interface HandPattern {
-  /** 条件を課すカード。最大5枚。 */
+  /** 条件を課すカード。 */
   readonly cards: readonly CardCondition[];
   readonly global: readonly GlobalCondition[];
 }
@@ -85,21 +179,40 @@ export interface HandRanking {
   readonly pattern: HandPattern;
 }
 
-export interface RuleSet {
+export interface RankingRules {
+  /** 役を強い順に並べたもの。index 0 が最強。 */
+  readonly hands: readonly HandRanking[];
+}
+
+// ============================================================
+// バリアント
+// ============================================================
+
+export interface Variant {
   readonly id: string;
   readonly name: string;
   /** 何が標準と違うのかの一行説明。遊ぶ前に読めるようにしておく。 */
   readonly description?: string;
   readonly deck: DeckRules;
-  /** 役を強い順に並べたもの。index 0 が最強。 */
-  readonly handRankings: readonly HandRanking[];
+  readonly structure: HandStructure;
+  readonly betting: BettingRules;
+  readonly ranking: RankingRules;
 }
 
 // ============================================================
 // ゲーム状態
 // ============================================================
 
-export type Phase = 'waiting' | 'preflop' | 'flop' | 'turn' | 'river' | 'showdown';
+/**
+ * 進行の段階。
+ *
+ * ストリート名（フロップ・ターン・リバー）はここに焼き込まない。
+ * バリアントが決めるものなので、どのストリートにいるかは streetIndex で持つ。
+ */
+export type Phase = 'waiting' | 'betting' | 'showdown';
+
+/** 場が開く前（ホールデムのプリフロップ）を表す streetIndex。 */
+export const PREFLOP = -1;
 
 export interface Player {
   readonly id: string;
@@ -165,12 +278,22 @@ export interface HandSummary {
 
 export interface GameState {
   readonly phase: Phase;
+  /**
+   * 今どのストリートか。PREFLOP(-1) は場が開く前。
+   * 0 以降は variant.structure.streets の index。
+   */
+  readonly streetIndex: number;
   /** 卓の席数。 */
   readonly seatCount: number;
   readonly players: readonly Player[];
   readonly communityCards: readonly Card[];
   /** 未配の山札。project() で視点に応じて伏せられる。 */
   readonly deck: readonly Card[];
+  /**
+   * バーンカード。進行には使わないが、何枚どう落としたかを残しておくと
+   * 配牌の検証で山札の消費が説明できる。project() では枚数だけ見せる。
+   */
+  readonly burned: readonly Card[];
   /** 場に出ている総額（各プレイヤーの committed の合計）。 */
   readonly pot: number;
   /** 現在のラウンドでコールに必要な額。 */
@@ -180,9 +303,10 @@ export interface GameState {
   readonly dealerSeat: number;
   /** 手番のプレイヤーID。誰の手番でもないときは null。 */
   readonly turnPlayerId: string | null;
+  /** 掛け金。バリアントではなく卓の設定。 */
   readonly smallBlind: number;
   readonly bigBlind: number;
-  readonly ruleSet: RuleSet;
+  readonly variant: Variant;
   /** 直前のハンドの決着内容。まだ決着していなければ null。 */
   readonly summary: HandSummary | null;
 }

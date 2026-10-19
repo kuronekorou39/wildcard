@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { type Action, decide, findPreset, validate } from '@wildcard/engine';
+import { type Action, decide, findVariant, validate } from '@wildcard/engine';
 import { TableView } from '../components/TableView.js';
 import { useTable } from '../hooks/useTable.js';
 import { LocalTransport } from '../transport/local.js';
@@ -10,7 +10,7 @@ export interface SoloSettings {
   readonly chips: number;
   readonly smallBlind: number;
   readonly bigBlind: number;
-  readonly ruleSetId: string;
+  readonly variantId: string;
   /** CPU の attack 度。0 に近いほど慎重。 */
   readonly aggression: number;
 }
@@ -51,12 +51,12 @@ export function SoloTable({ settings, onExit }: SoloTableProps) {
       })),
     ];
 
-    const ruleSet = findPreset(settings.ruleSetId);
+    const variant = findVariant(settings.variantId);
     return new LocalTransport({
       seatCount,
       smallBlind: settings.smallBlind,
       bigBlind: settings.bigBlind,
-      ...(ruleSet ? { ruleSet } : {}),
+      ...(variant ? { variant } : {}),
       // 視点は自分に固定。CPU の手札は画面に出ない。
       viewer: { kind: 'fixed', playerId: HUMAN_ID },
       setup,
@@ -119,7 +119,7 @@ export function SoloTable({ settings, onExit }: SoloTableProps) {
       onStartHand={startHand}
       startRejection={startRejection}
       banner={thinking !== null ? <div className="banner banner-wait">{thinking} が考えています…</div> : null}
-      ruleSetId={settings.ruleSetId}
+      variantId={settings.variantId}
     />
   );
 }

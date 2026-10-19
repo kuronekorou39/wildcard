@@ -7,12 +7,14 @@ export interface VisiblePlayer extends Omit<Player, 'holeCards'> {
   readonly holeCardCount: number;
 }
 
-export interface VisibleState extends Omit<GameState, 'players' | 'deck'> {
+export interface VisibleState extends Omit<GameState, 'players' | 'deck' | 'burned'> {
   readonly players: readonly VisiblePlayer[];
   /** この視点の持ち主。観戦者なら null。 */
   readonly viewerId: string | null;
   /** 山札は枚数だけ見える。中身は誰にも見せない。 */
   readonly deckCount: number;
+  /** 焼いたカードも枚数だけ。中身は伏せたまま。 */
+  readonly burnedCount: number;
 }
 
 /**
@@ -38,6 +40,6 @@ export function project(state: GameState, viewerId: string | null): VisibleState
     };
   });
 
-  const { players: _players, deck, ...rest } = state;
-  return { ...rest, players, viewerId, deckCount: deck.length };
+  const { players: _players, deck, burned, ...rest } = state;
+  return { ...rest, players, viewerId, deckCount: deck.length, burnedCount: burned.length };
 }

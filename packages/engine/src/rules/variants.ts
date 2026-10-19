@@ -1,18 +1,33 @@
-import { RANKS, SUITS, type HandRanking, type Rank, type RuleSet } from '../types.js';
-import { STANDARD_HAND_RANKINGS, STANDARD_RULESET, fixedRank, run5, variableRank } from './presets.js';
+import {
+  RANKS,
+  SUITS,
+  type HandRanking,
+  type HandStructure,
+  type Rank,
+  type Variant,
+} from '../types.js';
+import {
+  HOLDEM_STRUCTURE,
+  NO_LIMIT,
+  STANDARD_HAND_RANKINGS,
+  STANDARD_VARIANT,
+  fixedRank,
+  oneOfRanks,
+  variableRank,
+} from './presets.js';
 
 /**
- * ルールのプリセット。
+ * バリアントのプリセット。
  *
- * どれもエンジンのコードには一行も手を入れず、RuleSet というデータだけで
- * 表現されている（原則4）。「カスタムルール対応」が後付け機能ではなく
- * 唯一の経路であることが、ここで実際に確かめられる。
+ * どれもエンジンのコードには一行も手を入れず、Variant というデータだけで
+ * 表現されている。「カスタムルール対応」が後付け機能ではなく唯一の経路で
+ * あることが、ここで実際に確かめられる（→ docs/variants.md）。
  */
 
-// ---- 組み立ての小道具 ----
+// ---- 役の並びを編集する小道具 ----
 
 /** 指定した役を、別の役の直前（＝一つ強い順位）へ移す。 */
-function moveBefore(
+export function moveBefore(
   rankings: readonly HandRanking[],
   moveId: string,
   beforeId: string,
@@ -26,13 +41,27 @@ function moveBefore(
 }
 
 /** 指定した役を無効にする。順位からは消さず enabled だけ落とす。 */
-function disable(rankings: readonly HandRanking[], ...ids: readonly string[]): HandRanking[] {
+export function disable(
+  rankings: readonly HandRanking[],
+  ...ids: readonly string[]
+): HandRanking[] {
   const targets = new Set(ids);
   return rankings.map((r) => (targets.has(r.id) ? { ...r, enabled: false } : r));
 }
 
-/** 指定した役のパターンを差し替える。 */
-function replacePattern(
+/** 役を指定した役の直前に差し込む。 */
+export function insertBefore(
+  rankings: readonly HandRanking[],
+  ranking: HandRanking,
+  beforeId: string,
+): HandRanking[] {
+  const at = rankings.findIndex((r) => r.id === beforeId);
+  if (at < 0) throw new Error(`役が見つからない: ${beforeId}`);
+  return [...rankings.slice(0, at), ranking, ...rankings.slice(at)];
+}
+
+/** 指定した役のカード条件を固定ランクで差し替える。 */
+function replaceFixed(
   rankings: readonly HandRanking[],
   id: string,
   name: string,
@@ -45,18 +74,64 @@ function replacePattern(
   );
 }
 
-// ---- プリセット ----
+// ============================================================
+// 構造を変える変種
+// ============================================================
+
+/** オマハ。手札4枚から**ちょうど2枚**、場から**ちょうど3枚**で役を作る。 */
+const OMAHA_STRUCTURE: HandStructure = {
+  ...HOLDEM_STRUCTURE,
+  holeCards: 4,
+  holeUsage: { min: 2, max: 2 },
+  boardUsage: { min: 3, max: 3 },
+};
+
+export const OMAHA: Variant = {
+  id: 'omaha',
+  name: 'オマハ',
+  description:
+    '手札が4枚になるが、役に使えるのは手札からちょうど2枚と場からちょうど3枚。' +
+    '手札が多いぶん強い役が出やすく、「使えない2枚」の読みが効く。',
+  deck: { suits: SUITS, ranks: RANKS },
+  structure: OMAHA_STRUCTURE,
+  betting: NO_LIMIT,
+  ranking: { hands: STANDARD_HAND_RANKINGS },
+};
+
+/** フロップが6枚開く。場が広いぶん強い役が出やすい。 */
+export const SIX_CARD_FLOP: Variant = {
+  id: 'six-card-flop',
+  name: 'フロップ6枚',
+  description:
+    'フロップで6枚開く。場が8枚になるので、強い役が頻繁に出て降りづらくなる。',
+  deck: { suits: SUITS, ranks: RANKS },
+  structure: {
+    holeCards: 2,
+    streets: [
+      { name: 'フロップ', cards: 6, burn: 1 },
+      { name: 'ターン', cards: 1, burn: 1 },
+      { name: 'リバー', cards: 1, burn: 1 },
+    ],
+    handSize: 5,
+  },
+  betting: NO_LIMIT,
+  ranking: { hands: STANDARD_HAND_RANKINGS },
+};
+
+// ============================================================
+// デッキを変える変種
+// ============================================================
 
 /**
  * ショートデッキ（6+ホールデム）。
  *
- * 6未満を抜いた36枚で遊ぶ。枚数が減るとフラッシュが出にくくなり、
- * フルハウスのほうが出やすくなるので、**フラッシュがフルハウスより強い**。
- * 最弱のストレートも A-2-3-4-5 ではなく A-6-7-8-9 になる。
+ * 6未満を抜いた36枚。枚数が減るとフラッシュが出にくくなり、フルハウスのほうが
+ * 出やすくなるので **フラッシュがフルハウスより強い**。最弱のストレートも
+ * A-2-3-4-5 ではなく A-6-7-8-9 になる。
  */
 const SHORT_DECK_RANKINGS = moveBefore(
-  replacePattern(
-    replacePattern(
+  replaceFixed(
+    replaceFixed(
       STANDARD_HAND_RANKINGS,
       'steel_wheel',
       'ストレートフラッシュ（A-6-7-8-9）',
@@ -70,25 +145,27 @@ const SHORT_DECK_RANKINGS = moveBefore(
   'full_house',
 );
 
-export const SHORT_DECK: RuleSet = {
+export const SHORT_DECK: Variant = {
   id: 'short-deck',
   name: 'ショートデッキ（6+）',
   description:
     '2〜5を抜いた36枚。フラッシュが出にくくなるのでフルハウスより強く、最弱のストレートは A-6-7-8-9。',
   deck: { suits: SUITS, ranks: ['6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'] },
-  handRankings: SHORT_DECK_RANKINGS,
+  structure: HOLDEM_STRUCTURE,
+  betting: NO_LIMIT,
+  ranking: { hands: SHORT_DECK_RANKINGS },
 };
 
 /**
  * エースが最弱。
  *
  * A-2-3-4-5 が普通のストレートになり、一番強いストレートは 9-10-J-Q-K。
- * 10-J-Q-K-A はもう連続していないので、ロイヤルフラッシュと
- * A-2-3-4-5 の特例役はどちらも無効にする。
- * 変数の相対指定（X, X+1, ...）がランクの並び順をそのまま見ているので、
- * 役のパターンを書き換えなくても正しく動く。
+ * 10-J-Q-K-A はもう連続していないので、ロイヤルフラッシュと A-2-3-4-5 の
+ * 特例役はどちらも無効にする。変数の相対指定がランクの並び順をそのまま
+ * 見ているので、役のパターンを書き換えなくても正しく動く。
  */
-export const ACE_LOW: RuleSet = {
+export const ACE_LOW: Variant = {
+  ...STANDARD_VARIANT,
   id: 'ace-low',
   name: 'エースが最弱',
   description:
@@ -97,16 +174,14 @@ export const ACE_LOW: RuleSet = {
     suits: SUITS,
     ranks: ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'],
   },
-  handRankings: disable(STANDARD_HAND_RANKINGS, 'royal_flush', 'steel_wheel', 'wheel'),
+  ranking: {
+    hands: disable(STANDARD_HAND_RANKINGS, 'royal_flush', 'steel_wheel', 'wheel'),
+  },
 };
 
-/**
- * スートに強弱をつける。
- *
- * スペード > ハート > ダイヤ > クラブ。同じ役・同じランクでも必ず決着がつき、
- * 引き分けのチョップが起きなくなる。
- */
-export const SUIT_RANKED: RuleSet = {
+/** スートに強弱をつける。同じ役・同じランクでも必ず決着がつく。 */
+export const SUIT_RANKED: Variant = {
+  ...STANDARD_VARIANT,
   id: 'suit-ranked',
   name: 'スートに強弱あり',
   description: 'スペード > ハート > ダイヤ > クラブ。引き分けのチョップが起きなくなる。',
@@ -115,25 +190,22 @@ export const SUIT_RANKED: RuleSet = {
     ranks: RANKS,
     suitRanking: ['spades', 'hearts', 'diamonds', 'clubs'],
   },
-  handRankings: STANDARD_HAND_RANKINGS,
 };
 
+// ============================================================
+// 役を変える変種
+// ============================================================
+
 /** フラッシュがフルハウスより強い。順位の入れ替えだけで成立する。 */
-export const FLUSH_OVER_FULL_HOUSE: RuleSet = {
-  ...STANDARD_RULESET,
+export const FLUSH_OVER_FULL_HOUSE: Variant = {
+  ...STANDARD_VARIANT,
   id: 'flush-over-boat',
   name: 'フラッシュ > フルハウス',
   description: '52枚のまま、フラッシュだけをフルハウスより強くする。',
-  handRankings: moveBefore(STANDARD_HAND_RANKINGS, 'flush', 'full_house'),
+  ranking: { hands: moveBefore(STANDARD_HAND_RANKINGS, 'flush', 'full_house') },
 };
 
-/**
- * 独自の役を足したルール。
- *
- * Wildcard でしかできないことの見本。どちらも変数の相対指定で書いてある。
- * - ミニストレート: 連続する3枚（X, X+1, X+2）。ワンペアより強い
- * - ペア＋三連: ペアと連続3枚（X, X, Y, Y+1, Y+2）。ツーペアより強い
- */
+/** 連続する3枚。ワンペアより強い。 */
 const MINI_STRAIGHT: HandRanking = {
   id: 'mini_straight',
   name: 'ミニストレート（3枚連続）',
@@ -144,6 +216,7 @@ const MINI_STRAIGHT: HandRanking = {
   },
 };
 
+/** ペアと連続3枚。ツーペアより強い。 */
 const PAIR_PLUS_RUN: HandRanking = {
   id: 'pair_plus_run',
   name: 'ペア＋三連',
@@ -160,46 +233,74 @@ const PAIR_PLUS_RUN: HandRanking = {
   },
 };
 
-function insertBefore(
-  rankings: readonly HandRanking[],
-  ranking: HandRanking,
-  beforeId: string,
-): HandRanking[] {
-  const at = rankings.findIndex((r) => r.id === beforeId);
-  if (at < 0) throw new Error(`役が見つからない: ${beforeId}`);
-  return [...rankings.slice(0, at), ranking, ...rankings.slice(at)];
-}
-
-export const HOUSE_HANDS: RuleSet = {
-  ...STANDARD_RULESET,
+export const HOUSE_HANDS: Variant = {
+  ...STANDARD_VARIANT,
   id: 'house-hands',
   name: '独自役入り（ミニストレート・ペア＋三連）',
   description:
     '標準の役に2つ足す。3枚連続（ワンペアより上）と、ペア＋連続3枚（ツーペアより上）。',
-  handRankings: insertBefore(
-    insertBefore(STANDARD_HAND_RANKINGS, PAIR_PLUS_RUN, 'two_pair'),
-    MINI_STRAIGHT,
-    'one_pair',
-  ),
+  ranking: {
+    hands: insertBefore(
+      insertBefore(STANDARD_HAND_RANKINGS, PAIR_PLUS_RUN, 'two_pair'),
+      MINI_STRAIGHT,
+      'one_pair',
+    ),
+  },
 };
 
-/** 選べるルールの一覧。UI はこれを並べる。 */
-export const RULE_PRESETS: readonly RuleSet[] = [
-  STANDARD_RULESET,
+/**
+ * 素数ストレート。
+ *
+ * ランクを数と見て、素数（2,3,5,7,11=J,13=K）だけで5枚揃える。
+ * 「いずれかのランク」を表す oneOf があると、こういう役が書ける。
+ */
+const PRIME_HAND: HandRanking = {
+  id: 'prime',
+  name: '素数ストレート（2,3,5,7,J,K)',
+  enabled: true,
+  pattern: {
+    cards: [
+      oneOfRanks('2', '3', '5', '7', 'J', 'K'),
+      oneOfRanks('2', '3', '5', '7', 'J', 'K'),
+      oneOfRanks('2', '3', '5', '7', 'J', 'K'),
+      oneOfRanks('2', '3', '5', '7', 'J', 'K'),
+      oneOfRanks('2', '3', '5', '7', 'J', 'K'),
+    ],
+    global: [{ type: 'allDifferentRank' }],
+  },
+};
+
+export const PRIME_RULES: Variant = {
+  ...STANDARD_VARIANT,
+  id: 'prime',
+  name: '素数ストレートあり',
+  description:
+    'ランクを数と見て、素数（2,3,5,7,J=11,K=13）だけで5枚揃うと成立する役を足す。フラッシュより強い。',
+  ranking: { hands: insertBefore(STANDARD_HAND_RANKINGS, PRIME_HAND, 'flush') },
+};
+
+// ============================================================
+// 一覧
+// ============================================================
+
+/** 選べるバリアントの一覧。UI はこれを並べる。 */
+export const VARIANT_PRESETS: readonly Variant[] = [
+  STANDARD_VARIANT,
+  OMAHA,
   SHORT_DECK,
+  SIX_CARD_FLOP,
   FLUSH_OVER_FULL_HOUSE,
   ACE_LOW,
   SUIT_RANKED,
   HOUSE_HANDS,
+  PRIME_RULES,
 ];
 
-export function findPreset(id: string): RuleSet | undefined {
-  return RULE_PRESETS.find((preset) => preset.id === id);
+export function findVariant(id: string): Variant | undefined {
+  return VARIANT_PRESETS.find((variant) => variant.id === id);
 }
 
 /** 有効な役を強い順に並べた一覧。ルールの説明表示に使う。 */
-export function activeRankings(ruleSet: RuleSet): readonly HandRanking[] {
-  return ruleSet.handRankings.filter((r) => r.enabled);
+export function activeRankings(variant: Variant): readonly HandRanking[] {
+  return variant.ranking.hands.filter((r) => r.enabled);
 }
-
-export { run5 };

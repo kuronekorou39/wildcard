@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { awardPots, buildPotLayers, returnUncalledBets } from '../src/game/pot.js';
-import { evaluateHand } from '../src/rules/evaluate.js';
-import { STANDARD_RULESET } from '../src/rules/presets.js';
+import { evaluateBest } from '../src/rules/evaluate.js';
+import { STANDARD_VARIANT } from '../src/rules/presets.js';
 import type { Player } from '../src/types.js';
 import { cards } from './helpers.js';
 
@@ -120,7 +120,7 @@ describe('ポットの配分', () => {
         ['B', 'Ks Kh'],
         ['C', '5s 4h'],
       ] as const
-    ).map(([id, hole]) => [id, evaluateHand(cards(`${hole} ${board}`), STANDARD_RULESET)!]),
+    ).map(([id, hole]) => [id, evaluateBest(cards(`${hole} ${board}`), STANDARD_VARIANT)!]),
   );
   const seatOf = new Map([
     ['A', 0],
@@ -163,7 +163,7 @@ describe('ポットの配分', () => {
           ['A', 'As Ah'],
           ['B', 'Ad Ac'],
         ] as const
-      ).map(([id, hole]) => [id, evaluateHand(cards(`${hole} ${board}`), STANDARD_RULESET)!]),
+      ).map(([id, hole]) => [id, evaluateBest(cards(`${hole} ${board}`), STANDARD_VARIANT)!]),
     );
     const payouts = awardPots(
       [{ amount: 200, eligiblePlayerIds: ['A', 'B'] }],
@@ -183,7 +183,7 @@ describe('ポットの配分', () => {
           ['A', 'As Ah'],
           ['B', 'Ad Ac'],
         ] as const
-      ).map(([id, hole]) => [id, evaluateHand(cards(`${hole} ${board}`), STANDARD_RULESET)!]),
+      ).map(([id, hole]) => [id, evaluateBest(cards(`${hole} ${board}`), STANDARD_VARIANT)!]),
     );
 
     // A は席0、B は席1。ディーラーが席0なら端数は席1（B）へ。

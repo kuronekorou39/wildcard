@@ -1,15 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { compareHands, evaluateHand } from '../src/rules/evaluate.js';
-import { STANDARD_RULESET } from '../src/rules/presets.js';
+import { compareHands, evaluateBest } from '../src/rules/evaluate.js';
+import { STANDARD_VARIANT } from '../src/rules/presets.js';
 import { cards } from './helpers.js';
 
 /**
  * エンジンは「フラッシュ」「ストレート」を一切知らない。
  * ここで検証しているのは、汎用のパターンマッチャが
- * STANDARD_RULESET というデータから標準ポーカーを正しく再現できること。
+ * STANDARD_VARIANT というデータから標準ポーカーを正しく再現できること。
  */
 function hand(notation: string) {
-  const result = evaluateHand(cards(notation), STANDARD_RULESET);
+  const result = evaluateBest(cards(notation), STANDARD_VARIANT);
   if (!result) throw new Error(`役が成立しなかった: ${notation}`);
   return result;
 }
@@ -109,6 +109,6 @@ describe('最強の5枚を7枚から選べている', () => {
   });
 
   it('5枚未満は判定できない', () => {
-    expect(evaluateHand(cards('As Ah Kd Qc'), STANDARD_RULESET)).toBeNull();
+    expect(evaluateBest(cards('As Ah Kd Qc'), STANDARD_VARIANT)).toBeNull();
   });
 });

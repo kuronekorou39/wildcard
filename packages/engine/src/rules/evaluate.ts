@@ -1,12 +1,13 @@
-import type { Card, RuleSet } from '../types.js';
+import type { Card, Variant } from '../types.js';
+import { boardUsageOf, holeUsageOf } from '../variant.js';
 import { type PatternMatch, compareTiebreak, matchPattern } from './pattern.js';
 
 export interface HandResult {
   readonly rankingId: string;
   readonly rankingName: string;
-  /** RuleSet.handRankings 内の位置。**小さいほど強い**。 */
+  /** Variant.ranking.hands 内の位置。**小さいほど強い**。 */
   readonly rankingIndex: number;
-  /** 実際に使った5枚。 */
+  /** 実際に使った札。 */
   readonly cards: readonly Card[];
   readonly matched: readonly Card[];
   readonly kickers: readonly Card[];
@@ -14,40 +15,74 @@ export interface HandResult {
 }
 
 /**
- * 手札（ホールカード＋コミュニティカード）から最強の役を求める。
+ * 手札と場から最強の役を求める。
  *
- * 役の定義はコードではなく RuleSet から来る（原則4）。
- * 標準のテキサスホールデムもまた一つの RuleSet にすぎないため、
- * この関数自体は「標準の役」を一切知らない。
+ * **使用枚数の制約を守る。** ホールデムは「7枚から好きな5枚」だが、
+ * オマハは「手札からちょうど2枚 ＋ 場からちょうど3枚」でなければならない。
+ * この違いはエンジンの分岐ではなく、Variant の holeUsage / boardUsage という
+ * データで表される（→ docs/variants.md）。
  */
-export function evaluateHand(cards: readonly Card[], ruleSet: RuleSet): HandResult | null {
-  if (cards.length < 5) return null;
+export function evaluateHand(
+  hole: readonly Card[],
+  board: readonly Card[],
+  variant: Variant,
+): HandResult | null {
+  const { handSize } = variant.structure;
+  const holeUsage = holeUsageOf(variant.structure);
+  const boardUsage = boardUsageOf(variant.structure);
+
+  // 手札から使う枚数 h は、両方の制約と実際の枚数で挟まれる。
+  const low = Math.max(holeUsage.min, handSize - boardUsage.max, handSize - board.length);
+  const high = Math.min(holeUsage.max, handSize - boardUsage.min, hole.length, handSize);
 
   let best: HandResult | null = null;
-  for (const five of combinations(cards, 5)) {
-    const result = evaluateExactFive(five, ruleSet);
-    if (result && (best === null || compareHands(result, best) > 0)) {
-      best = result;
+  for (let h = Math.max(0, low); h <= high; h++) {
+    const b = handSize - h;
+    if (b < 0 || b > board.length) continue;
+
+    for (const fromHole of combinations(hole, h)) {
+      for (const fromBoard of combinations(board, b)) {
+        const result = evaluateExact([...fromHole, ...fromBoard], variant);
+        if (result && (best === null || compareHands(result, best) > 0)) best = result;
+      }
     }
   }
   return best;
 }
 
-/** ちょうど5枚に対して、成立する最強の役を返す。 */
-export function evaluateExactFive(five: readonly Card[], ruleSet: RuleSet): HandResult | null {
-  for (let i = 0; i < ruleSet.handRankings.length; i++) {
-    const ranking = ruleSet.handRankings[i]!;
+/**
+ * 制約を一切かけず、与えられた札から最強の役を探す。
+ * 勝率の推定や、手札と場を区別しない場面で使う。
+ */
+export function evaluateBest(cards: readonly Card[], variant: Variant): HandResult | null {
+  const { handSize } = variant.structure;
+  if (cards.length < handSize) return null;
+
+  let best: HandResult | null = null;
+  for (const picked of combinations(cards, handSize)) {
+    const result = evaluateExact(picked, variant);
+    if (result && (best === null || compareHands(result, best) > 0)) best = result;
+  }
+  return best;
+}
+
+/** ちょうど handSize 枚に対して、成立する最強の役を返す。 */
+export function evaluateExact(cards: readonly Card[], variant: Variant): HandResult | null {
+  const hands = variant.ranking.hands;
+
+  for (let i = 0; i < hands.length; i++) {
+    const ranking = hands[i]!;
     if (!ranking.enabled) continue;
 
-    const match: PatternMatch | null = matchPattern(five, ranking.pattern, ruleSet.deck);
+    const match: PatternMatch | null = matchPattern(cards, ranking.pattern, variant.deck);
     if (!match) continue;
 
-    // handRankings は強い順に並んでいるので、最初に成立したものが最強。
+    // hands は強い順に並んでいるので、最初に成立したものが最強。
     return {
       rankingId: ranking.id,
       rankingName: ranking.name,
       rankingIndex: i,
-      cards: five,
+      cards,
       matched: match.matched,
       kickers: match.kickers,
       tiebreak: match.tiebreak,
@@ -68,7 +103,11 @@ export function compareHands(a: HandResult, b: HandResult): number {
 /** items から k 枚を選ぶ組み合わせを列挙する（順序は問わない）。 */
 export function* combinations<T>(items: readonly T[], k: number): Generator<T[]> {
   const n = items.length;
-  if (k > n) return;
+  if (k > n || k < 0) return;
+  if (k === 0) {
+    yield [];
+    return;
+  }
   const idx = Array.from({ length: k }, (_, i) => i);
 
   while (true) {

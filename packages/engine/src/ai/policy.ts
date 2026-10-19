@@ -59,7 +59,7 @@ export function decide(
     holeCards: me.holeCards,
     communityCards: state.communityCards,
     opponents,
-    ruleSet: state.ruleSet,
+    variant: state.variant,
     samples,
     seed,
   });

@@ -1,18 +1,35 @@
 import type { Card, DeckRules, Rank, Suit } from './types.js';
 import { createRng } from './rng.js';
 
+const keyOf = (rank: Rank, suit: Suit) => `${rank}/${suit}`;
+
 /**
- * RuleSet のデッキ定義からデッキを組む。
+ * デッキを組む。
  *
- * スートやランクを減らした変則デッキもここで素直に表現される
- * ——「ルールは設定データである」（原則4）の最初の現れ。
+ * 「スート × ランク × copies」の直積を土台にして、overrides でカード単位に
+ * 上書きする。この2段構えなら、素直な52枚も、スペードのAが10枚あるような
+ * 偏ったデッキも、同じ型で書ける（→ docs/variants.md）。
  */
 export function buildDeck(rules: DeckRules): Card[] {
-  const cards: Card[] = [];
+  const counts = new Map<string, { card: Card; count: number }>();
+  const copies = rules.copies ?? 1;
+
   for (const suit of rules.suits) {
     for (const rank of rules.ranks) {
-      cards.push({ rank, suit });
+      counts.set(keyOf(rank, suit), { card: { rank, suit }, count: copies });
     }
+  }
+
+  for (const override of rules.overrides ?? []) {
+    counts.set(keyOf(override.rank, override.suit), {
+      card: { rank: override.rank, suit: override.suit },
+      count: Math.max(0, Math.floor(override.count)),
+    });
+  }
+
+  const cards: Card[] = [];
+  for (const { card, count } of counts.values()) {
+    for (let i = 0; i < count; i++) cards.push(card);
   }
   return cards;
 }
@@ -38,7 +55,7 @@ export function shuffle<T>(cards: readonly T[], seed: number): T[] {
 /** ランクの強さ。DeckRules.ranks の並び順がそのまま強さになる。 */
 export function rankValue(rank: Rank, rules: DeckRules): number {
   const i = rules.ranks.indexOf(rank);
-  if (i < 0) throw new Error(`ランク ${rank} はこのルールセットのデッキに含まれていない`);
+  if (i < 0) throw new Error(`ランク ${rank} はこのデッキに含まれていない`);
   return i;
 }
 

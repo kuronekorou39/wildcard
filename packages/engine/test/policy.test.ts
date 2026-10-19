@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_STYLE, decide } from '../src/ai/policy.js';
 import { createGame, legalActions, reduce, validate } from '../src/game/reduce.js';
-import { RULE_PRESETS } from '../src/rules/variants.js';
-import type { GameState, RuleSet } from '../src/types.js';
+import { VARIANT_PRESETS } from '../src/rules/variants.js';
+import type { GameState, Variant } from '../src/types.js';
 
 /**
  * 速さ優先の設定。
@@ -14,12 +14,12 @@ import type { GameState, RuleSet } from '../src/types.js';
  */
 const FAST = { ...DEFAULT_STYLE, samples: 12 };
 
-function cpuTable(count: number, chips = 1000, ruleSet?: RuleSet): GameState {
+function cpuTable(count: number, chips = 1000, variant?: Variant): GameState {
   let state = createGame({
     seatCount: 10,
     smallBlind: 10,
     bigBlind: 20,
-    ...(ruleSet ? { ruleSet } : {}),
+    ...(variant ? { variant } : {}),
   });
   for (let i = 0; i < count; i++) {
     state = reduce(state, {
@@ -156,7 +156,7 @@ describe('CPU だけで対局が回る', () => {
   });
 
   it('どのルールのプリセットでも対局できる', () => {
-    for (const preset of RULE_PRESETS) {
+    for (const preset of VARIANT_PRESETS) {
       let state = reduce(cpuTable(3, 1000, preset), { type: 'startHand', seed: 1 });
       let steps = 0;
       while (state.phase !== 'showdown') {

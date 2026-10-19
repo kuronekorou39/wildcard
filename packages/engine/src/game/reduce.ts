@@ -1,18 +1,19 @@
-import type {
-  Action,
-  Card,
-  GameState,
-  HandSummary,
-  Payout,
-  Phase,
-  Player,
-  RejectedAction,
-  RevealedHand,
-  RuleSet,
+import {
+  type Action,
+  type Card,
+  type GameState,
+  type HandSummary,
+  type Payout,
+  type Player,
+  type RejectedAction,
+  type RevealedHand,
+  type Variant,
+  PREFLOP,
 } from '../types.js';
 import { buildDeck, shuffle } from '../deck.js';
 import { type HandResult, evaluateHand } from '../rules/evaluate.js';
-import { STANDARD_RULESET } from '../rules/presets.js';
+import { STANDARD_VARIANT } from '../rules/presets.js';
+import { requiredCards } from '../variant.js';
 import { awardPots, buildPotLayers, returnUncalledBets } from './pot.js';
 import { blindPositions, firstClockwise, orderClockwise } from './seats.js';
 
@@ -20,17 +21,19 @@ export interface CreateGameOptions {
   readonly seatCount?: number;
   readonly smallBlind?: number;
   readonly bigBlind?: number;
-  readonly ruleSet?: RuleSet;
+  readonly variant?: Variant;
   readonly dealerSeat?: number;
 }
 
 export function createGame(options: CreateGameOptions = {}): GameState {
   return {
     phase: 'waiting',
+    streetIndex: PREFLOP,
     seatCount: options.seatCount ?? 10,
     players: [],
     communityCards: [],
     deck: [],
+    burned: [],
     pot: 0,
     currentBet: 0,
     minRaise: options.bigBlind ?? 20,
@@ -38,7 +41,7 @@ export function createGame(options: CreateGameOptions = {}): GameState {
     turnPlayerId: null,
     smallBlind: options.smallBlind ?? 10,
     bigBlind: options.bigBlind ?? 20,
-    ruleSet: options.ruleSet ?? STANDARD_RULESET,
+    variant: options.variant ?? STANDARD_VARIANT,
     summary: null,
   };
 }
@@ -132,10 +135,16 @@ export function validate(state: GameState, action: Action): RejectedAction | nul
       return byId(state, action.playerId) ? null : { reason: '着席していない' };
 
     case 'startHand': {
-      if (state.phase !== 'waiting' && state.phase !== 'showdown') {
-        return { reason: 'ハンドの進行中' };
+      if (state.phase === 'betting') return { reason: 'ハンドの進行中' };
+      const players = eligibleForNextHand(state).length;
+      if (players < 2) return { reason: '参加者が2人未満' };
+
+      // 配り始めてから山札が尽きるより、始める前に弾く。
+      const need = requiredCards(state.variant.structure, players);
+      const have = buildDeck(state.variant.deck).length;
+      if (have < need) {
+        return { reason: `${players}人で遊ぶには${need}枚必要だが、デッキは${have}枚しかない` };
       }
-      if (eligibleForNextHand(state).length < 2) return { reason: '参加者が2人未満' };
       return null;
     }
 
@@ -220,7 +229,7 @@ function applySit(
     allIn: false,
     hasActed: false,
     // ハンド進行中に座った人は現ハンドには混ぜず、次のハンドから参加させる。
-    waiting: state.phase !== 'waiting' && state.phase !== 'showdown',
+    waiting: state.phase === 'betting',
     away: false,
     leaving: false,
   };
@@ -267,7 +276,7 @@ function applySetAway(state: GameState, playerId: string, away: boolean): GameSt
 // ハンドの開始
 // ============================================================
 
-/** 次のハンドに参加できるプレイヤー（席順）。 */
+/** 次のハンドに参加できるプレイヤー。 */
 function eligibleForNextHand(state: GameState): Player[] {
   return state.players.filter((p) => !p.leaving && !p.away && p.chips > 0);
 }
@@ -301,19 +310,18 @@ function startHand(state: GameState, seed: number): GameState {
     waiting: false,
   }));
 
-  // 配牌は SB から時計回りに1枚ずつ2周。実際の配り方と同じ順序にしておくと、
-  // seed からハンドを再現したときに現実の進行と一致する。
+  // 配牌は SB から時計回りに1枚ずつ、手札の枚数ぶん周回する。実際の配り方と
+  // 同じ順序にしておくと、seed からハンドを再現したときに現実の進行と一致する。
   const dealOrder = orderClockwise(seats, blinds.smallBlindSeat, state.seatCount);
-  let deck = shuffle(buildDeck(state.ruleSet.deck), seed);
+  const deck = shuffle(buildDeck(state.variant.deck), seed);
   const hole = new Map<number, Card[]>(dealOrder.map((seat) => [seat, []]));
   let cursor = 0;
-  for (let round = 0; round < 2; round++) {
+  for (let round = 0; round < state.variant.structure.holeCards; round++) {
     for (const seat of dealOrder) {
       hole.get(seat)!.push(deck[cursor]!);
       cursor++;
     }
   }
-  deck = deck.slice(cursor);
 
   let players = fresh.map<Player>((p) =>
     p.inHand ? { ...p, holeCards: hole.get(p.seat) ?? [] } : p,
@@ -327,10 +335,12 @@ function startHand(state: GameState, seed: number): GameState {
 
   const started: GameState = {
     ...state,
-    phase: 'preflop',
+    phase: 'betting',
+    streetIndex: PREFLOP,
     players,
     communityCards: [],
-    deck,
+    deck: deck.slice(cursor),
+    burned: [],
     pot: totalCommitted(players),
     // ショートオールインでブラインドを払いきれなくても、コール額はブラインドのまま。
     currentBet: state.bigBlind,
@@ -341,7 +351,7 @@ function startHand(state: GameState, seed: number): GameState {
   };
 
   // ブラインドで全員オールインになった場合など、誰も行動できなければ
-  // assignTurn がそのまま次のフェーズへ送る。
+  // assignTurn がそのまま次のストリートへ送る。
   return assignTurn(started, blinds.firstToActSeat);
 }
 
@@ -417,7 +427,7 @@ function afterAction(state: GameState, actedSeat: number): GameState {
  * fromSeat（含む）から時計回りに手番を決める。進行の判断はすべてここに集約する。
  *
  * 1. 残り1人ならその場で決着
- * 2. ラウンドが閉じていれば次のフェーズへ
+ * 2. ラウンドが閉じていれば次のストリートへ
  * 3. 行動すべき人が離席中なら自動フォールドして次を探す
  *
  * 3 が重要。離席した「瞬間」に手番だった場合だけを拾っても足りない。
@@ -430,10 +440,10 @@ function assignTurn(state: GameState, fromSeat: number): GameState {
 
   for (;;) {
     if (contenders(current).length <= 1) return settle(current);
-    if (roundComplete(current)) return advancePhase(current);
+    if (roundComplete(current)) return advanceStreet(current);
 
     const candidate = nextActorFrom(current, seat);
-    if (!candidate) return advancePhase(current);
+    if (!candidate) return advanceStreet(current);
     if (!candidate.away) return { ...current, turnPlayerId: candidate.id };
 
     current = withPot(
@@ -465,39 +475,33 @@ function nextActorFrom(state: GameState, fromSeat: number): Player | undefined {
 }
 
 // ============================================================
-// フェーズの進行
+// ストリートの進行
 // ============================================================
 
-const NEXT_PHASE: Record<Phase, Phase> = {
-  waiting: 'preflop',
-  preflop: 'flop',
-  flop: 'turn',
-  turn: 'river',
-  river: 'showdown',
-  showdown: 'showdown',
-};
-
-const CARDS_DEALT: Partial<Record<Phase, number>> = { flop: 3, turn: 1, river: 1 };
-
 /**
- * 次のフェーズへ進む。
+ * 次のストリートへ進む。
  *
- * 行動できるプレイヤーが1人以下になったら（全員オールインなど）ベッティングは
- * 成立しないので、残りのコミュニティカードを配り切ってショーダウンまで進める。
+ * ストリートの名前も枚数もエンジンは持たない。Variant の structure.streets を
+ * 順に消化していくだけなので、フロップ6枚でも、カードを開かないラウンドでも、
+ * 場の無いドロー系でも同じコードで動く。
  *
- * なお実際のポーカーで各ストリートの前に1枚焼く「バーンカード」は省いている。
- * 結果の確率分布に影響がなく、山札の枚数計算を無駄に複雑にするだけなので。
+ * バーンカードは山札から落として burned に積む。結果の確率分布は変わらないが、
+ * 1ハンドで消える枚数が変わるので、ルールとして指定できる必要がある。
  */
-function advancePhase(state: GameState): GameState {
-  const phase = NEXT_PHASE[state.phase];
-  if (phase === 'showdown') return settle(state);
+function advanceStreet(state: GameState): GameState {
+  const streets = state.variant.structure.streets;
+  const nextIndex = state.streetIndex + 1;
+  if (nextIndex >= streets.length) return settle(state);
 
-  const count = CARDS_DEALT[phase] ?? 0;
+  const street = streets[nextIndex]!;
+  const burn = street.burn ?? 0;
+
   const opened: GameState = {
     ...state,
-    phase,
-    communityCards: [...state.communityCards, ...state.deck.slice(0, count)],
-    deck: state.deck.slice(count),
+    streetIndex: nextIndex,
+    burned: [...state.burned, ...state.deck.slice(0, burn)],
+    communityCards: [...state.communityCards, ...state.deck.slice(burn, burn + street.cards)],
+    deck: state.deck.slice(burn + street.cards),
     currentBet: 0,
     minRaise: state.bigBlind,
     turnPlayerId: null,
@@ -505,7 +509,7 @@ function advancePhase(state: GameState): GameState {
   };
 
   // 行動できるのが1人以下ならベッティングは成立しない。次のストリートへ。
-  if (canActPlayers(opened).length <= 1) return advancePhase(opened);
+  if (canActPlayers(opened).length <= 1) return advanceStreet(opened);
 
   // フロップ以降はディーラーの次から。ヘッズアップならそれが BB になり、これも正しい。
   return assignTurn(opened, (opened.dealerSeat + 1) % opened.seatCount);
@@ -524,7 +528,8 @@ function settle(state: GameState): GameState {
 
   if (live.length > 1) {
     for (const player of live) {
-      const result = evaluateHand([...player.holeCards, ...state.communityCards], state.ruleSet);
+      // 使用枚数の制約は evaluateHand が見る。オマハなら手札2枚＋場3枚に限られる。
+      const result = evaluateHand(player.holeCards, state.communityCards, state.variant);
       if (result) hands.set(player.id, result);
     }
     revealed = live

@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react';
-import { type Action, findPreset, validate } from '@wildcard/engine';
+import { type Action, findVariant, validate } from '@wildcard/engine';
 import { LocalTransport } from '../transport/local.js';
 import { useTable } from '../hooks/useTable.js';
 import { PassDeviceGate } from '../components/PassDeviceGate.js';
@@ -10,7 +10,7 @@ export interface HotSeatSettings {
   readonly chips: number;
   readonly smallBlind: number;
   readonly bigBlind: number;
-  readonly ruleSetId: string;
+  readonly variantId: string;
 }
 
 interface HotSeatTableProps {
@@ -36,12 +36,12 @@ export function HotSeatTable({ settings, onExit }: HotSeatTableProps) {
       chips: settings.chips,
     }));
 
-    const ruleSet = findPreset(settings.ruleSetId);
+    const variant = findVariant(settings.variantId);
     return new LocalTransport({
       seatCount,
       smallBlind: settings.smallBlind,
       bigBlind: settings.bigBlind,
-      ...(ruleSet ? { ruleSet } : {}),
+      ...(variant ? { variant } : {}),
       viewer: { kind: 'followTurn' },
       setup,
     });
@@ -90,7 +90,7 @@ export function HotSeatTable({ settings, onExit }: HotSeatTableProps) {
       onStartHand={startHand}
       startRejection={startRejection}
       banner={null}
-      ruleSetId={settings.ruleSetId}
+      variantId={settings.variantId}
     />
   );
 }

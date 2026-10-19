@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { type Action, type HandRecord, findPreset, validate } from '@wildcard/engine';
+import { type Action, type HandRecord, findVariant, validate } from '@wildcard/engine';
 import { FairnessPanel } from '../components/FairnessPanel.js';
 import { TableView } from '../components/TableView.js';
 import { useTable } from '../hooks/useTable.js';
@@ -18,7 +18,7 @@ export interface OnlineSettings {
   readonly bigBlind: number;
   /** host のとき、自分も席に着くか。false なら中立のディーラー。 */
   readonly hostPlays: boolean;
-  readonly ruleSetId: string;
+  readonly variantId: string;
 }
 
 interface OnlineTableProps {
@@ -31,7 +31,7 @@ export function OnlineTable({ settings, onExit }: OnlineTableProps) {
     const link = createPeerLink({ role: settings.role });
 
     if (settings.role === 'host') {
-      const ruleSet = findPreset(settings.ruleSetId);
+      const variant = findVariant(settings.variantId);
       return new HostTransport({
         link,
         roomCode: settings.roomCode,
@@ -41,7 +41,7 @@ export function OnlineTable({ settings, onExit }: OnlineTableProps) {
         seatCount: 10,
         smallBlind: settings.smallBlind,
         bigBlind: settings.bigBlind,
-        ...(ruleSet ? { ruleSet } : {}),
+        ...(variant ? { variant } : {}),
       });
     }
 
@@ -134,7 +134,7 @@ export function OnlineTable({ settings, onExit }: OnlineTableProps) {
           </div>
         </>
       }
-      ruleSetId={snapshot.state.ruleSet.id}
+      variantId={snapshot.state.variant.id}
     />
   );
 }

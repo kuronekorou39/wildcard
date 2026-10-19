@@ -111,7 +111,7 @@ describe('秘匿（人ごとに違う状態を送る）', () => {
 
     for (const guest of guests) {
       const { state, viewerId } = guest.transport.snapshot();
-      expect(state.phase).toBe('preflop');
+      expect(state.phase).toBe('betting');
       for (const player of state.players) {
         if (player.id === viewerId) {
           expect(player.holeCards, `${player.name} は自分`).toHaveLength(2);
@@ -322,7 +322,7 @@ describe('進行', () => {
     const { host, guests } = await setupTable(['あかり', 'ばしょう']);
     host.dispatch({ type: 'startHand', seed: 1 });
 
-    expect(guests[0]!.transport.snapshot().state.phase).toBe('preflop');
+    expect(guests[0]!.transport.snapshot().state.phase).toBe('betting');
     expect(guests[0]!.transport.snapshot().state.pot).toBe(30);
     expect(guests[1]!.transport.snapshot().state.turnPlayerId).toBe(
       host.rawState().turnPlayerId,

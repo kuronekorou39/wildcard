@@ -9,7 +9,7 @@ import {
 } from '../src/fair/commit.js';
 import { type HandRecord, summarize, verifyAll, verifyHand } from '../src/fair/verify.js';
 import { buildDeck, shuffle } from '../src/deck.js';
-import { STANDARD_RULESET } from '../src/rules/presets.js';
+import { STANDARD_VARIANT } from '../src/rules/presets.js';
 
 const nonces: NonceEntry[] = [
   { playerId: 'b', nonce: 'bbbb' },
@@ -73,7 +73,7 @@ describe('コミットと seed の導出', () => {
     // 検証が成立する根拠。エンジンが乱数を持たず seed を外から受けているから、
     // 公開された秘密から配牌を丸ごと再現して突き合わせられる。
     const { seed } = await deriveSeed('secret', nonces);
-    const deck = buildDeck(STANDARD_RULESET.deck);
+    const deck = buildDeck(STANDARD_VARIANT.deck);
     expect(shuffle(deck, seed)).toEqual(shuffle(deck, seed));
   });
 });

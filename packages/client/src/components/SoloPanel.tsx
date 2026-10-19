@@ -8,7 +8,7 @@ export function SoloPanel({ onStart }: { readonly onStart: (settings: SoloSettin
   const [chips, setChips] = useState(1000);
   const [smallBlind, setSmallBlind] = useState(10);
   const [bigBlind, setBigBlind] = useState(20);
-  const [ruleSetId, setRuleSetId] = useState('standard');
+  const [variantId, setVariantId] = useState('standard');
   const [aggression, setAggression] = useState(0.5);
 
   const blindsOk = smallBlind > 0 && bigBlind >= smallBlind && chips >= bigBlind;
@@ -93,14 +93,14 @@ export function SoloPanel({ onStart }: { readonly onStart: (settings: SoloSettin
         </p>
       )}
 
-      <RulePicker value={ruleSetId} onChange={setRuleSetId} />
+      <RulePicker value={variantId} onChange={setVariantId} />
 
       <button
         type="button"
         className="btn btn-primary btn-large btn-block"
         disabled={!blindsOk}
         onClick={() =>
-          onStart({ name, opponents, chips, smallBlind, bigBlind, ruleSetId, aggression })
+          onStart({ name, opponents, chips, smallBlind, bigBlind, variantId, aggression })
         }
       >
         はじめる
