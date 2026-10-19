@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { describePattern, exampleHand, exampleHands } from '../src/rules/example.js';
+import {
+  describePattern,
+  describeWilds,
+  exampleHand,
+  exampleHands,
+} from '../src/rules/example.js';
 import { evaluateExact } from '../src/rules/evaluate.js';
 import { STANDARD_VARIANT } from '../src/rules/presets.js';
 import { VARIANT_PRESETS, activeRankings } from '../src/rules/variants.js';
@@ -99,6 +104,72 @@ describe('例はデッキに実在する札で作られる', () => {
         expect(['2', '3', '4', '5']).not.toContain(card.rank);
       }
     }
+  });
+});
+
+describe('例は読みやすい並びになっている', () => {
+  const ranksOf = (variant: Variant, hand: readonly { rank: string }[]) =>
+    hand.map((c) => variant.deck.ranks.indexOf(c.rank as never));
+
+  it('同じ条件が続く区間はランク順に並ぶ', () => {
+    // 2♥ J♣ K♣ 5♣ 3♥ のように散らばると、何が条件を満たしているのか
+    // 目で追えない。素数ストレートは5枚すべて同じ条件なので全体が昇順になる。
+    const prime = VARIANT_PRESETS.find((v) => v.id === 'prime')!;
+    const hand = assertExactly(prime, 'prime');
+    const values = ranksOf(prime, hand);
+    expect(values).toEqual([...values].sort((a, b) => a - b));
+  });
+
+  it('フラッシュの例もランク順に並ぶ', () => {
+    const hand = assertExactly(STANDARD_VARIANT, 'flush');
+    const values = ranksOf(STANDARD_VARIANT, hand);
+    expect(values).toEqual([...values].sort((a, b) => a - b));
+  });
+
+  it('フルハウスは3枚組が先（条件の順を崩さない）', () => {
+    // この並び自体が役の説明になっているので、ランクで一律に
+    // 並べ替えてはいけない。
+    const hand = assertExactly(STANDARD_VARIANT, 'full_house');
+    expect(hand[0]!.rank).toBe(hand[1]!.rank);
+    expect(hand[1]!.rank).toBe(hand[2]!.rank);
+    expect(hand[3]!.rank).toBe(hand[4]!.rank);
+    expect(hand[0]!.rank).not.toBe(hand[3]!.rank);
+  });
+
+  it('条件を満たす札が先、キッカーが後', () => {
+    const hand = assertExactly(STANDARD_VARIANT, 'one_pair');
+    expect(hand[0]!.rank).toBe(hand[1]!.rank);
+    for (const card of hand.slice(2)) expect(card.rank).not.toBe(hand[0]!.rank);
+  });
+
+  it('ストレートは下から上へ並ぶ', () => {
+    const hand = assertExactly(STANDARD_VARIANT, 'straight');
+    const values = ranksOf(STANDARD_VARIANT, hand);
+    expect(values).toEqual([...values].sort((a, b) => a - b));
+  });
+
+  it('ストレートの例がフラッシュに見えない', () => {
+    // 10♣ J♣ Q♥ K♣ A♦ のように同じスートが4枚あると、
+    // 何の役の例を見ているのか分からなくなる。
+    for (const id of ['straight', 'three_of_a_kind', 'two_pair']) {
+      const hand = assertExactly(STANDARD_VARIANT, id);
+      const bySuit = new Map<string, number>();
+      for (const c of hand) bySuit.set(c.suit, (bySuit.get(c.suit) ?? 0) + 1);
+      expect(Math.max(...bySuit.values()), id).toBeLessThanOrEqual(2);
+    }
+  });
+
+  it('同じスートが要る役では散らさない', () => {
+    // 散らすのは「スートが結果に関わらない役」だけ。
+    const hand = assertExactly(STANDARD_VARIANT, 'flush');
+    expect(new Set(hand.map((c) => c.suit)).size).toBe(1);
+  });
+
+  it('ワイルドは並びの後ろに回る', () => {
+    // ランクが飾りなので、並べる材料にならない。
+    const joker = VARIANT_PRESETS.find((v) => v.id === 'joker-wild')!;
+    const hand = assertExactly(joker, 'five_of_a_kind');
+    expect(isWild(hand[hand.length - 1]!, joker)).toBe(true);
   });
 });
 
@@ -222,5 +293,37 @@ describe('条件を日本語にする', () => {
     const house = VARIANT_PRESETS.find((v) => v.id === 'house-hands')!;
     expect(describeOf(house, 'pair_plus_run')).toBe('同じランクが2枚、連続する3枚');
     expect(describeOf(house, 'mini_straight')).toBe('連続する3枚');
+  });
+});
+
+describe('ワイルドの指定を日本語にする', () => {
+  const describe_ = (id: string) => describeWilds(VARIANT_PRESETS.find((v) => v.id === id)!);
+
+  it('ワイルドが無ければ null', () => {
+    expect(describeWilds(STANDARD_VARIANT)).toBeNull();
+  });
+
+  it('ジョーカー', () => {
+    expect(describe_('joker-wild')).toBe('ジョーカーがワイルド');
+  });
+
+  it('ランク指定', () => {
+    expect(describe_('deuces-wild')).toBe('2がワイルド');
+  });
+
+  it('カード指定はスート名で書く', () => {
+    // ♠ ♥ の記号はエンジンの責任ではない（読み上げにも使う）。
+    expect(describe_('one-eyed-jacks')).toBe('スペードのJ・ハートのJがワイルド');
+  });
+
+  it('化ける先の制限を書く', () => {
+    const limited: Variant = {
+      ...STANDARD_VARIANT,
+      ranking: {
+        ...STANDARD_VARIANT.ranking,
+        wilds: [{ cards: { kind: 'joker' }, becomes: { suits: ['spades'] } }],
+      },
+    };
+    expect(describeWilds(limited)).toBe('ジョーカー（スペードにのみ化ける）がワイルド');
   });
 });

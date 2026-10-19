@@ -1,8 +1,8 @@
 import type { Card, HandPattern, Rank, Suit, Variant } from '../types.js';
 import { buildDeck, cardKey, rankValue } from '../deck.js';
 import { createRng } from '../rng.js';
-import { evaluateExact } from './evaluate.js';
-import { hasWilds, isWild } from './wild.js';
+import { type HandResult, evaluateExact } from './evaluate.js';
+import { hasWilds, isWild, patternUsesSuits } from './wild.js';
 
 /**
  * 役の「具体例」を作る。
@@ -57,7 +57,7 @@ export function exampleHand(
 
     // 生成側では「成立するか」を判断しない。本物の評価に聞く。
     const result = evaluateExact(hand, variant);
-    if (result?.rankingId === rankingId) return hand;
+    if (result?.rankingId === rankingId) return arrange(hand, ranking.pattern, variant);
   }
   return null;
 }
@@ -159,6 +159,12 @@ function buildCandidate(
   const sameSuit = pattern.global.some((g) => g.type === 'allSameSuit');
   const lockedSuit = sameSuit ? pick(suits, rng) : undefined;
 
+  // スートが結果に関わらない役では、散らしたほうが読みやすい。
+  // ストレートの例が 10♣ J♣ Q♥ K♣ A♦ だと、フラッシュに見えてしまう。
+  // 逆に「同じスートが3枚以上」のような条件がある役で散らすと
+  // 成立しなくなるので、スートを見る役では触らない。
+  const spreadSuits = !patternUsesSuits(pattern);
+
   const used = new Map<string, number>();
   const take = (card: Card): boolean => {
     const key = cardKey(card);
@@ -204,7 +210,11 @@ function buildCandidate(
     }
     if (rankOrder.length === 0) return null;
 
-    const suitOrder = lockedSuit !== undefined ? [lockedSuit] : rotate(allowedSuits, rng);
+    let suitOrder = lockedSuit !== undefined ? [lockedSuit] : rotate(allowedSuits, rng);
+    if (spreadSuits && lockedSuit === undefined) {
+      const taken = new Set(hand.map((c) => c.suit));
+      suitOrder = [...suitOrder].sort((a, b) => Number(taken.has(a)) - Number(taken.has(b)));
+    }
     const card = rankOrder.flatMap((rank) => suitOrder.map((suit) => ({ rank, suit }))).find(take);
     if (card) {
       hand.push(card);
@@ -220,16 +230,11 @@ function buildCandidate(
 
   // 残りはキッカー。役を強くしてしまわないよう、
   // 同じランクや同じスートが重ならないものを優先する。
-  const fillers = fillerCandidates(variant, hand, available, used);
   while (hand.length < handSize) {
-    const card = pick(fillers, rng);
-    if (card === undefined) return null;
-    if (!take(card)) {
-      // もう取れない札。候補から外して続ける。
-      const i = fillers.indexOf(card);
-      if (i >= 0) fillers.splice(i, 1);
-      continue;
-    }
+    // 1枚引くごとに選び直す。最初に一度だけ並べると、引くほど偏って
+    // ハイカードの例が 7♥ 2♠ 3♠ 4♠ 10♠ のようになる。
+    const card = pickFiller(variant, hand, available, used, rng);
+    if (card === undefined || !take(card)) return null;
     hand.push(card);
   }
 
@@ -237,44 +242,132 @@ function buildCandidate(
 }
 
 /**
- * キッカーの候補。
+ * 読みやすい並びに直す。
+ *
+ * 生成した順のままだと `2♥ J♣ K♣ 5♣ 3♥` のように散らばって、
+ * 何が条件を満たしているのか目で追えない。
+ *
+ * **条件の順は崩さない。** フルハウスは3枚組→2枚組の順で並んでいて、
+ * その並び自体が役の説明になっている。ランクで一律に並べ替えると
+ * それが消えるので、**同じ条件が続いている区間の中だけ**で並べ替える。
+ * 条件を満たす札が先、キッカーが後、という関係もそのまま保つ。
+ */
+function arrange(hand: readonly Card[], pattern: HandPattern, variant: Variant): Card[] {
+  const specOf = (i: number): string => JSON.stringify(pattern.cards[i]);
+
+  // 同じ条件が続く区間の区切り。[0, 3, 5] のような境界の列になる。
+  const bounds: number[] = [0];
+  for (let i = 1; i < pattern.cards.length; i++) {
+    if (specOf(i) !== specOf(i - 1)) bounds.push(i);
+  }
+  bounds.push(pattern.cards.length);
+  if (pattern.cards.length < hand.length) bounds.push(hand.length); // キッカーの区間
+
+  const byRank = (a: Card, b: Card): number => {
+    // ワイルドのランクは飾りなので、並べる材料にならない。後ろへ送る。
+    const aw = isWild(a, variant) ? 1 : 0;
+    const bw = isWild(b, variant) ? 1 : 0;
+    if (aw !== bw) return aw - bw;
+    return rankValue(a.rank, variant.deck) - rankValue(b.rank, variant.deck);
+  };
+
+  const out: Card[] = [];
+  for (let i = 0; i + 1 < bounds.length; i++) {
+    out.push(...hand.slice(bounds[i]!, bounds[i + 1]!).sort(byRank));
+  }
+  return out;
+}
+
+/**
+ * キッカーを1枚選ぶ。
  *
  * 適当に埋めると、たまたまペアやフラッシュになって「もっと強い役」に
- * なってしまい、やり直しが増える。最初から当たりにくい札を選んでおく。
+ * なってしまい、やり直しが増える。いま手にある札と最も噛み合わない
+ * ものだけを候補にして、その中から引く。
  */
-function fillerCandidates(
+function pickFiller(
   variant: Variant,
   hand: readonly Card[],
   available: ReadonlyMap<string, number>,
   used: ReadonlyMap<string, number>,
-): Card[] {
+  rng: () => number,
+): Card | undefined {
   const { ranks, suits } = variant.deck;
   const usedRanks = new Set(hand.map((c) => c.rank));
-  const usedSuits = new Set(hand.map((c) => c.suit));
+  const suitCounts = new Map<Suit, number>();
+  for (const card of hand) suitCounts.set(card.suit, (suitCounts.get(card.suit) ?? 0) + 1);
 
-  const all: Card[] = [];
+  /** 手札と噛み合いにくいほど小さい。 */
+  const score = (card: Card): number => {
+    let n = 0;
+    if (usedRanks.has(card.rank)) n += 8; // ペアを作ってしまう
+    n += (suitCounts.get(card.suit) ?? 0) * 2; // 同じスートが増えるとフラッシュに寄る
+    const near = hand.some(
+      (c) => Math.abs(rankValue(c.rank, variant.deck) - rankValue(card.rank, variant.deck)) <= 2,
+    );
+    if (near) n += 3; // ストレートに寄る
+    return n;
+  };
+
+  let best = Number.POSITIVE_INFINITY;
+  let tied: Card[] = [];
   for (const rank of ranks) {
     for (const suit of suits) {
       const card = { rank, suit };
       const key = cardKey(card);
       if ((used.get(key) ?? 0) >= (available.get(key) ?? 0)) continue;
-      all.push(card);
+
+      const n = score(card);
+      if (n < best) {
+        best = n;
+        tied = [card];
+      } else if (n === best) {
+        tied.push(card);
+      }
     }
   }
+  return pick(tied, rng);
+}
 
-  /** 手札と噛み合いにくいほど良い。 */
-  const score = (card: Card): number => {
-    let n = 0;
-    if (usedRanks.has(card.rank)) n += 4; // ペアを作ってしまう
-    if (usedSuits.size < suits.length && usedSuits.has(card.suit)) n += 1; // フラッシュに寄る
-    const near = hand.some(
-      (c) => Math.abs(rankValue(c.rank, variant.deck) - rankValue(card.rank, variant.deck)) <= 2,
-    );
-    if (near) n += 2; // ストレートに寄る
-    return n;
-  };
+// ============================================================
+// ワイルドが何に化けたか
+// ============================================================
 
-  return all.sort((a, b) => score(a) - score(b)).slice(0, 12);
+export interface WildResolution {
+  /** 手の中の位置。 */
+  readonly index: number;
+  /** 引いた札そのもの（ジョーカー、ワイルド指定のランクなど）。 */
+  readonly card: Card;
+  /** その札が化けた先。 */
+  readonly becomes: Card;
+  /**
+   * その役でスートに意味があるか。false なら becomes のスートは
+   * 便宜的に決めただけなので、画面にはランクだけ出すべき。
+   */
+  readonly suitMatters: boolean;
+}
+
+/**
+ * 評価結果から「このジョーカーは K♠ になった」を取り出す。
+ *
+ * ワイルドを含む手は、札を見ただけでは何の役か読めない。
+ * 「J J J 2 2 がファイブカード」と言われても、2 がワイルドで J に
+ * なったことが見えないと納得できない。
+ */
+export function wildResolutions(result: HandResult, variant: Variant): WildResolution[] {
+  if (!hasWilds(variant)) return [];
+  const ranking = variant.ranking.hands.find((h) => h.id === result.rankingId);
+  const suitMatters = ranking ? patternUsesSuits(ranking.pattern) : true;
+
+  const out: WildResolution[] = [];
+  for (const [index, card] of result.cards.entries()) {
+    if (!isWild(card, variant)) continue;
+    const becomes = result.resolved[index];
+    // 置き換えが無い（その役がワイルドを使わなかった）なら出さない。
+    if (!becomes || cardKey(becomes) === cardKey(card)) continue;
+    out.push({ index, card, becomes, suitMatters });
+  }
+  return out;
 }
 
 // ============================================================
@@ -350,6 +443,37 @@ export function describePattern(pattern: HandPattern): string {
   }
 
   return parts.length > 0 ? parts.join('、') : '条件なし';
+}
+
+/**
+ * ワイルドの指定を一文にする。ワイルドが無ければ null。
+ *
+ * 順位表に「デッキ 53枚」とだけ出ていても、その1枚が何なのか分からない。
+ */
+export function describeWilds(variant: Variant): string | null {
+  const rules = variant.ranking.wilds ?? [];
+  if (rules.length === 0) return null;
+
+  const parts = rules.map((rule) => {
+    const selector = rule.cards;
+    const target =
+      selector.kind === 'joker'
+        ? 'ジョーカー'
+        : selector.kind === 'rank'
+          ? selector.ranks.join('・')
+          : selector.cards.map((c) => `${SUIT_NAME[c.suit]}の${c.rank}`).join('・');
+
+    // 化ける先に制限があるなら書く。無制限のほうが普通なので、
+    // 何も書かなければ「何にでも化ける」の意味になる。
+    const becomes = rule.becomes;
+    const limits: string[] = [];
+    if (becomes?.ranks) limits.push(becomes.ranks.join('・'));
+    if (becomes?.suits) limits.push(describeSuits(becomes.suits));
+
+    return limits.length > 0 ? `${target}（${limits.join(' / ')}にのみ化ける）` : target;
+  });
+
+  return `${parts.join('、')}がワイルド`;
 }
 
 /** スートの一覧を日本語にする。 */

@@ -869,6 +869,55 @@ button {
   font-size: 0.8em;
 }
 
+.rule-sheet-wilds {
+  color: var(--gold);
+}
+
+.rule-row {
+  margin-bottom: 8px;
+}
+
+.rule-row-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+  line-height: 1.4;
+}
+
+.rule-row-name {
+  font-weight: 700;
+}
+
+.rule-row-pattern {
+  color: var(--text-dim);
+  font-size: 0.72rem;
+}
+
+.rule-row-example {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.rule-row-cards {
+  display: flex;
+  gap: 3px;
+}
+
+.rule-row-wilds {
+  color: var(--gold);
+  font-size: 0.7rem;
+}
+
+.rule-row-example-none {
+  margin: 4px 0 0;
+  color: var(--text-dim);
+  font-size: 0.72rem;
+}
+
 .range {
   width: 100%;
   accent-color: var(--accent);

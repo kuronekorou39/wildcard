@@ -8,8 +8,14 @@ export interface HandResult {
   readonly rankingName: string;
   /** Variant.ranking.hands 内の位置。**小さいほど強い**。 */
   readonly rankingIndex: number;
-  /** 実際に使った札。 */
+  /** 実際に使った札。ワイルドは引いたままの姿で入っている。 */
   readonly cards: readonly Card[];
+  /**
+   * ワイルドを置き換えたあとの札。cards と同じ並び・同じ長さなので、
+   * `cards[i]` がワイルドなら `resolved[i]` が化けた先。
+   * ワイルドが無ければ cards と同じものを指す。
+   */
+  readonly resolved: readonly Card[];
   readonly matched: readonly Card[];
   readonly kickers: readonly Card[];
   readonly tiebreak: readonly number[];
@@ -82,6 +88,9 @@ export function evaluateExact(cards: readonly Card[], variant: Variant): HandRes
     if (!ranking.enabled) continue;
 
     let best: PatternMatch | null = null;
+    // 画面に「このジョーカーは K♠ になった」と出せるよう、
+    // 採用した置き換えも覚えておく。
+    let resolved: readonly Card[] = cards;
 
     if (wildAt.length === 0) {
       best = matchPattern(cards, ranking.pattern, variant.deck);
@@ -95,6 +104,7 @@ export function evaluateExact(cards: readonly Card[], variant: Variant): HandRes
         const match = matchPattern(substituted, ranking.pattern, variant.deck);
         if (match && (best === null || compareTiebreak(match.tiebreak, best.tiebreak) > 0)) {
           best = match;
+          resolved = substituted;
         }
       }
     }
@@ -108,6 +118,7 @@ export function evaluateExact(cards: readonly Card[], variant: Variant): HandRes
       rankingIndex: i,
       // 画面には引いた札をそのまま出したいので、置き換え前を返す。
       cards,
+      resolved,
       matched: best.matched,
       kickers: best.kickers,
       tiebreak: best.tiebreak,

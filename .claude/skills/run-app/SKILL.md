@@ -47,6 +47,19 @@ cd packages/client && node scripts/drive.mjs
 - `WILDCARD_SHOTS` … スクリーンショットの出力先（既定 `shots/`）
 - `WILDCARD_BROWSER` … 使う Chromium の実行ファイルパス
 
+## 2b. 役の順位表を見る
+
+```bash
+cd packages/client && node scripts/drive-rules.mjs
+```
+
+ルールを切り替えながら順位表を開き、各役の**例の札を aria-label で読み上げて**
+出し、`shots/rules-N.png` を残す。例の生成はエンジン側でテストしてあるが、
+「読めるか」は画面を見ないと分からない（→ docs/variants.md 段階4）。
+
+`WILDCARD_VARIANTS` に `,` 区切りで**画面に出ている名前のまま**渡す
+（`ショートデッキ（6+）` のように括弧まで含める）。
+
 ## 3. 終わったらサーバーを止める
 
 `pkill` ではこの環境の Vite を落としきれないことがある。PowerShell で確実に止める。

@@ -101,8 +101,14 @@ function rankCandidates(pattern: HandPattern, allRanks: readonly Rank[]): Rank[]
   return [...out];
 }
 
-/** その役がスートを見るか。見ないならスートは1つに固定してよい。 */
-function usesSuits(pattern: HandPattern): boolean {
+/**
+ * その役がスートを見るか。見ないならスートは1つに固定してよい。
+ *
+ * 画面でも効く。フォーカードで「JOKER→8♠」と出すと、手の中に本物の
+ * 8♠ が居るときに嘘を言っているように見える。スートに意味が無い役では
+ * ランクだけ書けばよい。
+ */
+export function patternUsesSuits(pattern: HandPattern): boolean {
   if (pattern.cards.some((cond) => cond.suits.length > 0)) return true;
   return pattern.global.some(
     (g) => g.type === 'allSameSuit' || g.type === 'allDifferentSuit' || g.type === 'suitCount',
@@ -143,7 +149,7 @@ export function substitutionsForPattern(
   const suitChoices: Suit[][] = sameSuit
     ? [variant.deck.suits.filter((s) => allowed.every((a) => a.suits.includes(s)))]
     : allowed.map((a) =>
-        usesSuits(pattern) ? [...a.suits] : [bestSuit(variant, a.suits)],
+        patternUsesSuits(pattern) ? [...a.suits] : [bestSuit(variant, a.suits)],
       );
 
   const perWildRanks = allowed.map((a) => ranks.filter((r) => a.ranks.includes(r)));

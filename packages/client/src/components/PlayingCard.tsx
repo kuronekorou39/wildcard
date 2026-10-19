@@ -9,6 +9,10 @@ const SUIT_GLYPH: Record<Suit, string> = {
 
 const RED_SUITS: ReadonlySet<Suit> = new Set<Suit>(['hearts', 'diamonds']);
 
+/** 札の呼び名。読み上げにも、文章の中に混ぜるときにも使う。 */
+export const cardLabel = (card: Card): string =>
+  card.joker !== undefined ? 'JOKER' : `${card.rank}${SUIT_GLYPH[card.suit]}`;
+
 export type CardSize = 'sm' | 'md' | 'lg';
 
 interface PlayingCardProps {
@@ -33,7 +37,7 @@ export function PlayingCard({ card, size = 'md', highlighted = false }: PlayingC
   // そのまま描くと実在の札に見えてしまうので、専用の見た目にする。
   if (card.joker !== undefined) {
     return (
-      <div className={[...classes, 'card-joker'].join(' ')} aria-label="JOKER">
+      <div className={[...classes, 'card-joker'].join(' ')} aria-label={cardLabel(card)}>
         <span className="card-rank">★</span>
         <span className="card-joker-label">JOKER</span>
       </div>
@@ -41,7 +45,7 @@ export function PlayingCard({ card, size = 'md', highlighted = false }: PlayingC
   }
 
   return (
-    <div className={classes.join(' ')} aria-label={`${card.rank}${SUIT_GLYPH[card.suit]}`}>
+    <div className={classes.join(' ')} aria-label={cardLabel(card)}>
       <span className="card-rank">{card.rank}</span>
       <span className="card-suit">{SUIT_GLYPH[card.suit]}</span>
     </div>

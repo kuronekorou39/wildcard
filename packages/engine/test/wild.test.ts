@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { buildDeck, cardKey, shuffle } from '../src/deck.js';
-import { compareHands, evaluateBest } from '../src/rules/evaluate.js';
+import { compareHands, evaluateBest, evaluateExact } from '../src/rules/evaluate.js';
 import { allSubstitutions, hasWilds, isWild } from '../src/rules/wild.js';
+import { wildResolutions } from '../src/rules/example.js';
 import { STANDARD_VARIANT } from '../src/rules/presets.js';
 import { DEUCES_WILD, JOKER_WILD, ONE_EYED_JACKS } from '../src/rules/variants.js';
 import { createGame, reduce } from '../src/game/reduce.js';
@@ -305,5 +306,66 @@ describe('役ごとの絞り込みは素朴な総当たりと一致する', () =
       if (five.some((c) => isWild(c, JOKER_WILD))) continue;
       expect(evaluateBest(five, JOKER_WILD)?.rankingId).toBe(reference(five, JOKER_WILD)?.rankingId);
     }
+  });
+});
+
+describe('ワイルドが何に化けたかを返す', () => {
+  it('置き換え後の手を resolved で返す', () => {
+    const result = evaluateExact(
+      [joker(), { rank: 'K', suit: 'spades' }, { rank: 'K', suit: 'hearts' }, { rank: 'K', suit: 'clubs' }, { rank: '3', suit: 'diamonds' }],
+      JOKER_WILD,
+    )!;
+    expect(result.rankingId).toBe('four_of_a_kind');
+    // 引いた札はそのまま。画面にジョーカーとして出すため。
+    expect(result.cards[0]!.joker).toBe(0);
+    // 化けた先は K。スートは役に影響しないのでどれでもよい。
+    expect(result.resolved[0]!.rank).toBe('K');
+    expect(result.resolved[0]!.joker).toBeUndefined();
+    expect(result.resolved).toHaveLength(result.cards.length);
+  });
+
+  it('ワイルドを使わない役では置き換えが出ない', () => {
+    const result = evaluateExact(
+      [
+        { rank: 'K', suit: 'spades' },
+        { rank: 'K', suit: 'hearts' },
+        { rank: '7', suit: 'clubs' },
+        { rank: '3', suit: 'diamonds' },
+        { rank: '9', suit: 'spades' },
+      ],
+      JOKER_WILD,
+    )!;
+    expect(wildResolutions(result, JOKER_WILD)).toEqual([]);
+  });
+
+  it('どの札がどれになったかを位置つきで返す', () => {
+    const result = evaluateExact(
+      [{ rank: 'J', suit: 'spades' }, { rank: 'J', suit: 'hearts' }, { rank: 'J', suit: 'clubs' }, { rank: '2', suit: 'spades' }, { rank: '2', suit: 'hearts' }],
+      DEUCES_WILD,
+    )!;
+    expect(result.rankingId).toBe('five_of_a_kind');
+
+    const resolutions = wildResolutions(result, DEUCES_WILD);
+    expect(resolutions).toHaveLength(2);
+    expect(resolutions.map((r) => r.index)).toEqual([3, 4]);
+    for (const r of resolutions) {
+      expect(r.card.rank).toBe('2');
+      expect(r.becomes.rank).toBe('J');
+    }
+  });
+
+  it('ワイルドの無いルールでは常に空', () => {
+    const result = evaluateExact(
+      [
+        { rank: 'K', suit: 'spades' },
+        { rank: 'K', suit: 'hearts' },
+        { rank: '7', suit: 'clubs' },
+        { rank: '3', suit: 'diamonds' },
+        { rank: '9', suit: 'spades' },
+      ],
+      STANDARD_VARIANT,
+    )!;
+    expect(wildResolutions(result, STANDARD_VARIANT)).toEqual([]);
+    expect(result.resolved).toBe(result.cards);
   });
 });
