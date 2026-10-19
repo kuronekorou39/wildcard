@@ -11,15 +11,29 @@
 
 | パッケージ | 内容 | 状態 |
 |---|---|---|
-| `packages/engine` | ゲームエンジン（純粋TS・依存ゼロ） | 着手 |
+| `packages/engine` | ゲームエンジン（純粋TS・依存ゼロ） | デッキと役評価は完了。進行の reduce が未実装 |
 | `packages/client` | React + Vite の卓UI | 未着手 |
 | `packages/server` | WebSocket アダプタ（段階1以降） | 未着手 |
+
+### 役評価について
+
+エンジンは「フラッシュ」「ストレート」といった概念を一切持たない。役の定義は
+すべて `RuleSet` というデータから読む。標準のテキサスホールデムも
+`STANDARD_RULESET` というプリセットに過ぎず、以下はすべてデータの差し替えで実現される。
+
+- 役の有効・無効の切り替えと順位の入れ替え
+- カードの強さ順の差し替え（A を最弱にする、2 を最強にする）
+- スート間の強弱（同ランクのタイブレーク）
+- カスタム役の追加（変数ランクで `X, X, Y, Y+1, Y+2` のように条件を書ける）
+- 変則デッキ（スートを減らす、ショートデッキ）
 
 ## 開発
 
 ```bash
 npm install
-npm test          # エンジンのテスト
+npm test          # エンジンのテスト（53件）
+npm run typecheck
+npm run bench --workspace @wildcard/engine   # 役評価の速度
 ```
 
 ## なぜ GitHub Pages で「対戦」ではないのか
