@@ -11,6 +11,7 @@
  *   WILDCARD_URL      既定 http://localhost:5173/
  *   WILDCARD_SHOTS    既定 shots-solo/
  *   WILDCARD_RULE     ルールのプリセット id（既定 standard）
+ *   WILDCARD_FOLD     1 にすると最初の手番で降りる（ラビットハントの確認用）
  *   WILDCARD_BROWSER  使う Chromium の実行ファイルパス
  */
 import { chromium } from 'playwright';
@@ -43,6 +44,7 @@ async function launch() {
 }
 
 const say = (m) => console.log(m);
+const flattenText = (t) => t.split(String.fromCharCode(10)).join(' ');
 
 const browser = await launch();
 const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
@@ -114,6 +116,12 @@ say(`席: ${await page.locator('.seat:not(.seat-empty)').count()}`);
 await page.getByRole('button', { name: 'ゲーム開始' }).click();
 await page.waitForTimeout(400);
 say(`自分の見えるカード: ${await page.locator('.seat-viewer .card:not(.card-back)').count()} 枚`);
+// 配りミスが起きていれば告知が出る。不具合に見えないようにするための表示。
+const misdeal = await page.locator('.banner-warn').count();
+if (misdeal > 0) {
+  say(`配りミス: ${flattenText(await page.locator('.banner-warn').innerText())}`);
+  say(`表になった相手の札: ${await page.locator('.seat:not(.seat-viewer) .card:not(.card-back)').count()} 枚`);
+}
 say(`CPU の裏向きカード: ${await page.locator('.seat:not(.seat-viewer) .card-back').count()} 枚`);
 await snap('preflop');
 
@@ -127,6 +135,17 @@ for (let step = 0; step < 80; step++) {
     sawThinking = true;
     await page.waitForTimeout(300);
     continue;
+  }
+
+  // 最初の手番で降りると、勝負が流れた後の表示（ラビットハント）を確かめられる。
+  if (process.env.WILDCARD_FOLD === '1') {
+    const fold = page.getByRole('button', { name: 'フォールド' });
+    if (await fold.count()) {
+      say(`[${step}] 自分 -> フォールド`);
+      await fold.click();
+      await page.waitForTimeout(400);
+      continue;
+    }
   }
 
   const check = page.getByRole('button', { name: 'チェック' });
@@ -155,6 +174,12 @@ if (await page.locator('.summary').count()) {
   say('--- ショーダウン ---');
   await assertNoDuplicateCards(page, 'showdown');
   await readShowdown(page);
+  const rabbit = await page
+    .locator('.summary-rabbit-cards .card')
+    .evaluateAll((nodes) => nodes.map((n) => n.getAttribute('aria-label')));
+  if (rabbit.length > 0) say(`  配られるはずだった札: ${rabbit.join(' ')}`);
+  const shown = await page.locator('.show-cards .btn').count();
+  if (shown > 0) say(`  手札を見せるボタン: ${shown}個`);
   await snap('showdown');
 } else {
   say('--- ショーダウンに到達しなかった ---');

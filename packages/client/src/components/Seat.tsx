@@ -36,9 +36,13 @@ export function Seat({ slot, seatCount, player, isTurn, isDealer, isViewer }: Se
       {isDealer && <span className="seat-dealer-button" title="ディーラーボタン">D</span>}
 
       <div className="seat-cards">
-        {Array.from({ length: player.holeCardCount }, (_, i) => (
-          // 自分の手札は読めなければ意味がないので一段大きく出す。
-          <PlayingCard key={i} card={player.holeCards[i] ?? null} size={isViewer ? 'md' : 'sm'} />
+        {/*
+          holeCards は見えない札が null で入っている。配列の長さが実際の枚数なので、
+          1枚だけ表（配りミス・本人が見せた）という状態もそのまま描ける。
+          自分の手札は読めなければ意味がないので一段大きく出す。
+        */}
+        {player.holeCards.map((card, i) => (
+          <PlayingCard key={i} card={card} size={isViewer ? 'md' : 'sm'} />
         ))}
       </div>
 

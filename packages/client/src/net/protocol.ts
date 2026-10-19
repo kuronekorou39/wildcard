@@ -292,6 +292,11 @@ function parseAction(raw: unknown): Action | null {
       if (!isFiniteNumber(raw['to'])) return null;
       return { type: 'raise', playerId: raw['playerId'], to: raw['to'] };
 
+    case 'showCard':
+      if (!isString(raw['playerId'], SESSION_ID_MAX_LEN)) return null;
+      if (!isFiniteNumber(raw['index'])) return null;
+      return { type: 'showCard', playerId: raw['playerId'], index: raw['index'] };
+
     case 'leave':
     case 'fold':
     case 'check':

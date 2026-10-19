@@ -955,3 +955,40 @@ button {
   color: var(--text-dim);
   line-height: 1.5;
 }
+
+/* ---------- 手札を見せる / ラビットハント ---------- */
+
+.show-cards {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.show-cards-label {
+  color: var(--text-dim);
+  font-size: 0.78rem;
+}
+
+.summary-rabbit {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+  margin: 0 0 12px;
+  padding: 8px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.summary-rabbit-label {
+  color: var(--text-dim);
+  font-size: 0.76rem;
+}
+
+.summary-rabbit-cards {
+  display: flex;
+  gap: 3px;
+}

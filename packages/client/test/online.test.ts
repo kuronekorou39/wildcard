@@ -116,8 +116,7 @@ describe('秘匿（人ごとに違う状態を送る）', () => {
         if (player.id === viewerId) {
           expect(player.holeCards, `${player.name} は自分`).toHaveLength(2);
         } else {
-          expect(player.holeCards, `${player.name} は他人`).toEqual([]);
-          expect(player.holeCardCount).toBe(2);
+          expect(player.holeCards, `${player.name} は他人`).toEqual([null, null]);
         }
       }
     }
@@ -150,8 +149,7 @@ describe('秘匿（人ごとに違う状態を送る）', () => {
     const { state, viewerId } = host.snapshot();
     expect(viewerId).toBeNull();
     for (const player of state.players) {
-      expect(player.holeCards).toEqual([]);
-      expect(player.holeCardCount).toBe(2);
+      expect(player.holeCards).toEqual([null, null]);
     }
   });
 });

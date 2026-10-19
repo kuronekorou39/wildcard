@@ -1,4 +1,4 @@
-import type { HandStructure, UsageRange, Variant } from './types.js';
+import type { Card, HandStructure, ShowCardsPolicy, UsageRange, Variant } from './types.js';
 import { PREFLOP } from './types.js';
 import { buildDeck } from './deck.js';
 
@@ -149,4 +149,45 @@ export function maxPlayersFor(variant: Variant): number {
   const have = buildDeck(variant.deck).length;
   const fixed = requiredCards(structure, 0);
   return Math.max(0, Math.floor((have - fixed) / structure.holeCards));
+}
+
+// ============================================================
+// 卓の作法
+// ============================================================
+
+/** 配りミスで札が表になる確率。既定は0（起きない）。 */
+export const misdealChanceOf = (variant: Variant): number =>
+  Math.min(1, Math.max(0, variant.options?.misdealChance ?? 0));
+
+/** 流れた後に配られるはずだった札を見せるか。 */
+export const rabbitHuntEnabled = (variant: Variant): boolean =>
+  variant.options?.rabbitHunt ?? false;
+
+/** 自分の手札をどこまで見せられるか。 */
+export const showCardsPolicyOf = (variant: Variant): ShowCardsPolicy =>
+  variant.options?.showCards ?? 'none';
+
+/**
+ * 残りのストリートで配られるはずだったカード（ラビットハント）。
+ *
+ * 山札はすでに確定しているので、残りの段取りをそのままなぞるだけで出る。
+ * バーンカードは飛ばす——実際に配っていたら焼かれていた札なので。
+ */
+export function rabbitCards(
+  structure: HandStructure,
+  streetIndex: number,
+  deck: readonly Card[],
+): Card[] {
+  const out: Card[] = [];
+  let cursor = 0;
+  for (let i = streetIndex + 1; i < structure.streets.length; i++) {
+    const street = structure.streets[i]!;
+    cursor += street.burn ?? 0;
+    for (let n = 0; n < street.cards; n++) {
+      const card = deck[cursor++];
+      if (card === undefined) return out; // 山札が尽きたらそこまで
+      out.push(card);
+    }
+  }
+  return out;
 }

@@ -85,8 +85,8 @@ describe('ホットシートの秘匿（followTurn）', () => {
       if (player.id === viewerId) {
         expect(player.holeCards, `${player.id} は自分なので見える`).toHaveLength(2);
       } else {
-        expect(player.holeCards, `${player.id} は他人なので見えない`).toEqual([]);
-        expect(player.holeCardCount).toBe(2);
+        // 見えない札は null。長さは実際の枚数なので、何枚持っているかは分かる。
+        expect(player.holeCards, `${player.id} は他人なので見えない`).toEqual([null, null]);
       }
     }
   });
@@ -139,7 +139,7 @@ describe('ホットシートの秘匿（followTurn）', () => {
       if (revealedIds.has(player.id)) {
         expect(player.holeCards, `${player.id} は公開された`).toHaveLength(2);
       } else {
-        expect(player.holeCards, `${player.id} は降りたので非公開`).toEqual([]);
+        expect(player.holeCards, `${player.id} は降りたので非公開`).toEqual([null, null]);
       }
     }
   });
@@ -164,6 +164,6 @@ describe('ソロの視点（fixed）', () => {
 
     // 相手の手番になっても相手のカードは見えない
     const p1 = transport.snapshot().state.players.find((p) => p.id === 'p1')!;
-    expect(p1.holeCards).toEqual([]);
+    expect(p1.holeCards).toEqual([null, null]);
   });
 });

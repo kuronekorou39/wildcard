@@ -185,6 +185,31 @@ export interface RankingRules {
 }
 
 // ============================================================
+// 軸5: 卓の作法 — 勝敗には関わらないが場を左右するもの
+// ============================================================
+
+/** 自分の手札をどこまで見せられるか。 */
+export type ShowCardsPolicy = 'none' | 'one' | 'any';
+
+export interface TableOptions {
+  /**
+   * ディーラーの配りミスで札が1枚表になる確率（1ハンドあたり、0〜1）。
+   *
+   * 確率で起きる事象だが、**乱数は seed から導く**。そうしないと配牌の検証
+   * （docs/fairness.md）が壊れる。同じ seed からは同じ配りミスが再現される。
+   *
+   * 使う人には不具合に見えるおそれがあるので既定は無効。
+   */
+  readonly misdealChance?: number;
+  /** ハンドが途中で終わったとき、配られるはずだった札を見せる。 */
+  readonly rabbitHunt?: boolean;
+  /** 自分の手札を見せられるか。既定は 'none'。 */
+  readonly showCards?: ShowCardsPolicy;
+  /** オールイン決着で複数回配る。未実装。 */
+  readonly runItTwice?: { readonly max: number };
+}
+
+// ============================================================
 // バリアント
 // ============================================================
 
@@ -197,6 +222,8 @@ export interface Variant {
   readonly structure: HandStructure;
   readonly betting: BettingRules;
   readonly ranking: RankingRules;
+  /** 卓の作法。省略するとすべて無効。 */
+  readonly options?: TableOptions;
 }
 
 // ============================================================
@@ -228,6 +255,14 @@ export interface Player {
    */
   readonly committed: number;
   readonly holeCards: readonly Card[];
+  /**
+   * 表になっているホールカードの位置。誰にでも見える。
+   *
+   * 配りミスで表になった札も、本人が見せた札も、将来のスタッドで最初から
+   * 表向きに配られる札も、すべてここに集約される。project() はこの位置だけを
+   * 見て「誰に何が見えるか」を決める。
+   */
+  readonly exposedHoleCards: readonly number[];
   /**
    * このハンドに配牌されているか。
    * 着席していても waiting や away なら参加しない。
@@ -274,6 +309,11 @@ export interface HandSummary {
    * （勝者は手を見せる必要がない）。
    */
   readonly revealed: readonly RevealedHand[];
+  /**
+   * 配られるはずだったカード（ラビットハント）。
+   * 途中で終わったハンドで、卓の作法として有効なときだけ埋まる。
+   */
+  readonly rabbit: readonly Card[];
 }
 
 export interface GameState {
@@ -337,7 +377,9 @@ export type Action =
   | { readonly type: 'call'; readonly playerId: string }
   /** to はこのラウンドで出す合計額（上乗せ分ではない）。 */
   | { readonly type: 'raise'; readonly playerId: string; readonly to: number }
-  | { readonly type: 'timeout'; readonly playerId: string };
+  | { readonly type: 'timeout'; readonly playerId: string }
+  /** 自分のホールカードを1枚表にする。index は手札の何枚目か。 */
+  | { readonly type: 'showCard'; readonly playerId: string; readonly index: number };
 
 /** 不正な Action は状態を変えずに理由を返す。 */
 export interface RejectedAction {

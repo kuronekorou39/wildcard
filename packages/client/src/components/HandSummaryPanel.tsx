@@ -42,6 +42,17 @@ export function HandSummaryPanel({
         <p className="summary-note">全員が降りたため、手は公開されません。</p>
       )}
 
+      {summary.rabbit.length > 0 && (
+        <div className="summary-rabbit">
+          <span className="summary-rabbit-label">配られるはずだった札</span>
+          <span className="summary-rabbit-cards">
+            {summary.rabbit.map((card, i) => (
+              <PlayingCard key={i} card={card} size="sm" />
+            ))}
+          </span>
+        </div>
+      )}
+
       <ul className="summary-payouts">
         {summary.payouts.map((payout) => (
           <li key={payout.playerId}>

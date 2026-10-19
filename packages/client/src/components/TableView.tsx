@@ -3,6 +3,7 @@ import type { Action } from '@wildcard/engine';
 import type { TableSnapshot } from '../transport/types.js';
 import { ActionBar } from './ActionBar.js';
 import { RuleSheet } from './RulePicker.js';
+import { ShowCardsControl } from './ShowCardsControl.js';
 import { HandSummaryPanel } from './HandSummaryPanel.js';
 import { PokerTable } from './PokerTable.js';
 
@@ -66,6 +67,7 @@ export function TableView({
       </div>
 
       {banner}
+      <MisdealNotice snapshot={snapshot} />
 
       <main className="table-wrap">
         <PokerTable state={state} viewerId={viewerId} />
@@ -103,6 +105,8 @@ export function TableView({
           />
         )}
 
+        <ShowCardsControl state={state} viewerId={viewerId} onAction={onAction} />
+
         {turnPlayer && (
           <>
             <div className="turn-label">{turnPlayer.name} の番</div>
@@ -114,6 +118,28 @@ export function TableView({
           </>
         )}
       </footer>
+    </div>
+  );
+}
+
+/**
+ * 配りミスの告知。
+ *
+ * 不具合に見えるおそれがあるので、起きたことを必ず画面に出す。
+ * 勝負の最中に、降りていない人の札が表になっているなら配りミスしかない
+ * （自分から見せるのは降りた後か決着後だけなので）。
+ */
+function MisdealNotice({ snapshot }: { readonly snapshot: TableSnapshot }) {
+  const { state } = snapshot;
+  if (state.phase !== 'betting') return null;
+
+  const victims = state.players.filter((p) => !p.folded && p.exposedHoleCards.length > 0);
+  if (victims.length === 0) return null;
+
+  return (
+    <div className="banner banner-warn">
+      配りミス: {victims.map((p) => p.name).join('、')} の手札が表になりました。
+      そのまま勝負します。
     </div>
   );
 }

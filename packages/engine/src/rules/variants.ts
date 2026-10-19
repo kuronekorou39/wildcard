@@ -280,6 +280,37 @@ export const PRIME_RULES: Variant = {
 };
 
 // ============================================================
+// 卓の作法を変える変種
+// ============================================================
+
+/** 流れた後に続きを見られて、降りた手も見せられる気楽な卓。 */
+export const CASUAL_TABLE: Variant = {
+  ...STANDARD_VARIANT,
+  id: 'casual',
+  name: 'カジュアル卓',
+  description:
+    '勝負が流れたら「続きどうなってた？」を見られる（ラビットハント）。' +
+    '決着後や降りた後に手札を1枚だけ見せることもできる。',
+  options: { rabbitHunt: true, showCards: 'one' },
+};
+
+/**
+ * 配りミスが起きる卓。
+ *
+ * 4回に1回くらい、誰かの手札が1枚だけ表になったまま進む。
+ * 不具合ではなくルールだと分かるよう、画面にも明示する。
+ */
+export const CLUMSY_DEALER: Variant = {
+  ...STANDARD_VARIANT,
+  id: 'clumsy-dealer',
+  name: 'ディーラーが不器用',
+  description:
+    '4回に1回くらい、ディーラーが配りミスをして誰かの手札が1枚表になる。' +
+    'その札は全員に見えたまま勝負が進む。ラビットハントと手札公開も有効。',
+  options: { misdealChance: 0.25, rabbitHunt: true, showCards: 'any' },
+};
+
+// ============================================================
 // 一覧
 // ============================================================
 
@@ -294,6 +325,8 @@ export const VARIANT_PRESETS: readonly Variant[] = [
   SUIT_RANKED,
   HOUSE_HANDS,
   PRIME_RULES,
+  CASUAL_TABLE,
+  CLUMSY_DEALER,
 ];
 
 export function findVariant(id: string): Variant | undefined {

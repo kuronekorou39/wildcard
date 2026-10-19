@@ -20,6 +20,7 @@ function p(
     bet: 0,
     committed,
     holeCards: [],
+    exposedHoleCards: [],
     inHand: options.inHand ?? true,
     folded: options.folded ?? false,
     allIn: false,

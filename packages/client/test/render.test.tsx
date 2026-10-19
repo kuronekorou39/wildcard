@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
+import { createGame, project, reduce } from '@wildcard/engine';
+import { HandSummaryPanel } from '../src/components/HandSummaryPanel.js';
 import { App } from '../src/App.js';
 import { HotSeatTable } from '../src/modes/HotSeatTable.js';
 
@@ -51,5 +53,57 @@ describe('描画', () => {
   it('コミュニティカードの枠が5つ出る', () => {
     const html = renderToStaticMarkup(<HotSeatTable settings={settings} onExit={() => {}} />);
     expect(html.match(/card-slot/g) ?? []).toHaveLength(5);
+  });
+});
+
+describe('ハンド終了の表示', () => {
+  /** 途中で流れたハンドの状態を作る。 */
+  function foldedOut(variantOptions: { rabbitHunt?: boolean }) {
+    let state = createGame({
+      seatCount: 3,
+      smallBlind: 10,
+      bigBlind: 20,
+      variant: {
+        ...createGame().variant,
+        id: 'test',
+        options: variantOptions,
+      },
+    });
+    for (let i = 0; i < 3; i++) {
+      state = reduce(state, { type: 'sit', playerId: `p${i}`, name: `p${i}`, seat: i, chips: 1000 });
+    }
+    state = reduce(state, { type: 'startHand', seed: 1 });
+    let guard = 0;
+    while (state.phase === 'betting' && guard++ < 10) {
+      state = reduce(state, { type: 'fold', playerId: state.turnPlayerId! });
+    }
+    return project(state, 'p0');
+  }
+
+  const panel = (state: ReturnType<typeof foldedOut>) =>
+    renderToStaticMarkup(
+      <HandSummaryPanel
+        state={state}
+        onNextHand={() => {}}
+        canStartNextHand
+        blockedReason={null}
+      />,
+    );
+
+  it('ラビットハントが無効なら「配られるはずだった札」は出ない', () => {
+    expect(panel(foldedOut({}))).not.toContain('配られるはずだった札');
+  });
+
+  it('ラビットハントが有効なら残りの札が出る', () => {
+    const state = foldedOut({ rabbitHunt: true });
+    expect(state.summary!.rabbit).toHaveLength(5);
+
+    const html = panel(state);
+    expect(html).toContain('配られるはずだった札');
+    // フロップ3 + ターン1 + リバー1 の5枚が並ぶ
+    expect(html.match(/summary-rabbit-cards/g) ?? []).toHaveLength(1);
+    for (const card of state.summary!.rabbit) {
+      expect(html).toContain(`${card.rank}`);
+    }
   });
 });

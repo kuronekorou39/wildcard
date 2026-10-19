@@ -25,8 +25,8 @@ describe('視点ごとの秘匿（原則2）', () => {
   it('他人のホールカードは見えないが枚数は分かる', () => {
     const state = reduce(tableOf([0, 1, 2]), { type: 'startHand', seed: 1 });
     const other = seen(state, 'p0', 'p1');
-    expect(other.holeCards).toEqual([]);
-    expect(other.holeCardCount).toBe(2);
+    // 見えない札は null。配列の長さは実際の枚数なので、何枚持っているかは分かる。
+    expect(other.holeCards).toEqual([null, null]);
   });
 
   it('山札は中身を一切見せず枚数だけ返す', () => {
@@ -40,8 +40,7 @@ describe('視点ごとの秘匿（原則2）', () => {
   it('観戦者には誰のホールカードも見えない', () => {
     const state = reduce(tableOf([0, 1, 2]), { type: 'startHand', seed: 1 });
     for (const player of project(state, null).players) {
-      expect(player.holeCards).toEqual([]);
-      expect(player.holeCardCount).toBe(2);
+      expect(player.holeCards).toEqual([null, null]);
     }
   });
 
@@ -70,7 +69,7 @@ describe('視点ごとの秘匿（原則2）', () => {
     expect(state.summary?.revealed).toEqual([]);
 
     // 勝者 p2 の手は他人からは見えないままである
-    expect(seen(state, 'p0', 'p2').holeCards).toEqual([]);
+    expect(seen(state, 'p0', 'p2').holeCards).toEqual([null, null]);
     expect(seen(state, 'p2', 'p2').holeCards).toHaveLength(2);
   });
 

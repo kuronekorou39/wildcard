@@ -11,9 +11,16 @@ import {
   PREFLOP,
 } from '../types.js';
 import { buildDeck, shuffle } from '../deck.js';
+import { createRng } from '../rng.js';
 import { type HandResult, evaluateHand } from '../rules/evaluate.js';
 import { STANDARD_VARIANT } from '../rules/presets.js';
-import { requiredCards } from '../variant.js';
+import {
+  misdealChanceOf,
+  rabbitCards,
+  rabbitHuntEnabled,
+  requiredCards,
+  showCardsPolicyOf,
+} from '../variant.js';
 import { awardPots, buildPotLayers, returnUncalledBets } from './pot.js';
 import { blindPositions, firstClockwise, orderClockwise } from './seats.js';
 
@@ -148,6 +155,28 @@ export function validate(state: GameState, action: Action): RejectedAction | nul
       return null;
     }
 
+    case 'showCard': {
+      const player = byId(state, action.playerId);
+      if (!player) return { reason: '着席していない' };
+      if (showCardsPolicyOf(state.variant) === 'none') {
+        return { reason: 'この卓では手札を見せられない' };
+      }
+      if (action.index < 0 || action.index >= player.holeCards.length) {
+        return { reason: 'その位置に札がない' };
+      }
+      if (player.exposedHoleCards.includes(action.index)) {
+        return { reason: 'もう表になっている' };
+      }
+      // 勝負の途中に見せると駆け引きが成立しなくなる。降りた後か決着後だけ。
+      if (state.phase === 'betting' && !player.folded) {
+        return { reason: '勝負がついてから見せられる' };
+      }
+      if (showCardsPolicyOf(state.variant) === 'one' && player.exposedHoleCards.length >= 1) {
+        return { reason: 'この卓では1枚までしか見せられない' };
+      }
+      return null;
+    }
+
     case 'fold':
     case 'check':
     case 'call':
@@ -197,6 +226,11 @@ export function reduce(state: GameState, action: Action): GameState {
       return actThenAdvance(state, action.playerId, (p) => payTo(p, state.currentBet));
     case 'raise':
       return applyRaise(state, action.playerId, action.to);
+    case 'showCard':
+      return updatePlayer(state, action.playerId, (p) => ({
+        ...p,
+        exposedHoleCards: [...p.exposedHoleCards, action.index],
+      }));
     case 'timeout':
       // 時間切れは「払う必要がなければチェック、あればフォールド」。
       return state.currentBet > (byId(state, action.playerId)?.bet ?? 0)
@@ -224,6 +258,7 @@ function applySit(
     bet: 0,
     committed: 0,
     holeCards: [],
+    exposedHoleCards: [],
     inHand: false,
     folded: false,
     allIn: false,
@@ -302,6 +337,7 @@ function startHand(state: GameState, seed: number): GameState {
     bet: 0,
     committed: 0,
     holeCards: [],
+    exposedHoleCards: [],
     inHand: participantIds.has(p.id),
     folded: false,
     allIn: false,
@@ -333,6 +369,8 @@ function startHand(state: GameState, seed: number): GameState {
     return p;
   });
 
+  players = applyMisdeal(players, state.variant, seed);
+
   const started: GameState = {
     ...state,
     phase: 'betting',
@@ -353,6 +391,29 @@ function startHand(state: GameState, seed: number): GameState {
   // ブラインドで全員オールインになった場合など、誰も行動できなければ
   // assignTurn がそのまま次のストリートへ送る。
   return assignTurn(started, blinds.firstToActSeat);
+}
+
+/**
+ * ディーラーの配りミス。確率で、誰かの手札が1枚だけ表になる。
+ *
+ * **乱数は seed から導く。** そうしないと配牌の検証（docs/fairness.md）が
+ * 壊れる。同じ seed からは同じ配りミスが再現されるので、記録と突き合わせられる。
+ * 既定では無効（確率0）なので、明示的に有効にした卓でしか起きない。
+ */
+function applyMisdeal(players: readonly Player[], variant: Variant, seed: number): Player[] {
+  const chance = misdealChanceOf(variant);
+  if (chance <= 0) return [...players];
+
+  const rng = createRng((seed ^ 0x7f4a7c15) >>> 0);
+  if (rng() >= chance) return [...players];
+
+  const dealt = players.filter((p) => p.inHand && p.holeCards.length > 0);
+  if (dealt.length === 0) return [...players];
+
+  const victim = dealt[Math.floor(rng() * dealt.length)]!;
+  const index = Math.floor(rng() * victim.holeCards.length);
+
+  return players.map((p) => (p.id === victim.id ? { ...p, exposedHoleCards: [index] } : p));
 }
 
 function postBlind(player: Player, amount: number): Player {
@@ -572,9 +633,16 @@ function settle(state: GameState): GameState {
     // inHand と folded はショーダウンの表示に使うので残す。
   }));
 
+  // 途中で終わったハンドなら、配られるはずだった札を見せる。
+  // 山札はすでに確定しているので、残りの段取りをなぞるだけで出る。
+  const rabbit = rabbitHuntEnabled(state.variant)
+    ? rabbitCards(state.variant.structure, state.streetIndex, state.deck)
+    : [];
+
   const summary: HandSummary = {
     payouts: [...credited.entries()].map(([playerId, amount]) => ({ playerId, amount })),
     revealed,
+    rabbit,
   };
 
   return { ...state, phase: 'showdown', players, pot: 0, currentBet: 0, turnPlayerId: null, summary };
