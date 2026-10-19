@@ -155,7 +155,14 @@ export function maxPlayersFor(variant: Variant): number {
 // 卓の作法
 // ============================================================
 
-/** 配りミスで札が表になる確率。既定は0（起きない）。 */
+/**
+ * ディーラーが札を1枚だけ表にしてしまう確率。既定は0。
+ * これはミスディールではなく、回収して引き直す手順になる。
+ */
+export const exposedCardChanceOf = (variant: Variant): number =>
+  Math.min(1, Math.max(0, variant.options?.exposedCardChance ?? 0));
+
+/** 配り直し（ミスディール）になる確率。既定は0。 */
 export const misdealChanceOf = (variant: Variant): number =>
   Math.min(1, Math.max(0, variant.options?.misdealChance ?? 0));
 

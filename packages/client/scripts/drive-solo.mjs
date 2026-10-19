@@ -116,11 +116,15 @@ say(`席: ${await page.locator('.seat:not(.seat-empty)').count()}`);
 await page.getByRole('button', { name: 'ゲーム開始' }).click();
 await page.waitForTimeout(400);
 say(`自分の見えるカード: ${await page.locator('.seat-viewer .card:not(.card-back)').count()} 枚`);
-// 配りミスが起きていれば告知が出る。不具合に見えないようにするための表示。
-const misdeal = await page.locator('.banner-warn').count();
-if (misdeal > 0) {
-  say(`配りミス: ${flattenText(await page.locator('.banner-warn').innerText())}`);
-  say(`表になった相手の札: ${await page.locator('.seat:not(.seat-viewer) .card:not(.card-back)').count()} 枚`);
+// ディーラーが札を表にしていれば告知が出る。不具合に見えないための表示。
+if (await page.locator('.deal-notice').count()) {
+  say(`告知: ${flattenText(await page.locator('.deal-notice').innerText())}`);
+  const exposed = await page
+    .locator('.deal-notice-cards .card')
+    .evaluateAll((nodes) => nodes.map((n) => n.getAttribute('aria-label')));
+  if (exposed.length > 0) say(`  表になった札: ${exposed.join(' ')}`);
+  // 手札は公開されないはず
+  say(`  他人の表向きの札: ${await page.locator('.seat:not(.seat-viewer) .card:not(.card-back)').count()} 枚`);
 }
 say(`CPU の裏向きカード: ${await page.locator('.seat:not(.seat-viewer) .card-back').count()} 枚`);
 await snap('preflop');

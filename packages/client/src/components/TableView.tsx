@@ -5,6 +5,7 @@ import { ActionBar } from './ActionBar.js';
 import { RuleSheet } from './RulePicker.js';
 import { ShowCardsControl } from './ShowCardsControl.js';
 import { HandSummaryPanel } from './HandSummaryPanel.js';
+import { PlayingCard } from './PlayingCard.js';
 import { PokerTable } from './PokerTable.js';
 
 interface TableViewProps {
@@ -67,7 +68,7 @@ export function TableView({
       </div>
 
       {banner}
-      <MisdealNotice snapshot={snapshot} />
+      <DealNotice snapshot={snapshot} />
 
       <main className="table-wrap">
         <PokerTable state={state} viewerId={viewerId} />
@@ -123,23 +124,33 @@ export function TableView({
 }
 
 /**
- * 配りミスの告知。
+ * ディーラーが札を表にしてしまったときの告知。
  *
- * 不具合に見えるおそれがあるので、起きたことを必ず画面に出す。
- * 勝負の最中に、降りていない人の札が表になっているなら配りミスしかない
- * （自分から見せるのは降りた後か決着後だけなので）。
+ * 不具合に見えるおそれがあるので、起きたことと**どう処理したか**を必ず出す。
+ * 実際の手順どおり、1枚なら回収して引き直し（手札は公開されない）、
+ * その札はフロップのバーンに使われる。2枚以上なら配り直し。
  */
-function MisdealNotice({ snapshot }: { readonly snapshot: TableSnapshot }) {
+function DealNotice({ snapshot }: { readonly snapshot: TableSnapshot }) {
   const { state } = snapshot;
-  if (state.phase !== 'betting') return null;
-
-  const victims = state.players.filter((p) => !p.folded && p.exposedHoleCards.length > 0);
-  if (victims.length === 0) return null;
+  if (state.phase === 'waiting') return null;
+  if (state.exposedCards.length === 0 && state.misdeals === 0) return null;
 
   return (
-    <div className="banner banner-warn">
-      配りミス: {victims.map((p) => p.name).join('、')} の手札が表になりました。
-      そのまま勝負します。
+    <div className="banner banner-warn deal-notice">
+      {state.misdeals > 0 && (
+        <span>ミスディールで{state.misdeals}回配り直しました。</span>
+      )}
+      {state.exposedCards.length > 0 && (
+        <span className="deal-notice-exposed">
+          ディーラーが表にしてしまった札:
+          <span className="deal-notice-cards">
+            {state.exposedCards.map((card, i) => (
+              <PlayingCard key={i} card={card} size="sm" />
+            ))}
+          </span>
+          回収して引き直したので手札は割れていません。この札はもう出ません。
+        </span>
+      )}
     </div>
   );
 }

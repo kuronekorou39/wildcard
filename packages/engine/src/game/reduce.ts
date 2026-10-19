@@ -15,6 +15,7 @@ import { createRng } from '../rng.js';
 import { type HandResult, evaluateHand } from '../rules/evaluate.js';
 import { STANDARD_VARIANT } from '../rules/presets.js';
 import {
+  exposedCardChanceOf,
   misdealChanceOf,
   rabbitCards,
   rabbitHuntEnabled,
@@ -41,6 +42,8 @@ export function createGame(options: CreateGameOptions = {}): GameState {
     communityCards: [],
     deck: [],
     burned: [],
+    exposedCards: [],
+    misdeals: 0,
     pot: 0,
     currentBet: 0,
     minRaise: options.bigBlind ?? 20,
@@ -349,27 +352,13 @@ function startHand(state: GameState, seed: number): GameState {
   // 配牌は SB から時計回りに1枚ずつ、手札の枚数ぶん周回する。実際の配り方と
   // 同じ順序にしておくと、seed からハンドを再現したときに現実の進行と一致する。
   const dealOrder = orderClockwise(seats, blinds.smallBlindSeat, state.seatCount);
-  const deck = shuffle(buildDeck(state.variant.deck), seed);
-  const hole = new Map<number, Card[]>(dealOrder.map((seat) => [seat, []]));
-  let cursor = 0;
-  for (let round = 0; round < state.variant.structure.holeCards; round++) {
-    for (const seat of dealOrder) {
-      hole.get(seat)!.push(deck[cursor]!);
-      cursor++;
-    }
-  }
+  const dealt = dealHand(fresh, dealOrder, state.variant, seed);
 
-  let players = fresh.map<Player>((p) =>
-    p.inHand ? { ...p, holeCards: hole.get(p.seat) ?? [] } : p,
-  );
-
-  players = players.map<Player>((p) => {
+  let players = dealt.players.map<Player>((p) => {
     if (p.seat === blinds.smallBlindSeat) return postBlind(p, state.smallBlind);
     if (p.seat === blinds.bigBlindSeat) return postBlind(p, state.bigBlind);
     return p;
   });
-
-  players = applyMisdeal(players, state.variant, seed);
 
   const started: GameState = {
     ...state,
@@ -377,8 +366,10 @@ function startHand(state: GameState, seed: number): GameState {
     streetIndex: PREFLOP,
     players,
     communityCards: [],
-    deck: deck.slice(cursor),
+    deck: dealt.deck,
     burned: [],
+    exposedCards: dealt.exposedCards,
+    misdeals: dealt.misdeals,
     pot: totalCommitted(players),
     // ショートオールインでブラインドを払いきれなくても、コール額はブラインドのまま。
     currentBet: state.bigBlind,
@@ -393,27 +384,92 @@ function startHand(state: GameState, seed: number): GameState {
   return assignTurn(started, blinds.firstToActSeat);
 }
 
+interface DealResult {
+  readonly players: Player[];
+  readonly deck: Card[];
+  /** ディーラーが表にしてしまい、回収された札。 */
+  readonly exposedCards: Card[];
+  readonly misdeals: number;
+}
+
+/** 配り直しの上限。無限に回らないようにする。 */
+const MAX_MISDEALS = 5;
+
 /**
- * ディーラーの配りミス。確率で、誰かの手札が1枚だけ表になる。
+ * 実際の手順どおりに配る。
  *
- * **乱数は seed から導く。** そうしないと配牌の検証（docs/fairness.md）が
- * 壊れる。同じ seed からは同じ配りミスが再現されるので、記録と突き合わせられる。
- * 既定では無効（確率0）なので、明示的に有効にした卓でしか起きない。
+ * ディーラーが札を表にしてしまったときの扱いは、実際のポーカーでは2通りある
+ * （Robert's Rules / TDA）。
+ *
+ * **1枚だけ表にした場合はミスディールではない。** その札を回収し、配り終えた
+ * 後に山札の top から引き直す。表になった札はフロップのバーンカードとして使う。
+ * 手は通常どおり続行するので、**本人の手札が公開されるわけではない**。
+ * 全員が知るのは「その札はもう出ない」という情報だけ。
+ *
+ * **2枚以上表にして初めてミスディール**で、手札を回収して最初から配り直す。
+ *
+ * 引き直しで1枚多く引き、そのぶんフロップのバーンを山札から取らないので、
+ * 1ハンドで消える枚数は露出が無かった場合と変わらない。デッキの検算が狂わない。
+ *
+ * 乱数はすべて seed から導くので、同じ seed からは同じ結果が再現される
+ * （配り直しも含めて）。配牌の検証が壊れない。
  */
-function applyMisdeal(players: readonly Player[], variant: Variant, seed: number): Player[] {
-  const chance = misdealChanceOf(variant);
-  if (chance <= 0) return [...players];
+function dealHand(
+  fresh: readonly Player[],
+  dealOrder: readonly number[],
+  variant: Variant,
+  seed: number,
+): DealResult {
+  const misdealChance = misdealChanceOf(variant);
+  const exposedChance = exposedCardChanceOf(variant);
+  let attemptSeed = seed;
 
-  const rng = createRng((seed ^ 0x7f4a7c15) >>> 0);
-  if (rng() >= chance) return [...players];
+  for (let misdeals = 0; ; misdeals++) {
+    const deck = shuffle(buildDeck(variant.deck), attemptSeed);
+    const hole = new Map<number, Card[]>(dealOrder.map((seat) => [seat, []]));
+    let cursor = 0;
+    for (let round = 0; round < variant.structure.holeCards; round++) {
+      for (const seat of dealOrder) {
+        hole.get(seat)!.push(deck[cursor]!);
+        cursor++;
+      }
+    }
 
-  const dealt = players.filter((p) => p.inHand && p.holeCards.length > 0);
-  if (dealt.length === 0) return [...players];
+    const rng = createRng((attemptSeed ^ 0x7f4a7c15) >>> 0);
 
-  const victim = dealt[Math.floor(rng() * dealt.length)]!;
-  const index = Math.floor(rng() * victim.holeCards.length);
+    // 2枚以上表にしてしまった＝ミスディール。最初から配り直す。
+    if (misdeals < MAX_MISDEALS && rng() < misdealChance) {
+      attemptSeed = (attemptSeed * 1664525 + 1013904223) >>> 0;
+      continue;
+    }
 
-  return players.map((p) => (p.id === victim.id ? { ...p, exposedHoleCards: [index] } : p));
+    const players = fresh.map<Player>((p) =>
+      p.inHand ? { ...p, holeCards: hole.get(p.seat) ?? [] } : p,
+    );
+
+    // 1枚だけ表にしてしまった。回収して引き直す（ミスディールではない）。
+    const exposedCards: Card[] = [];
+    if (rng() < exposedChance) {
+      const dealtTo = players.filter((p) => p.inHand && p.holeCards.length > 0);
+      const replacement = deck[cursor];
+      if (dealtTo.length > 0 && replacement !== undefined) {
+        const victim = dealtTo[Math.floor(rng() * dealtTo.length)]!;
+        const index = Math.floor(rng() * victim.holeCards.length);
+        exposedCards.push(victim.holeCards[index]!);
+        cursor++;
+
+        const replaced = victim.holeCards.map((card, i) => (i === index ? replacement : card));
+        return {
+          players: players.map((p) => (p.id === victim.id ? { ...p, holeCards: replaced } : p)),
+          deck: deck.slice(cursor),
+          exposedCards,
+          misdeals,
+        };
+      }
+    }
+
+    return { players, deck: deck.slice(cursor), exposedCards, misdeals };
+  }
 }
 
 function postBlind(player: Player, amount: number): Player {
@@ -557,12 +613,25 @@ function advanceStreet(state: GameState): GameState {
   const street = streets[nextIndex]!;
   const burn = street.burn ?? 0;
 
+  // ディーラーが表にしてしまった札は、実際の手順どおり最初のバーンに使う。
+  // そのぶん山札からは引かないので、消える枚数は露出が無かった場合と変わらない。
+  const fromExposed =
+    state.streetIndex === PREFLOP ? Math.min(burn, state.exposedCards.length) : 0;
+  const fromDeck = burn - fromExposed;
+
   const opened: GameState = {
     ...state,
     streetIndex: nextIndex,
-    burned: [...state.burned, ...state.deck.slice(0, burn)],
-    communityCards: [...state.communityCards, ...state.deck.slice(burn, burn + street.cards)],
-    deck: state.deck.slice(burn + street.cards),
+    burned: [
+      ...state.burned,
+      ...state.exposedCards.slice(0, fromExposed),
+      ...state.deck.slice(0, fromDeck),
+    ],
+    communityCards: [
+      ...state.communityCards,
+      ...state.deck.slice(fromDeck, fromDeck + street.cards),
+    ],
+    deck: state.deck.slice(fromDeck + street.cards),
     currentBet: 0,
     minRaise: state.bigBlind,
     turnPlayerId: null,

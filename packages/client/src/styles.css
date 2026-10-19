@@ -992,3 +992,23 @@ button {
   display: flex;
   gap: 3px;
 }
+
+.deal-notice {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: center;
+}
+
+.deal-notice-exposed {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.deal-notice-cards {
+  display: inline-flex;
+  gap: 3px;
+}
