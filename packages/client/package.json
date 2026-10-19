@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "drive": "node scripts/drive.mjs",
-    "drive:online": "node scripts/drive-online.mjs"
+    "drive:online": "node scripts/drive-online.mjs",
+    "drive:solo": "node scripts/drive-solo.mjs"
   },
   "dependencies": {
     "@wildcard/engine": "*",

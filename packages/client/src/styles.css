@@ -868,3 +868,8 @@ button {
   color: var(--text-dim);
   font-size: 0.8em;
 }
+
+.range {
+  width: 100%;
+  accent-color: var(--accent);
+}

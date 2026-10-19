@@ -70,6 +70,25 @@ const snap = async (name) => {
   say(`  shot -> ${file}`);
 };
 
+/** 卓の上に同じカードが二度出ていないかを確かめる。重複は配牌の致命的な不具合。 */
+async function assertNoDuplicateCards(page, label) {
+  const labels = await page
+    .locator('.table-area .card:not(.card-back):not(.card-slot)')
+    .evaluateAll((nodes) => nodes.map((n) => n.getAttribute('aria-label')));
+  const seen = new Set();
+  const duplicates = [];
+  for (const card of labels) {
+    if (card === null) continue;
+    if (seen.has(card)) duplicates.push(card);
+    seen.add(card);
+  }
+  if (duplicates.length > 0) {
+    say(`[${label}] カードが重複している: ${duplicates.join(' ')}`);
+    throw new Error('duplicate cards on table');
+  }
+  say(`[${label}] 卓上のカード ${labels.length} 枚に重複なし`);
+}
+
 await page.goto(URL, { waitUntil: 'networkidle' });
 say(`title: ${await page.title()}`);
 say(`H1: ${await page.locator('.hero-title').innerText()}`);
@@ -156,6 +175,7 @@ for (let step = 0; step < 60; step++) {
 
 if (await page.locator('.summary').count()) {
   say('--- ショーダウン ---');
+  await assertNoDuplicateCards(page, 'showdown');
   say(await page.locator('.summary').innerText());
   await snap('showdown');
 } else {

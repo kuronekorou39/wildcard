@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import type { HotSeatSettings } from '../modes/HotSeatTable.js';
 import type { OnlineSettings } from '../modes/OnlineTable.js';
+import type { SoloSettings } from '../modes/SoloTable.js';
+import { SoloPanel } from './SoloPanel.js';
 import { RulePicker } from './RulePicker.js';
 import {
   ROOM_CODE_LENGTH,
@@ -13,14 +15,15 @@ import {
 interface SetupScreenProps {
   readonly onStartHotSeat: (settings: HotSeatSettings) => void;
   readonly onStartOnline: (settings: OnlineSettings) => void;
+  readonly onStartSolo: (settings: SoloSettings) => void;
 }
 
-type Mode = 'online' | 'hotseat';
+type Mode = 'online' | 'solo' | 'hotseat';
 
 const MIN_PLAYERS = 2;
 const MAX_PLAYERS = 10;
 
-export function SetupScreen({ onStartHotSeat, onStartOnline }: SetupScreenProps) {
+export function SetupScreen({ onStartHotSeat, onStartOnline, onStartSolo }: SetupScreenProps) {
   const [mode, setMode] = useState<Mode>('online');
 
   return (
@@ -43,6 +46,15 @@ export function SetupScreen({ onStartHotSeat, onStartOnline }: SetupScreenProps)
         <button
           type="button"
           role="tab"
+          aria-selected={mode === 'solo'}
+          className={`tab ${mode === 'solo' ? 'tab-active' : ''}`}
+          onClick={() => setMode('solo')}
+        >
+          ソロ
+        </button>
+        <button
+          type="button"
+          role="tab"
           aria-selected={mode === 'hotseat'}
           className={`tab ${mode === 'hotseat' ? 'tab-active' : ''}`}
           onClick={() => setMode('hotseat')}
@@ -51,21 +63,18 @@ export function SetupScreen({ onStartHotSeat, onStartOnline }: SetupScreenProps)
         </button>
       </nav>
 
-      {mode === 'online' ? (
-        <OnlinePanel onStart={onStartOnline} />
-      ) : (
-        <HotSeatPanel onStart={onStartHotSeat} />
-      )}
+      {mode === 'online' && <OnlinePanel onStart={onStartOnline} />}
+      {mode === 'solo' && <SoloPanel onStart={onStartSolo} />}
+      {mode === 'hotseat' && <HotSeatPanel onStart={onStartHotSeat} />}
 
       <section className="panel panel-muted">
         <h2 className="panel-title">これから</h2>
         <ul className="roadmap">
-          <li>CPU相手のソロ対戦</li>
-          <li>カスタムルール（カードの強さ・独自の役）のエディタ</li>
+          <li>カスタムルール（カードの強さ・独自の役）を自分で作るエディタ</li>
           <li>配牌の公正さを全員で検証できる仕組み</li>
         </ul>
         <p className="panel-note">
-          エンジンはすでにカスタムルールに対応済みで、残っているのは設定画面です。
+          エンジンはすでにカスタムルールに対応済みで、残っているのは編集画面です。
         </p>
       </section>
     </div>

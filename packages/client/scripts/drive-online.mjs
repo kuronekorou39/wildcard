@@ -69,6 +69,25 @@ const snap = async (page, name) => {
   say(`  shot -> ${file}`);
 };
 
+/** 卓の上に同じカードが二度出ていないかを確かめる。重複は配牌の致命的な不具合。 */
+async function assertNoDuplicateCards(page, label) {
+  const labels = await page
+    .locator('.table-area .card:not(.card-back):not(.card-slot)')
+    .evaluateAll((nodes) => nodes.map((n) => n.getAttribute('aria-label')));
+  const seen = new Set();
+  const duplicates = [];
+  for (const card of labels) {
+    if (card === null) continue;
+    if (seen.has(card)) duplicates.push(card);
+    seen.add(card);
+  }
+  if (duplicates.length > 0) {
+    say(`[${label}] カードが重複している: ${duplicates.join(' ')}`);
+    throw new Error('duplicate cards on table');
+  }
+  say(`[${label}] 卓上のカード ${labels.length} 枚に重複なし`);
+}
+
 // ---- host 側: 部屋を作る ----
 await host.goto(URL, { waitUntil: 'networkidle' });
 await host.getByRole('button', { name: '部屋を作る', exact: true }).first().click();
@@ -163,6 +182,7 @@ for (let step = 0; step < 40; step++) {
 
 if (await host.locator('.summary').count()) {
   say('--- ショーダウン ---');
+  await assertNoDuplicateCards(host, 'host showdown');
   say(await host.locator('.summary').innerText());
   await snap(host, 'host-showdown');
   await snap(guest, 'guest-showdown');
