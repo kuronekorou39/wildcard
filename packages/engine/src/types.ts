@@ -102,40 +102,87 @@ export type Phase = 'waiting' | 'preflop' | 'flop' | 'turn' | 'river' | 'showdow
 export interface Player {
   readonly id: string;
   readonly name: string;
-  /** 席番号（0-origin）。 */
+  /** 席番号（0-origin）。番号が増える向きが時計回り。 */
   readonly seat: number;
   readonly chips: number;
-  /** このベッティングラウンドで既に出している額。 */
+  /** このベッティングラウンドで出している額。 */
   readonly bet: number;
+  /**
+   * このハンドで出した総額（bet を含む）。
+   * オールインが絡むサイドポットの計算にはラウンドごとの額では足りない。
+   */
+  readonly committed: number;
   readonly holeCards: readonly Card[];
+  /**
+   * このハンドに配牌されているか。
+   * 着席していても waiting や away なら参加しない。
+   */
+  readonly inHand: boolean;
   readonly folded: boolean;
   readonly allIn: boolean;
-  /** このラウンドで行動済みか。 */
+  /** このベッティングラウンドで行動済みか。 */
   readonly hasActed: boolean;
   /**
    * ハンド進行中に着席したため、次のハンドまで待機している状態。
    * poker-web-test で問題になった「途中参加者が現ハンドに混ざる」を防ぐ。
    */
   readonly waiting: boolean;
-  /** 離席・切断中。自分の番が来たら自動フォールドされる。 */
+  /** 離席・切断中。手番が来たら自動フォールドされ、新しいハンドには参加しない。 */
   readonly away: boolean;
+  /**
+   * ハンド進行中に退席を申し出た状態。即座に席から消すと、その人が
+   * ポットに出した額の記録まで失われてサイドポットの計算が狂う。
+   * フォールド扱いのまま席に残し、次のハンド開始時に実際に取り除く。
+   */
+  readonly leaving: boolean;
+}
+
+/** ポットの払い出し先と額。 */
+export interface Payout {
+  readonly playerId: string;
+  readonly amount: number;
+}
+
+/** ショーダウンで公開された手。 */
+export interface RevealedHand {
+  readonly playerId: string;
+  readonly holeCards: readonly Card[];
+  readonly rankingId: string;
+  readonly rankingName: string;
+}
+
+/** ハンドの決着内容。 */
+export interface HandSummary {
+  readonly payouts: readonly Payout[];
+  /**
+   * 公開された手。全員がフォールドして決着した場合は空
+   * （勝者は手を見せる必要がない）。
+   */
+  readonly revealed: readonly RevealedHand[];
 }
 
 export interface GameState {
   readonly phase: Phase;
+  /** 卓の席数。 */
+  readonly seatCount: number;
   readonly players: readonly Player[];
   readonly communityCards: readonly Card[];
   /** 未配の山札。project() で視点に応じて伏せられる。 */
   readonly deck: readonly Card[];
+  /** 場に出ている総額（各プレイヤーの committed の合計）。 */
   readonly pot: number;
   /** 現在のラウンドでコールに必要な額。 */
   readonly currentBet: number;
+  /** 次のレイズで最低限上乗せしなければならない額。 */
+  readonly minRaise: number;
   readonly dealerSeat: number;
   /** 手番のプレイヤーID。誰の手番でもないときは null。 */
   readonly turnPlayerId: string | null;
   readonly smallBlind: number;
   readonly bigBlind: number;
   readonly ruleSet: RuleSet;
+  /** 直前のハンドの決着内容。まだ決着していなければ null。 */
+  readonly summary: HandSummary | null;
 }
 
 // ============================================================
@@ -149,12 +196,24 @@ export interface GameState {
  * シャッフルの乱数も startHand の seed として外から渡す。
  */
 export type Action =
-  | { readonly type: 'sit'; readonly playerId: string; readonly name: string; readonly seat: number; readonly chips: number }
+  | {
+      readonly type: 'sit';
+      readonly playerId: string;
+      readonly name: string;
+      readonly seat: number;
+      readonly chips: number;
+    }
   | { readonly type: 'leave'; readonly playerId: string }
   | { readonly type: 'setAway'; readonly playerId: string; readonly away: boolean }
   | { readonly type: 'startHand'; readonly seed: number }
   | { readonly type: 'fold'; readonly playerId: string }
   | { readonly type: 'check'; readonly playerId: string }
   | { readonly type: 'call'; readonly playerId: string }
+  /** to はこのラウンドで出す合計額（上乗せ分ではない）。 */
   | { readonly type: 'raise'; readonly playerId: string; readonly to: number }
   | { readonly type: 'timeout'; readonly playerId: string };
+
+/** 不正な Action は状態を変えずに理由を返す。 */
+export interface RejectedAction {
+  readonly reason: string;
+}

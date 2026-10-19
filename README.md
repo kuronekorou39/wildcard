@@ -11,7 +11,7 @@
 
 | パッケージ | 内容 | 状態 |
 |---|---|---|
-| `packages/engine` | ゲームエンジン（純粋TS・依存ゼロ） | デッキと役評価は完了。進行の reduce が未実装 |
+| `packages/engine` | ゲームエンジン（純粋TS・依存ゼロ） | 完了（役評価・進行・ポット分配・視点投影） |
 | `packages/client` | React + Vite の卓UI | 未着手 |
 | `packages/server` | WebSocket アダプタ（段階1以降） | 未着手 |
 
@@ -27,11 +27,21 @@
 - カスタム役の追加（変数ランクで `X, X, Y, Y+1, Y+2` のように条件を書ける）
 - 変則デッキ（スートを減らす、ショートデッキ）
 
+### 進行について
+
+`reduce(state, action)` の純粋関数で、通信も時間も乱数も持たない（原則1）。
+持ち時間切れは外から渡される `timeout` アクションであり、シャッフルの乱数は
+`startHand` の seed なので、同じ seed からハンドを完全に再現できる。
+
+「誰に何が見えるか」は `project(state, viewerId)` がエンジン側で決める（原則2）。
+UI や通信層に秘匿の判断をさせないので、サーバーのない段階0でもホールカードの
+秘匿が成立する。
+
 ## 開発
 
 ```bash
 npm install
-npm test          # エンジンのテスト（53件）
+npm test          # エンジンのテスト（137件）
 npm run typecheck
 npm run bench --workspace @wildcard/engine   # 役評価の速度
 ```
