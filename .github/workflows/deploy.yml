@@ -39,7 +39,13 @@ jobs:
       - name: ビルド
         run: npm run build
 
+      # enablement: true で Pages 自体をワークフローから有効化する。
+      # リポジトリ設定で Source を GitHub Actions にし忘れていても、
+      # ここが自分で設定してくれるので取りこぼさない。
       - uses: actions/configure-pages@v5
+        with:
+          enablement: true
+
 
       - uses: actions/upload-pages-artifact@v3
         with:
