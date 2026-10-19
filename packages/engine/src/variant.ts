@@ -1,6 +1,6 @@
 import type { Card, HandStructure, ShowCardsPolicy, UsageRange, Variant } from './types.js';
 import { PREFLOP } from './types.js';
-import { buildDeck } from './deck.js';
+import { MAX_DECK_SIZE, deckSize } from './deck.js';
 
 /**
  * バリアントの検算。
@@ -76,6 +76,9 @@ export function validateVariant(variant: Variant, players: number): VariantProbl
   if (new Set(deck.ranks).size !== deck.ranks.length) {
     at('deck.ranks', '同じランクが重複している（強さの順序が決まらない）');
   }
+  if (deckSize(deck) > MAX_DECK_SIZE) {
+    at('deck', `デッキが大きすぎる: ${deckSize(deck)}枚（上限 ${MAX_DECK_SIZE}枚）`);
+  }
   for (const override of deck.overrides ?? []) {
     if (!deck.ranks.includes(override.rank)) {
       at(
@@ -138,7 +141,7 @@ export function validateVariant(variant: Variant, players: number): VariantProbl
   // ---- デッキが足りるか ----
   if (players >= 1) {
     const need = requiredCards(structure, players);
-    const have = buildDeck(deck).length;
+    const have = deckSize(deck);
     if (have < need) {
       at(
         'deck',
@@ -161,7 +164,7 @@ export const isValidVariant = (variant: Variant, players: number): boolean =>
 export function maxPlayersFor(variant: Variant): number {
   const { structure } = variant;
   if (structure.holeCards <= 0) return Number.POSITIVE_INFINITY;
-  const have = buildDeck(variant.deck).length;
+  const have = deckSize(variant.deck);
   const fixed = requiredCards(structure, 0);
   return Math.max(0, Math.floor((have - fixed) / structure.holeCards));
 }

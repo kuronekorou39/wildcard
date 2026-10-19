@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
-import { type Action, type HandRecord, findVariant, validate } from '@wildcard/engine';
+import { type Action, type HandRecord, validate } from '@wildcard/engine';
 import { FairnessPanel } from '../components/FairnessPanel.js';
 import { TableView } from '../components/TableView.js';
 import { useTable } from '../hooks/useTable.js';
 import { createPeerLink } from '../net/peerLink.js';
 import { GuestTransport } from '../transport/guest.js';
 import { HostTransport } from '../transport/host.js';
+import { resolveVariant } from '../rules/customVariants.js';
 import type { TableSnapshot } from '../transport/types.js';
 import { sessionId } from '../session.js';
 
@@ -31,7 +32,7 @@ export function OnlineTable({ settings, onExit }: OnlineTableProps) {
     const link = createPeerLink({ role: settings.role });
 
     if (settings.role === 'host') {
-      const variant = findVariant(settings.variantId);
+      const variant = resolveVariant(settings.variantId);
       return new HostTransport({
         link,
         roomCode: settings.roomCode,
@@ -134,7 +135,6 @@ export function OnlineTable({ settings, onExit }: OnlineTableProps) {
           </div>
         </>
       }
-      variantId={snapshot.state.variant.id}
     />
   );
 }

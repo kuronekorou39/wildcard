@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildDeck } from '../src/deck.js';
+import { MAX_DECK_SIZE, buildDeck, deckSize } from '../src/deck.js';
 import { createGame, reduce } from '../src/game/reduce.js';
 import { evaluateBest, evaluateHand } from '../src/rules/evaluate.js';
 import { STANDARD_VARIANT } from '../src/rules/presets.js';
@@ -346,5 +346,33 @@ describe('ストリートは枚数も数も自由', () => {
     state = callAround(state);
     expect(state.phase).toBe('showdown');
     expect(state.summary!.revealed).toHaveLength(3);
+  });
+});
+
+
+describe('デッキが大きすぎるとき', () => {
+  const huge: Variant = {
+    ...STANDARD_VARIANT,
+    deck: { ...STANDARD_VARIANT.deck, copies: 1000 },
+  };
+
+  it('枚数を数えるだけなら札を作らない', () => {
+    // buildDeck を呼ぶと 52,000 枚を確保しに行く。数えるだけなら要らない。
+    expect(deckSize(huge.deck)).toBe(52000);
+  });
+
+  it('検算で弾く', () => {
+    const problems = validateVariant(huge, 2);
+    expect(problems.some((p) => p.field === 'deck' && p.message.includes('大きすぎる'))).toBe(true);
+  });
+
+  it('buildDeck は黙って切り詰めず、はっきり失敗する', () => {
+    // 切り詰めると、配った札が設定と食い違ったまま対局が進む。
+    expect(() => buildDeck(huge.deck)).toThrow(/大きすぎる/);
+  });
+
+  it('上限ちょうどは作れる', () => {
+    const ok = { suits: ['spades'] as const, ranks: ['2'] as const, copies: MAX_DECK_SIZE };
+    expect(buildDeck(ok)).toHaveLength(MAX_DECK_SIZE);
   });
 });

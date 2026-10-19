@@ -22,9 +22,9 @@ const JOKER_PLACEHOLDER = { rank: 'A' as Rank, suit: 'spades' as Suit };
  * 上書きする。この2段構えなら、素直な52枚も、スペードのAが10枚あるような
  * 偏ったデッキも、同じ型で書ける（→ docs/variants.md）。
  */
-export function buildDeck(rules: DeckRules): Card[] {
+function deckEntries(rules: DeckRules): Map<string, { card: Card; count: number }> {
   const counts = new Map<string, { card: Card; count: number }>();
-  const copies = rules.copies ?? 1;
+  const copies = Math.max(0, Math.floor(rules.copies ?? 1));
 
   for (const suit of rules.suits) {
     for (const rank of rules.ranks) {
@@ -38,6 +38,41 @@ export function buildDeck(rules: DeckRules): Card[] {
       count: Math.max(0, Math.floor(override.count)),
     });
   }
+
+  return counts;
+}
+
+/**
+ * デッキの上限。
+ *
+ * 「スペードのAを10枚」のような偏ったデッキは作れるべきだが、枚数は
+ * 数字の入力一つで際限なく増える。標準デッキの20倍近くあり、
+ * まともな用途で当たることはない。
+ */
+export const MAX_DECK_SIZE = 1000;
+
+/**
+ * デッキの枚数だけを数える。札は作らない。
+ *
+ * **編集中のルールに対してはこちらを使う。** 「同じ札を何枚入れるか」は
+ * 数字の入力一つなので、1000000 と打たれた瞬間に buildDeck が確保しに行って
+ * 画面が固まる。枚数を見てから作るかどうかを決められるようにしてある。
+ */
+export function deckSize(rules: DeckRules): number {
+  let n = rules.jokers ?? 0;
+  for (const { count } of deckEntries(rules).values()) n += count;
+  return n;
+}
+
+export function buildDeck(rules: DeckRules): Card[] {
+  const size = deckSize(rules);
+  if (size > MAX_DECK_SIZE) {
+    // 黙って切り詰めると、配った札が設定と食い違う。
+    // 編集中のルールには deckSize を使って、作る前に止めること。
+    throw new Error(`デッキが大きすぎる: ${size}枚（上限 ${MAX_DECK_SIZE}枚）`);
+  }
+
+  const counts = deckEntries(rules);
 
   const cards: Card[] = [];
   for (const { card, count } of counts.values()) {

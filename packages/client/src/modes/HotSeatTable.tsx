@@ -1,9 +1,10 @@
 import { useMemo, useRef, useState } from 'react';
-import { type Action, findVariant, validate } from '@wildcard/engine';
+import { type Action, validate } from '@wildcard/engine';
 import { LocalTransport } from '../transport/local.js';
 import { useTable } from '../hooks/useTable.js';
 import { PassDeviceGate } from '../components/PassDeviceGate.js';
 import { TableView } from '../components/TableView.js';
+import { resolveVariant } from '../rules/customVariants.js';
 
 export interface HotSeatSettings {
   readonly names: readonly string[];
@@ -36,7 +37,7 @@ export function HotSeatTable({ settings, onExit }: HotSeatTableProps) {
       chips: settings.chips,
     }));
 
-    const variant = findVariant(settings.variantId);
+    const variant = resolveVariant(settings.variantId);
     return new LocalTransport({
       seatCount,
       smallBlind: settings.smallBlind,
@@ -90,7 +91,6 @@ export function HotSeatTable({ settings, onExit }: HotSeatTableProps) {
       onStartHand={startHand}
       startRejection={startRejection}
       banner={null}
-      variantId={settings.variantId}
     />
   );
 }

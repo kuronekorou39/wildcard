@@ -1,6 +1,5 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import {
-  VARIANT_PRESETS,
   activeRankings,
   boardSize,
   buildDeck,
@@ -8,15 +7,17 @@ import {
   describeWilds,
   evaluateExact,
   exampleHands,
-  findVariant,
   wildResolutions,
 } from '@wildcard/engine';
 import type { Card, Variant } from '@wildcard/engine';
 import { PlayingCard, cardLabel } from './PlayingCard.js';
+import { isCustomVariant, useVariants } from '../rules/customVariants.js';
 
 interface RulePickerProps {
   readonly value: string;
   readonly onChange: (variantId: string) => void;
+  /** 編集画面を開く。渡さなければボタンを出さない。 */
+  readonly onEdit?: (variantId: string) => void;
 }
 
 /**
@@ -26,29 +27,55 @@ interface RulePickerProps {
  * どれを選んでも同じ。Wildcard の中心にある考え方が最初に目に入る場所なので、
  * 何が変わるのかをその場で読めるようにしてある。
  */
-export function RulePicker({ value, onChange }: RulePickerProps) {
-  const selected = findVariant(value) ?? VARIANT_PRESETS[0]!;
+export function RulePicker({ value, onChange, onEdit }: RulePickerProps) {
+  const variants = useVariants();
+  const selected = variants.find((v) => v.id === value) ?? variants[0]!;
+  const custom = variants.filter((v) => isCustomVariant(v.id));
+  const presets = variants.filter((v) => !isCustomVariant(v.id));
 
   return (
     <div className="field">
       <span className="field-label">ルール</span>
       <select className="input" value={value} onChange={(e) => onChange(e.target.value)}>
-        {VARIANT_PRESETS.map((preset) => (
+        {presets.map((preset) => (
           <option key={preset.id} value={preset.id}>
             {preset.name}
           </option>
         ))}
+        {custom.length > 0 && (
+          <optgroup label="自分で作ったルール">
+            {custom.map((variant) => (
+              <option key={variant.id} value={variant.id}>
+                {variant.name}
+              </option>
+            ))}
+          </optgroup>
+        )}
       </select>
       {selected.description !== undefined && (
         <p className="hint rule-description">{selected.description}</p>
       )}
-      <RuleSheet variantId={selected.id} label="役の順位を見る" />
+      <RuleSheet variant={selected} label="役の順位を見る" />
+      {onEdit !== undefined && (
+        <div className="rule-actions">
+          <button type="button" className="btn btn-ghost" onClick={() => onEdit(selected.id)}>
+            {isCustomVariant(selected.id) ? 'このルールを編集' : 'これを元に作る'}
+          </button>
+        </div>
+      )}
     </div>
   );
 }
 
 interface RuleSheetProps {
-  readonly variantId: string;
+  /**
+   * 見せるルールそのもの。id ではなく実体を受け取る。
+   *
+   * オンラインではガイドの端末にプリセットが無いこともある
+   * （ホストが作ったカスタムルール）。卓の state には Variant が
+   * まるごと入って届くので、それをそのまま渡せばよい。
+   */
+  readonly variant: Variant | null;
   readonly label?: string;
 }
 
@@ -59,13 +86,14 @@ interface RuleSheetProps {
  * 独自役は、名前を見ても何が成立するのか分からない。条件の説明と、
  * 実際に成立する札を一緒に出す（→ engine の example.ts）。
  */
-export function RuleSheet({ variantId, label = 'ルール' }: RuleSheetProps) {
-  const variant = findVariant(variantId);
-
-  // 例は役ごとに試行を回して作るので、ルールが変わらないうちは作り直さない。
+export function RuleSheet({ variant, label = 'ルール' }: RuleSheetProps) {
+  // 例は役ごとに試行を回して作る。卓の画面にも出るので、
+  // 開くまでは計算しない。閉じたままなら一度も走らない。
+  const [opened, setOpened] = useState(false);
   const examples = useMemo(
-    () => (variant ? exampleHands(variant, { seed: 11 }) : new Map<string, Card[] | null>()),
-    [variant],
+    () =>
+      variant && opened ? exampleHands(variant, { seed: 11 }) : new Map<string, Card[] | null>(),
+    [variant, opened],
   );
 
   if (!variant) return null;
@@ -75,7 +103,7 @@ export function RuleSheet({ variantId, label = 'ルール' }: RuleSheetProps) {
   const wilds = describeWilds(variant);
 
   return (
-    <details className="rule-sheet">
+    <details className="rule-sheet" onToggle={(e) => setOpened(e.currentTarget.open)}>
       <summary className="rule-sheet-summary">{label}</summary>
       <div className="rule-sheet-body">
         <p className="rule-sheet-deck">

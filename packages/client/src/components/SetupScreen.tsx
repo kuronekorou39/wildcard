@@ -12,19 +12,42 @@ import {
   normalizeRoomCode,
 } from '../room.js';
 
-interface SetupScreenProps {
+/**
+ * ルールの選択は3つのモードで共有する。
+ *
+ * モードごとに別々に持つと、編集画面で作ったルールを選び直す場所が
+ * 3か所になる。「作ってすぐ遊ぶ」が主な流れなので、上に置いた。
+ */
+interface RuleSelection {
+  readonly variantId: string;
+  readonly onVariantChange: (variantId: string) => void;
+  readonly onEditRules: (sourceId: string) => void;
+}
+
+interface SetupScreenProps extends RuleSelection {
+  readonly mode: SetupMode;
+  readonly onModeChange: (mode: SetupMode) => void;
   readonly onStartHotSeat: (settings: HotSeatSettings) => void;
   readonly onStartOnline: (settings: OnlineSettings) => void;
   readonly onStartSolo: (settings: SoloSettings) => void;
 }
 
-type Mode = 'online' | 'solo' | 'hotseat';
+export type SetupMode = 'online' | 'solo' | 'hotseat';
 
 const MIN_PLAYERS = 2;
 const MAX_PLAYERS = 10;
 
-export function SetupScreen({ onStartHotSeat, onStartOnline, onStartSolo }: SetupScreenProps) {
-  const [mode, setMode] = useState<Mode>('online');
+export function SetupScreen({
+  mode,
+  onModeChange,
+  variantId,
+  onVariantChange,
+  onEditRules,
+  onStartHotSeat,
+  onStartOnline,
+  onStartSolo,
+}: SetupScreenProps) {
+  const rules: RuleSelection = { variantId, onVariantChange, onEditRules };
 
   return (
     <div className="screen screen-setup">
@@ -39,7 +62,7 @@ export function SetupScreen({ onStartHotSeat, onStartOnline, onStartSolo }: Setu
           role="tab"
           aria-selected={mode === 'online'}
           className={`tab ${mode === 'online' ? 'tab-active' : ''}`}
-          onClick={() => setMode('online')}
+          onClick={() => onModeChange('online')}
         >
           オンライン
         </button>
@@ -48,7 +71,7 @@ export function SetupScreen({ onStartHotSeat, onStartOnline, onStartSolo }: Setu
           role="tab"
           aria-selected={mode === 'solo'}
           className={`tab ${mode === 'solo' ? 'tab-active' : ''}`}
-          onClick={() => setMode('solo')}
+          onClick={() => onModeChange('solo')}
         >
           ソロ
         </button>
@@ -57,26 +80,15 @@ export function SetupScreen({ onStartHotSeat, onStartOnline, onStartSolo }: Setu
           role="tab"
           aria-selected={mode === 'hotseat'}
           className={`tab ${mode === 'hotseat' ? 'tab-active' : ''}`}
-          onClick={() => setMode('hotseat')}
+          onClick={() => onModeChange('hotseat')}
         >
           ホットシート
         </button>
       </nav>
 
-      {mode === 'online' && <OnlinePanel onStart={onStartOnline} />}
-      {mode === 'solo' && <SoloPanel onStart={onStartSolo} />}
-      {mode === 'hotseat' && <HotSeatPanel onStart={onStartHotSeat} />}
-
-      <section className="panel panel-muted">
-        <h2 className="panel-title">これから</h2>
-        <ul className="roadmap">
-          <li>カスタムルール（カードの強さ・独自の役）を自分で作るエディタ</li>
-          <li>配牌の公正さを全員で検証できる仕組み</li>
-        </ul>
-        <p className="panel-note">
-          エンジンはすでにカスタムルールに対応済みで、残っているのは編集画面です。
-        </p>
-      </section>
+      {mode === 'online' && <OnlinePanel onStart={onStartOnline} rules={rules} />}
+      {mode === 'solo' && <SoloPanel onStart={onStartSolo} rules={rules} />}
+      {mode === 'hotseat' && <HotSeatPanel onStart={onStartHotSeat} rules={rules} />}
     </div>
   );
 }
@@ -85,7 +97,13 @@ export function SetupScreen({ onStartHotSeat, onStartOnline, onStartSolo }: Setu
 // オンライン
 // ============================================================
 
-function OnlinePanel({ onStart }: { readonly onStart: (settings: OnlineSettings) => void }) {
+function OnlinePanel({
+  onStart,
+  rules,
+}: {
+  readonly onStart: (settings: OnlineSettings) => void;
+  readonly rules: RuleSelection;
+}) {
   const [role, setRole] = useState<'host' | 'guest'>('host');
   const [name, setName] = useState('');
   const [code, setCode] = useState('');
@@ -93,7 +111,7 @@ function OnlinePanel({ onStart }: { readonly onStart: (settings: OnlineSettings)
   const [chips, setChips] = useState(1000);
   const [smallBlind, setSmallBlind] = useState(10);
   const [bigBlind, setBigBlind] = useState(20);
-  const [variantId, setVariantId] = useState('standard');
+  const variantId = rules.variantId;
 
   const trimmedName = name.trim();
   const badChars = invalidRoomCodeChars(code);
@@ -225,7 +243,11 @@ function OnlinePanel({ onStart }: { readonly onStart: (settings: OnlineSettings)
             </p>
           )}
 
-          <RulePicker value={variantId} onChange={setVariantId} />
+          <RulePicker
+            value={variantId}
+            onChange={rules.onVariantChange}
+            onEdit={rules.onEditRules}
+          />
         </>
       )}
 
@@ -249,12 +271,18 @@ function OnlinePanel({ onStart }: { readonly onStart: (settings: OnlineSettings)
 // ホットシート
 // ============================================================
 
-function HotSeatPanel({ onStart }: { readonly onStart: (settings: HotSeatSettings) => void }) {
+function HotSeatPanel({
+  onStart,
+  rules,
+}: {
+  readonly onStart: (settings: HotSeatSettings) => void;
+  readonly rules: RuleSelection;
+}) {
   const [names, setNames] = useState<string[]>(['プレイヤー1', 'プレイヤー2']);
   const [chips, setChips] = useState(1000);
   const [smallBlind, setSmallBlind] = useState(10);
   const [bigBlind, setBigBlind] = useState(20);
-  const [variantId, setVariantId] = useState('standard');
+  const variantId = rules.variantId;
 
   const setName = (index: number, value: string) => {
     setNames((current) => current.map((name, i) => (i === index ? value : name)));
@@ -354,7 +382,7 @@ function HotSeatPanel({ onStart }: { readonly onStart: (settings: HotSeatSetting
         </p>
       )}
 
-      <RulePicker value={variantId} onChange={setVariantId} />
+      <RulePicker value={variantId} onChange={rules.onVariantChange} onEdit={rules.onEditRules} />
 
       <button
         type="button"

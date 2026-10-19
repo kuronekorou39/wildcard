@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { type Action, decide, findVariant, validate } from '@wildcard/engine';
+import { type Action, decide, validate } from '@wildcard/engine';
 import { TableView } from '../components/TableView.js';
 import { useTable } from '../hooks/useTable.js';
 import { LocalTransport } from '../transport/local.js';
+import { resolveVariant } from '../rules/customVariants.js';
 
 export interface SoloSettings {
   readonly name: string;
@@ -51,7 +52,7 @@ export function SoloTable({ settings, onExit }: SoloTableProps) {
       })),
     ];
 
-    const variant = findVariant(settings.variantId);
+    const variant = resolveVariant(settings.variantId);
     return new LocalTransport({
       seatCount,
       smallBlind: settings.smallBlind,
@@ -119,7 +120,6 @@ export function SoloTable({ settings, onExit }: SoloTableProps) {
       onStartHand={startHand}
       startRejection={startRejection}
       banner={thinking !== null ? <div className="banner banner-wait">{thinking} が考えています…</div> : null}
-      variantId={settings.variantId}
     />
   );
 }

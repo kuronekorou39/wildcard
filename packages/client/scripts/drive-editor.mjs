@@ -1,0 +1,159 @@
+/**
+ * ルールの編集画面を実際に触る。
+ *
+ * ここは Wildcard の主役なので、「保存できた」ではなく
+ * **作ったルールでそのまま遊べる**ところまでを一度に確かめる。
+ * 旧 poker-web-20250702 の HouseRulesPage.tsx は、作る画面だけが育って
+ * 遊ぶところへ繋がらないまま 3,651行で止まった。
+ */
+import { chromium } from 'playwright';
+import { mkdir } from 'node:fs/promises';
+
+const URL = process.env.WILDCARD_URL ?? 'http://localhost:5173/';
+const SHOTS = process.env.WILDCARD_SHOTS ?? 'shots';
+
+await mkdir(SHOTS, { recursive: true });
+
+const browser = await chromium.launch({ executablePath: process.env.WILDCARD_BROWSER });
+const page = await browser.newPage({ viewport: { width: 420, height: 900 } });
+page.on('console', (m) => m.type() === 'error' && console.log('[browser error]', m.text()));
+page.on('pageerror', (e) => console.log('[page error]', e.message));
+
+const shot = async (name) => {
+  await page.screenshot({ path: `${SHOTS}/${name}.png`, fullPage: true });
+  console.log(`  shot -> ${SHOTS}/${name}.png`);
+};
+
+await page.goto(URL);
+
+// ---- 編集画面を開く ----
+await page.getByRole('tab', { name: 'ソロ' }).click();
+await page.getByRole('button', { name: 'これを元に作る' }).click();
+await page.getByRole('heading', { name: 'ルールを作る' }).waitFor();
+console.log('--- 編集画面を開いた ---');
+
+const problems = () => page.locator('.editor-problems li').allInnerTexts();
+console.log(`  最初の矛盾: ${(await problems()).length}件`);
+
+// ---- 名前を付ける ----
+const name = page.locator('.panel').first().getByRole('textbox').first();
+await name.fill('六枚フロップ・素数入り');
+
+// ---- デッキ: クラブを抜く ----
+await page.getByRole('button', { name: '♣', exact: true }).click();
+const deckLine = await page.locator('.panel', { hasText: 'デッキ' }).first().locator('.editor-figures').innerText();
+console.log(`  クラブを抜いた: ${deckLine.trim()}`);
+
+// ---- 配り方: フロップを6枚に ----
+const flop = page.locator('.street-row').first();
+await flop.locator('input[type=number]').first().fill('6');
+console.log('  フロップを6枚にした');
+
+// ---- 役: 独自役を足す ----
+await page.getByRole('button', { name: '＋ 役を足す' }).click();
+const editor = page.locator('.ranking-editor');
+await editor.waitFor();
+await editor.getByRole('textbox').first().fill('スリーカード＋ペア（自作）');
+
+// 「ペア＋三連」を組む: 同じランク2枚 ＋ 連続3枚
+await editor.getByRole('button', { name: '＋ まとまりを足す' }).click();
+const second = editor.locator('.block-row').nth(1);
+await second.locator('select').selectOption('run');
+await second.locator('input[type=number]').fill('3');
+console.log(`  条件: ${(await editor.locator('.block-total').innerText()).trim()}`);
+
+const exampleOf = async () =>
+  (
+    await editor
+      .locator('.rule-row-cards .card')
+      .evaluateAll((els) => els.map((el) => el.getAttribute('aria-label')))
+  ).join(' ');
+
+// いちばん下にあるうちは例が出ない。上の役に先に当たるため。
+console.log(`  いちばん下での例: ${(await exampleOf()) || '(出ない — 上の役に先に当たる)'}`);
+
+// 強さを2つ上げる（ハイカード・ワンペアより上へ）
+const item = page.locator('.ranking-item', { has: page.locator('.ranking-editor') });
+const up = item.locator('.ranking-move button').first();
+await up.click();
+await up.click();
+console.log(`  強さを2つ上げた → 例: ${(await exampleOf()) || '(出ない)'}`);
+
+await shot('10-editor');
+
+// ---- 矛盾の表示を確かめる ----
+// 手札10枚 × 6人 ＝ 60枚。クラブを抜いた39枚では配りきれない。
+const hole = page.locator('.panel', { hasText: '配り方' }).getByLabel('手札');
+await hole.fill('10');
+const bad = await problems();
+console.log(`--- わざと壊す（手札10枚） --- 矛盾 ${bad.length}件`);
+for (const line of bad) console.log(`  ${line.replace(/\s+/g, ' ').trim()}`);
+await hole.fill('2');
+console.log(`  戻したら ${(await problems()).length}件`);
+
+// ---- 順位表で確かめる ----
+await page.getByText('役の順位と例を見る').click();
+await page.waitForTimeout(200);
+const rows = page.locator('.rule-sheet-list > li');
+console.log(`--- できあがり --- 役 ${await rows.count()}種`);
+for (let i = 0; i < (await rows.count()); i++) {
+  const row = rows.nth(i);
+  const label = (await row.locator('.rule-row-name').innerText()).trim();
+  const cards = await row.locator('.card').evaluateAll((els) =>
+    els.map((el) => el.getAttribute('aria-label')),
+  );
+  console.log(`  ${label.padEnd(20)} ${cards.join(' ')}`);
+}
+await shot('11-editor-preview');
+
+// ---- 保存して遊ぶ ----
+await page.getByRole('button', { name: 'この卓で遊ぶ' }).click();
+await page.getByRole('tab', { name: 'ソロ' }).waitFor();
+// 編集に入る前のモード（ソロ）のまま戻ってきているはず。
+const activeTab = await page.locator('.tab-active').innerText();
+console.log(`  戻ってきたタブ: ${activeTab.trim()}`);
+
+const selected = await page.locator('select.input').first().evaluate((el) => {
+  const option = el.options[el.selectedIndex];
+  return { value: el.value, label: option?.text, group: option?.parentElement?.getAttribute('label') };
+});
+console.log(`--- 戻った --- 選ばれているルール: ${selected.label} (${selected.group ?? 'プリセット'})`);
+
+await page.getByRole('button', { name: 'はじめる' }).click();
+await page.getByRole('button', { name: 'ゲーム開始' }).click();
+await page.waitForTimeout(800);
+
+const slots = await page.locator('.community-cards .card').count();
+console.log(`  場の枠: ${slots}（フロップ6＋ターン＋リバー＝8のはず）`);
+
+// フロップまで進める。実際に配られた札でデッキを確かめたい。
+const labels = async (selector) =>
+  (await page.locator(selector).evaluateAll((els) =>
+    els.map((el) => el.getAttribute('aria-label')),
+  )).filter((label) => label && label !== '裏向きのカード');
+
+for (let step = 0; step < 40; step++) {
+  if ((await labels('.community-cards .card')).length > 0) break;
+
+  const check = page.getByRole('button', { name: 'チェック' });
+  const call = page.getByRole('button', { name: /^コール/ });
+  if (await check.count()) await check.click();
+  else if (await call.count()) await call.click();
+  else {
+    // CPU の番。描画が追いつくのを待つ。
+    await page.waitForTimeout(300);
+    continue;
+  }
+  await page.waitForTimeout(300);
+}
+
+const board = await labels('.community-cards .card');
+const mine = await labels('.seat-viewer .card');
+console.log(`  配られた場: ${board.join(' ') || '(まだ)'}`);
+console.log(`  自分の手札: ${mine.join(' ') || '(見えない)'}`);
+
+const clubs = [...board, ...mine].filter((label) => label.includes('♣'));
+console.log(`  クラブ: ${clubs.length}枚（デッキから抜いたので0のはず）`);
+await shot('12-playing-custom');
+
+await browser.close();

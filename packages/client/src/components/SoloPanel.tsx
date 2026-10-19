@@ -2,13 +2,23 @@ import { useState } from 'react';
 import type { SoloSettings } from '../modes/SoloTable.js';
 import { RulePicker } from './RulePicker.js';
 
-export function SoloPanel({ onStart }: { readonly onStart: (settings: SoloSettings) => void }) {
+export function SoloPanel({
+  onStart,
+  rules,
+}: {
+  readonly onStart: (settings: SoloSettings) => void;
+  readonly rules: {
+    readonly variantId: string;
+    readonly onVariantChange: (variantId: string) => void;
+    readonly onEditRules: (sourceId: string) => void;
+  };
+}) {
   const [name, setName] = useState('あなた');
   const [opponents, setOpponents] = useState(2);
   const [chips, setChips] = useState(1000);
   const [smallBlind, setSmallBlind] = useState(10);
   const [bigBlind, setBigBlind] = useState(20);
-  const [variantId, setVariantId] = useState('standard');
+  const variantId = rules.variantId;
   const [aggression, setAggression] = useState(0.5);
 
   const blindsOk = smallBlind > 0 && bigBlind >= smallBlind && chips >= bigBlind;
@@ -93,7 +103,7 @@ export function SoloPanel({ onStart }: { readonly onStart: (settings: SoloSettin
         </p>
       )}
 
-      <RulePicker value={variantId} onChange={setVariantId} />
+      <RulePicker value={variantId} onChange={rules.onVariantChange} onEdit={rules.onEditRules} />
 
       <button
         type="button"
