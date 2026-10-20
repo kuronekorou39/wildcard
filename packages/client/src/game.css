@@ -1,0 +1,106 @@
+/* The playing surface gets the space; the player's hand stays in document flow. */
+.screen-game { --seat-w: 78px; --seat-h: 80px; max-width: 1600px; margin: 0 auto; }
+.topbar { justify-content: flex-start; flex-wrap: wrap; background: var(--bg-dark); border-color: var(--border); padding: 12px 24px; }
+.topbar-title { margin-left: auto; font-size: .9rem; }
+.topbar-blinds { font-size: .78rem; }
+.rule-bar { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 10px 24px 0; }
+.rule-bar>.rule-sheet { min-width: 0; }
+.table-wrap { padding: 60px 0 20px; }
+.table-area { width: min(calc(100% - 100px), 400px); max-height: none; aspect-ratio: auto; }
+.table-surface { position: relative; width: 100%; aspect-ratio: .78; min-height: calc(250px + var(--board-rows) * 110px); }
+.table-felt { border-width: 8px; box-shadow: inset 0 0 0 1px #625259, inset 0 0 50px #211c2040, 0 10px 35px #0002; }
+.table-felt::after { content: ''; position: absolute; inset: 14px; border: 1px solid #9a7b692b; border-radius: inherit; }
+.table-center { gap: 14px; width: calc(100% - 22px); }
+.table-phase { font-size: .8rem; color: var(--text-dim); }
+.table-pot { font-size: 1.35rem; color: var(--text); text-shadow: none; font-variant-numeric: tabular-nums; }
+.community-cards { max-width: 100%; flex-wrap: wrap; gap: 5px; }
+.community-cards .card { --card-width: clamp(32px, 9.6vw, 44px); }
+.community-cards-wide { display: grid; grid-template-columns: repeat(4, auto); }
+.community-run { flex-basis: 100%; text-align: center; }
+.community-cards-wide .community-run { grid-column: 1 / -1; margin: 0; }
+.seat { border-radius: 12px; padding: 6px 4px; gap: 3px; }
+.seat-name { max-width: 100%; }
+.seat-chips { color: var(--text); font-size: .9rem; font-weight: 700; }
+.seat-bet { color: var(--gold); }
+.seat-turn { border-color: var(--gold); }
+.seat-folded, .seat-away { opacity: .65; }
+.seat:not(.seat-viewer) .seat-cards { flex-wrap: wrap; justify-content: center; }
+.seat:not(.seat-viewer) .seat-cards:has(.card:nth-child(3)) { gap: 1px; }
+.seat:not(.seat-viewer) .seat-cards:has(.card:nth-child(3)) .card { --card-width: 20px; }
+.table-player { display: flex; justify-content: center; padding-top: 22px; }
+.table-player .seat-viewer {
+  position: relative;
+  inset: auto !important;
+  transform: none;
+  width: max-content;
+  min-width: 154px;
+  max-width: 100%;
+  padding: 12px 16px;
+  gap: 5px;
+  border-color: var(--gold);
+  background: var(--surface-raised);
+}
+.seat-viewer .seat-cards { flex-wrap: wrap; justify-content: center; gap: 6px; margin-bottom: 4px; }
+.seat-viewer .card { --card-width: 50px; }
+.seat-viewer .seat-name { font-size: .8rem; }
+.seat-viewer .seat-chips { font-size: 1rem; }
+.table-area:not(:has(.table-player)) { padding-bottom: 55px; }
+.bottombar { background: var(--surface); border-top: 1px solid var(--border); padding: 16px 24px calc(18px + env(safe-area-inset-bottom)); }
+.raise-slider { accent-color: var(--accent); }
+.turn-label { font-size: .87rem; }
+
+@media (min-width: 720px) {
+  .screen-game { --seat-w: 104px; --seat-h: 96px; }
+  .table-wrap { padding: 60px 0 20px; }
+  .table-area { width: min(calc(100% - 150px), 1120px); }
+  .table-surface { aspect-ratio: 2.35; min-height: max(330px, calc(170px + var(--desktop-board-rows) * 130px)); max-height: max(330px, calc(100dvh - 450px)); }
+  .table-area[data-seats="9"] .table-surface, .table-area[data-seats="10"] .table-surface { min-height: max(400px, calc(170px + var(--desktop-board-rows) * 130px)); }
+  .table-center { width: 72%; gap: 18px; }
+  .community-cards { gap: 8px; }
+  .community-cards .card { --card-width: clamp(44px, 5.15vw, 66px); }
+  .community-cards-wide { display: flex; }
+  .community-cards-wide .card { --card-width: clamp(36px, 4.5vw, 58px); }
+  .table-pot { font-size: 1.65rem; }
+  .seat-name { font-size: .78rem; }
+  .seat-chips { font-size: 1rem; }
+  .seat:not(.seat-viewer) .card { --card-width: 28px; }
+  .seat:not(.seat-viewer) .seat-cards:has(.card:nth-child(3)) .card { --card-width: 22px; }
+  .table-player { padding-top: 26px; }
+  .table-player .seat-viewer { display: grid; grid-template-columns: auto minmax(80px, auto); column-gap: 20px; min-width: 178px; padding: 12px 24px; }
+  .table-player .seat-viewer .seat-cards { grid-column: 1; grid-row: 1 / span 5; margin: 0; }
+  .table-player .seat-viewer>div:not(.seat-cards) { grid-column: 2; }
+  .seat-viewer .card { --card-width: 62px; }
+  .seat-viewer .seat-name { font-size: .85rem; }
+  .bottombar { max-width: 1000px; border-radius: 18px 18px 0 0; border: 1px solid var(--border); border-bottom: 0; }
+  .action-bar { max-width: 820px; margin: 0 auto; }
+}
+@media (max-width: 719px) {
+  .topbar { padding: 12px 16px; gap: 10px; }
+  .topbar-title { font-size: .76rem; }
+  .topbar-blinds { flex-basis: 100%; text-align: right; font-size: .72rem; }
+  .rule-bar { padding-inline: 16px; gap: 8px; }
+  .rule-bar .card-appearance-trigger { font-size: .72rem; padding: 9px 10px; }
+  .bottombar { padding-inline: 16px; }
+  .action-row>.btn { padding: 12px 8px; font-size: .88rem; }
+  .table-area[data-seats="7"] .table-surface, .table-area[data-seats="8"] .table-surface { min-height: 440px; }
+  .table-area[data-seats="9"] .table-surface, .table-area[data-seats="10"] .table-surface { aspect-ratio: .52; min-height: max(540px, calc(250px + var(--board-rows) * 110px)); }
+  .table-area[data-seats="10"] .table-surface { min-height: max(580px, calc(250px + var(--board-rows) * 110px)); }
+  .table-area[data-seats="10"] .table-center { top: 51%; }
+  .table-wrap:has(.table-area[data-seats="10"]) { padding-top: 90px; }
+  .table-area[data-seats="9"] .seat[data-slot="0"]:not(.seat-viewer), .table-area[data-seats="10"] .seat[data-slot="0"]:not(.seat-viewer) { transform: translate(-50%, 0); }
+  .table-area:is([data-seats="9"], [data-seats="10"]):not(:has(.table-player)) { padding-bottom: 100px; }
+  .table-area[data-seats="10"] .seat[data-slot="5"] { margin-top: -22px; }
+  .table-player { margin-inline: -34px; }
+  .seat:not(.seat-viewer) .seat-cards:has(.card:nth-child(3)) { display: grid; grid-template-columns: repeat(2, auto); }
+}
+@media (max-width: 380px) {
+  .table-area[data-seats="9"] .seat[data-slot="4"] { margin-left: -6px; }
+  .table-area[data-seats="9"] .seat[data-slot="5"] { margin-left: 6px; }
+  .table-area[data-seats="10"] .seat[data-slot="4"] { margin-left: -18px; }
+  .table-area[data-seats="10"] .seat[data-slot="6"] { margin-left: 18px; }
+  .table-area:is([data-seats="7"], [data-seats="8"], [data-seats="9"], [data-seats="10"]) .community-cards {
+    display: grid;
+    grid-template-columns: repeat(3, auto);
+  }
+  .table-area:is([data-seats="7"], [data-seats="8"], [data-seats="9"], [data-seats="10"]) .community-run { grid-column: 1 / -1; margin: 0; }
+}

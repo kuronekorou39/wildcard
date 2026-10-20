@@ -26,8 +26,8 @@ export function SoloPanel({
   return (
     <section className="panel">
       <p className="panel-note">
-        CPU を相手に一人で遊びます。CPU は役の名前を一切知らず、実際に残りの札を
-        配ってみて勝率を数えるだけで打ちます。だからルールを変えてもそのまま相手になります。
+        CPU を相手に、自分のペースで練習できます。
+        自分で作ったルールも、そのまま試してみよう。
       </p>
 
       <label className="field">

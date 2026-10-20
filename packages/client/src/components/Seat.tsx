@@ -25,14 +25,14 @@ export function Seat({ slot, seatCount, player, isTurn, isDealer, isViewer }: Se
 
   if (!player) {
     return (
-      <div className={classes.join(' ')} style={style}>
+      <div className={classes.join(' ')} style={style} data-slot={slot}>
         <span className="seat-empty-label">空席</span>
       </div>
     );
   }
 
   return (
-    <div className={classes.join(' ')} style={style}>
+    <div className={classes.join(' ')} style={style} data-slot={slot}>
       {isDealer && <span className="seat-dealer-button" title="ディーラーボタン">D</span>}
 
       <div className="seat-cards">
@@ -42,7 +42,7 @@ export function Seat({ slot, seatCount, player, isTurn, isDealer, isViewer }: Se
           自分の手札は読めなければ意味がないので一段大きく出す。
         */}
         {player.holeCards.map((card, i) => (
-          <PlayingCard key={i} card={card} size={isViewer ? 'md' : 'sm'} />
+          <PlayingCard key={i} card={card} size={isViewer ? 'lg' : 'sm'} />
         ))}
       </div>
 

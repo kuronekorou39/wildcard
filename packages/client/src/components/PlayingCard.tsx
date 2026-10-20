@@ -1,4 +1,6 @@
 import type { Card, Suit } from '@wildcard/engine';
+import { useCardAppearance, type BackStyle, type FaceStyle } from '../cardAppearance.js';
+import { CharacterMark } from './Brand.js';
 
 const SUIT_GLYPH: Record<Suit, string> = {
   spades: '♠',
@@ -21,16 +23,33 @@ interface PlayingCardProps {
   readonly size?: CardSize;
   /** 役に使われたカードを強調する。 */
   readonly highlighted?: boolean;
+  readonly faceStyle?: FaceStyle;
+  readonly backStyle?: BackStyle;
 }
 
-export function PlayingCard({ card, size = 'md', highlighted = false }: PlayingCardProps) {
+export function PlayingCard({ card, size = 'md', highlighted = false, faceStyle, backStyle }: PlayingCardProps) {
+  const { appearance } = useCardAppearance();
+  const face = faceStyle ?? appearance.face;
+  const back = backStyle ?? appearance.back;
   const classes = ['card', `card-${size}`];
-  if (!card) classes.push('card-back');
-  else if (card.joker === undefined && RED_SUITS.has(card.suit)) classes.push('card-red');
+  if (!card) classes.push('card-back', `card-back-${back}`);
+  else {
+    classes.push(`card-face-${face}`);
+    if (card.joker === undefined) {
+      classes.push(`card-suit-${card.suit}`);
+      if (RED_SUITS.has(card.suit)) classes.push('card-red');
+    }
+  }
   if (highlighted) classes.push('card-highlighted');
 
   if (!card) {
-    return <div className={classes.join(' ')} aria-label="裏向きのカード" />;
+    return (
+      <div className={classes.join(' ')} aria-label="裏向きのカード">
+        <span className="card-back-emblem" aria-hidden="true">
+          {back === 'dragon' ? <CharacterMark /> : back === 'diamond' ? '◆' : 'W'}
+        </span>
+      </div>
+    );
   }
 
   // ジョーカーは rank と suit に意味がない（評価の前に別の札へ置き換わる）。
@@ -46,8 +65,19 @@ export function PlayingCard({ card, size = 'md', highlighted = false }: PlayingC
 
   return (
     <div className={classes.join(' ')} aria-label={cardLabel(card)}>
-      <span className="card-rank">{card.rank}</span>
-      <span className="card-suit">{SUIT_GLYPH[card.suit]}</span>
+      <span className="card-index" aria-hidden="true">
+        <span className="card-rank">{card.rank}</span>
+        <span className="card-suit">{SUIT_GLYPH[card.suit]}</span>
+      </span>
+      {face === 'classic' && (
+        <>
+          <span className="card-center-suit" aria-hidden="true">{SUIT_GLYPH[card.suit]}</span>
+          <span className="card-index card-index-bottom" aria-hidden="true">
+            <span className="card-rank">{card.rank}</span>
+            <span className="card-suit">{SUIT_GLYPH[card.suit]}</span>
+          </span>
+        </>
+      )}
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import { type VisibleState, boardSize, boardsOf, streetName } from '@wildcard/engine';
+import type { CSSProperties } from 'react';
 import { CardSlot, PlayingCard } from './PlayingCard.js';
 import { Seat } from './Seat.js';
 import { displaySlot } from '../seatLayout.js';
@@ -33,43 +34,55 @@ export function PokerTable({ state, viewerId }: PokerTableProps) {
 
   const dealerPlayer = state.players.find((p) => p.seat === state.dealerSeat);
   const handInProgress = state.phase !== 'waiting';
+  const boards = boardsOf(state);
+  const boardLength = boardSize(state.variant.structure);
+  const boardRows = boards.length * (boardLength > 5 ? Math.ceil(boardLength / 4) : 1);
+  const renderSeat = (slot: number) => {
+    const player = bySlot.get(slot) ?? null;
+    return (
+      <Seat
+        key={slot}
+        slot={slot}
+        seatCount={state.seatCount}
+        player={player}
+        isTurn={player !== null && player.id === state.turnPlayerId}
+        isDealer={handInProgress && player !== null && player.id === dealerPlayer?.id}
+        isViewer={player !== null && player.id === viewerId}
+      />
+    );
+  };
 
   return (
-    <div className="table-area">
-      <div className="table-felt" />
+    <div className="table-area" data-seats={state.seatCount} style={{
+      '--board-rows': boardRows,
+      '--desktop-board-rows': boards.length * Math.ceil(boardLength / 8),
+    } as CSSProperties}>
+      <div className="table-surface">
+        <div className="table-felt" />
 
-      <div className="table-center">
-        <div className="table-phase">{phaseLabel(state)}</div>
+        <div className="table-center">
+          <div className="table-phase">{phaseLabel(state)}</div>
 
-        {/* 2本走ったら、ボードの数だけ並ぶ。1本なら今までどおり1列。 */}
-        {boardsOf(state).map((board, run) => (
-          <div key={run} className="community-cards">
-            {run > 0 && <span className="community-run">{run + 1}本目</span>}
-            {/* 枠の数はバリアントが決める。フロップ6枚なら場は8枚になる。 */}
-            {Array.from({ length: boardSize(state.variant.structure) }, (_, i) => {
-              const card = board[i];
-              return card ? <PlayingCard key={i} card={card} /> : <CardSlot key={i} />;
-            })}
-          </div>
-        ))}
+          {/* 2本走ったら、ボードの数だけ並ぶ。1本なら今までどおり1列。 */}
+          {boards.map((board, run) => (
+            <div key={run} className={`community-cards${boardLength > 5 ? ' community-cards-wide' : ''}`}>
+              {run > 0 && <span className="community-run">{run + 1}本目</span>}
+              {/* 枠の数はバリアントが決める。フロップ6枚なら場は8枚になる。 */}
+              {Array.from({ length: boardLength }, (_, i) => {
+                const card = board[i];
+                return card ? <PlayingCard key={i} card={card} /> : <CardSlot key={i} />;
+              })}
+            </div>
+          ))}
 
-        <div className="table-pot">ポット {state.pot.toLocaleString()}</div>
+          <div className="table-pot">ポット {state.pot.toLocaleString()}</div>
+        </div>
+
+        {Array.from({ length: state.seatCount }, (_, slot) =>
+          viewer && slot === 0 ? null : renderSeat(slot),
+        )}
       </div>
-
-      {Array.from({ length: state.seatCount }, (_, slot) => {
-        const player = bySlot.get(slot) ?? null;
-        return (
-          <Seat
-            key={slot}
-            slot={slot}
-            seatCount={state.seatCount}
-            player={player}
-            isTurn={player !== null && player.id === state.turnPlayerId}
-            isDealer={handInProgress && player !== null && player.id === dealerPlayer?.id}
-            isViewer={player !== null && player.id === viewerId}
-          />
-        );
-      })}
+      {viewer && <div className="table-player">{renderSeat(0)}</div>}
     </div>
   );
 }

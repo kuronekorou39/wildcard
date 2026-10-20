@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { SetupScreen, type SetupMode } from './components/SetupScreen.js';
 import { RuleEditor } from './components/editor/RuleEditor.js';
 import { resolveVariant } from './rules/customVariants.js';
@@ -22,6 +22,8 @@ export function App() {
   // 戻ったらオンラインの画面だった、では流れが切れる。
   const [mode, setMode] = useState<SetupMode>('online');
   const toSetup = () => setScreen({ kind: 'setup' });
+  // 設定の下までスクロールした位置を、新しい卓や編集画面に持ち越さない。
+  useEffect(() => { window.scrollTo(0, 0); }, [screen.kind]);
 
   switch (screen.kind) {
     case 'setup':

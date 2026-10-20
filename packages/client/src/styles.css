@@ -1,20 +1,25 @@
 /*
- * 見た目は旧 game-ui（深緑のフェルト + 金のアクセント）を引き継いでいる。
- * 違うのは席の配置で、旧実装が .seat-1 ... .seat-10 と座標を直書きしていた
- * ところを、楕円上の座標計算（seatLayout.ts）に置き換えている。
+ * Velvet Club: キャラクターの赤・墨黒・生成りを共通の色にする。
+ * 席の位置は seatLayout.ts の楕円上の座標を使う。
  */
 
 :root {
-  --felt-dark: #0a4d33;
-  --felt-light: #0f6b46;
-  --rail: #6b3f1d;
-  --bg-dark: #072a1e;
-  --bg-light: #0f4433;
-  --gold: #ffd369;
-  --text: #f2f6f4;
-  --text-dim: #9fbcb0;
-  --danger: #d9534f;
-  --accent: #3fa776;
+  color-scheme: dark;
+  --felt-dark: #302a2e;
+  --felt-light: #3d353a;
+  --rail: #252124;
+  --bg-dark: #191719;
+  --bg-light: #211e21;
+  --gold: #dbc5a6;
+  --text: #f5eee5;
+  --text-dim: #b9afad;
+  --danger: #ff9e9f;
+  --accent: #c22b31;
+  --surface: #242124;
+  --surface-raised: #302b2e;
+  --border: #494044;
+  --cream: #f3eadf;
+  --success: #b5d4c1;
   --seat-w: 72px;
   --seat-h: 76px;
   --radius: 12px;
@@ -31,7 +36,7 @@ body {
 }
 
 body {
-  background: linear-gradient(160deg, var(--bg-dark), var(--bg-light));
+  background: var(--bg-dark);
   color: var(--text);
   font-family:
     -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif;
@@ -192,8 +197,8 @@ button {
   justify-content: center;
   gap: 1px;
   border-radius: var(--radius);
-  background: rgba(8, 32, 24, 0.88);
-  border: 2px solid rgba(255, 255, 255, 0.22);
+  background: var(--surface);
+  border: 2px solid var(--border);
   font-size: 0.72rem;
   line-height: 1.25;
   text-align: center;
@@ -213,14 +218,14 @@ button {
 
 .seat-viewer {
   border-color: var(--accent);
-  background: rgba(24, 74, 54, 0.95);
+  background: var(--surface-raised);
   width: calc(var(--seat-w) * 1.2);
   padding: 6px 4px;
 }
 
 .seat-turn {
   border-color: var(--gold);
-  box-shadow: 0 0 0 2px rgba(255, 211, 105, 0.3), 0 0 18px rgba(255, 211, 105, 0.45);
+  box-shadow: 0 0 0 3px rgb(219 197 166 / 18%);
 }
 
 .seat-folded,
@@ -275,10 +280,10 @@ button {
   justify-content: center;
   border-radius: 50%;
   background: var(--gold);
-  color: #20362c;
+  color: #211c1d;
   font-size: 0.66rem;
   font-weight: 800;
-  border: 2px solid #20362c;
+  border: 2px solid #211c1d;
 }
 
 /* ---------- カード ---------- */
@@ -288,8 +293,8 @@ button {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  background: #fbfbf7;
-  color: #1d2b25;
+  background: #fffaf4;
+  color: #242125;
   border-radius: 4px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
   font-weight: 700;
@@ -317,11 +322,11 @@ button {
 }
 
 .card-red {
-  color: #c8372f;
+  color: #b4232c;
 }
 
 .card-back {
-  background: repeating-linear-gradient(45deg, #1d4f7a, #1d4f7a 3px, #2b6ea6 3px, #2b6ea6 6px);
+  background: repeating-linear-gradient(45deg, #69262d, #69262d 3px, #81343c 3px, #81343c 6px);
   border: 1px solid rgba(255, 255, 255, 0.35);
 }
 
@@ -362,17 +367,19 @@ button {
 }
 
 .btn-primary,
-.btn-call {
-  background: linear-gradient(140deg, var(--accent), #2f8c60);
+.btn-raise {
+  background: var(--accent);
+  color: #fffaf4;
 }
 
 .btn-fold {
-  background: linear-gradient(140deg, #8d4a46, #743936);
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--border);
 }
 
-.btn-raise {
-  background: linear-gradient(140deg, #c9983c, #a97c27);
-  color: #1d2b25;
+.btn-call {
+  background: var(--surface-raised);
+  box-shadow: inset 0 0 0 1px var(--border);
 }
 
 .btn-muted {
@@ -706,7 +713,7 @@ button {
 }
 
 .tab-active {
-  background: rgba(63, 167, 118, 0.25);
+  background: var(--surface-raised);
   color: var(--text);
 }
 
@@ -729,7 +736,7 @@ button {
 
 .segment-active {
   border-color: var(--accent);
-  background: rgba(63, 167, 118, 0.22);
+  background: rgb(194 43 49 / 14%);
   color: var(--text);
 }
 
@@ -778,7 +785,7 @@ button {
 }
 
 .banner-wait {
-  background: rgba(63, 167, 118, 0.2);
+  background: var(--surface-raised);
   color: var(--text);
 }
 
@@ -986,7 +993,7 @@ button {
 }
 
 .fair-verified .fair-status {
-  color: var(--accent);
+  color: var(--success);
 }
 
 .fair-unrevealed .fair-status {
@@ -1133,7 +1140,7 @@ button {
 
 .editor-ok {
   margin: 8px 0 0;
-  color: var(--accent);
+  color: var(--success);
   font-size: 0.82rem;
 }
 

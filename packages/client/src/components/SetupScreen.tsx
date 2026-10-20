@@ -4,6 +4,7 @@ import type { OnlineSettings } from '../modes/OnlineTable.js';
 import type { SoloSettings } from '../modes/SoloTable.js';
 import { SoloPanel } from './SoloPanel.js';
 import { RulePicker } from './RulePicker.js';
+import { Brand, HeroCharacter } from './Brand.js';
 import {
   ROOM_CODE_LENGTH,
   createRoomCode,
@@ -48,47 +49,95 @@ export function SetupScreen({
   onStartSolo,
 }: SetupScreenProps) {
   const rules: RuleSelection = { variantId, onVariantChange, onEditRules };
+  const [onlineRole, setOnlineRole] = useState<'host' | 'guest'>('host');
+  const chooseMode = (next: SetupMode) => {
+    onModeChange(next);
+    document.getElementById('table-setup')?.scrollIntoView({ block: 'start' });
+  };
 
   return (
     <div className="screen screen-setup">
+      <div className="site-header">
+        <Brand />
+        <button type="button" className="btn btn-ghost" onClick={() => onEditRules(variantId)}>
+          自分たちのルールを作る <span aria-hidden="true">↗</span>
+        </button>
+      </div>
       <header className="hero">
-        <h1 className="hero-title">Wildcard</h1>
-        <p className="hero-tagline">ルールを自分で決めるポーカー</p>
+        <div className="hero-copy">
+          <p className="eyebrow">YOUR TABLE. YOUR RULES.</p>
+          <h1 className="hero-title">今夜は、<br /><span>僕らのルールで。</span></h1>
+          <p className="hero-tagline">いつもの仲間と、ひと味ちがうポーカー。<br />ルールを決めて、テーブルを囲もう。</p>
+          <div className="hero-actions">
+            <button type="button" className="btn btn-primary btn-large" onClick={() => { setOnlineRole('host'); chooseMode('online'); }}>
+              仲間と遊ぶ <span aria-hidden="true">→</span>
+            </button>
+            <button type="button" className="btn btn-large" onClick={() => { setOnlineRole('guest'); chooseMode('online'); }}>
+              コードで参加
+            </button>
+          </div>
+        </div>
+        <HeroCharacter />
       </header>
 
-      <nav className="tabs" role="tablist">
+      <nav className="tabs mode-tabs" role="tablist" aria-label="遊び方">
         <button
           type="button"
           role="tab"
           aria-selected={mode === 'online'}
           className={`tab ${mode === 'online' ? 'tab-active' : ''}`}
-          onClick={() => onModeChange('online')}
+          id="mode-online"
+          aria-controls="mode-panel"
+          onClick={() => chooseMode('online')}
         >
           オンライン
+          <span className="mode-caption">離れていても、同じテーブルに。</span>
         </button>
         <button
           type="button"
           role="tab"
           aria-selected={mode === 'solo'}
           className={`tab ${mode === 'solo' ? 'tab-active' : ''}`}
-          onClick={() => onModeChange('solo')}
+          id="mode-solo"
+          aria-controls="mode-panel"
+          onClick={() => chooseMode('solo')}
         >
           ソロ
+          <span className="mode-caption">CPU相手に、新しいルールを試そう。</span>
         </button>
         <button
           type="button"
           role="tab"
           aria-selected={mode === 'hotseat'}
           className={`tab ${mode === 'hotseat' ? 'tab-active' : ''}`}
-          onClick={() => onModeChange('hotseat')}
+          id="mode-hotseat"
+          aria-controls="mode-panel"
+          onClick={() => chooseMode('hotseat')}
         >
           ホットシート
+          <span className="mode-caption">1台の端末を回して遊ぶ。</span>
         </button>
       </nav>
 
-      {mode === 'online' && <OnlinePanel onStart={onStartOnline} rules={rules} />}
-      {mode === 'solo' && <SoloPanel onStart={onStartSolo} rules={rules} />}
-      {mode === 'hotseat' && <HotSeatPanel onStart={onStartHotSeat} rules={rules} />}
+      <section className="setup-workspace" id="table-setup" aria-label="卓の準備">
+        <div className="setup-intro">
+          <p className="eyebrow">TAKE A SEAT</p>
+          <h2>{mode === 'online' ? '仲間を誘って、ひと勝負。' : mode === 'solo' ? '気軽にひとりで、腕試し。' : 'みんなで囲む、ひとつの卓。'}</h2>
+          <p>普通のポーカーも、<br />ちょっと変わったポーカーも。</p>
+          <div className="setup-rule-note">
+            <span className="setup-rule-symbol" aria-hidden="true">♠</span>
+            <h3>ルールだって、遊び道具。</h3>
+            <p>まずは標準ルールで。慣れてきたら、カードや役の強さを変えてみよう。</p>
+            <button type="button" className="btn btn-ghost" onClick={() => onEditRules(variantId)}>ルールを調整する →</button>
+          </div>
+        </div>
+        <div id="mode-panel" role="tabpanel" aria-labelledby={`mode-${mode}`}>
+          {mode === 'online' && <OnlinePanel onStart={onStartOnline} rules={rules} role={onlineRole} onRoleChange={setOnlineRole} />}
+          {mode === 'solo' && <SoloPanel onStart={onStartSolo} rules={rules} />}
+          {mode === 'hotseat' && <HotSeatPanel onStart={onStartHotSeat} rules={rules} />}
+        </div>
+      </section>
+      <footer className="site-footer"><Brand compact /><span>身内のホームゲームのためのポーカー。</span></footer>
     </div>
   );
 }
@@ -100,11 +149,14 @@ export function SetupScreen({
 function OnlinePanel({
   onStart,
   rules,
+  role,
+  onRoleChange,
 }: {
   readonly onStart: (settings: OnlineSettings) => void;
   readonly rules: RuleSelection;
+  readonly role: 'host' | 'guest';
+  readonly onRoleChange: (role: 'host' | 'guest') => void;
 }) {
-  const [role, setRole] = useState<'host' | 'guest'>('host');
   const [name, setName] = useState('');
   const [code, setCode] = useState('');
   const [hostPlays, setHostPlays] = useState(true);
@@ -135,22 +187,22 @@ function OnlinePanel({
   return (
     <section className="panel">
       <p className="panel-note">
-        サーバーは使いません。端末どうしが直接つながります（WebRTC）。
-        部屋を作った人の端末が進行役になり、その人だけがゲームを進めます。
+        部屋を作って、ルームコードを仲間に伝えよう。
+        部屋を作った人が進行役になり、ゲームを進めます。
       </p>
 
       <div className="segmented">
         <button
           type="button"
           className={`segment ${role === 'host' ? 'segment-active' : ''}`}
-          onClick={() => setRole('host')}
+          onClick={() => onRoleChange('host')}
         >
           部屋を作る
         </button>
         <button
           type="button"
           className={`segment ${role === 'guest' ? 'segment-active' : ''}`}
-          onClick={() => setRole('guest')}
+          onClick={() => onRoleChange('guest')}
         >
           参加する
         </button>

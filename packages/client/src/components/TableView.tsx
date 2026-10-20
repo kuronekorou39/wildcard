@@ -9,6 +9,8 @@ import { StraddleControl } from './StraddleControl.js';
 import { HandSummaryPanel } from './HandSummaryPanel.js';
 import { PlayingCard } from './PlayingCard.js';
 import { PokerTable } from './PokerTable.js';
+import { Brand } from './Brand.js';
+import { CardAppearancePicker } from './CardAppearancePicker.js';
 
 interface TableViewProps {
   readonly snapshot: TableSnapshot;
@@ -53,17 +55,19 @@ export function TableView({
   const canAct = controllablePlayerId !== null && turnPlayer?.id === controllablePlayerId;
 
   return (
-    <div className="screen">
+    <div className="screen screen-game">
       <header className="topbar">
         <button type="button" className="btn btn-muted btn-small" onClick={onExit}>
           もどる
         </button>
+        <Brand compact />
         <span className="topbar-title">{title}</span>
         <span className="topbar-blinds">{subtitle}</span>
       </header>
 
       <div className="rule-bar">
         <RuleSheet variant={snapshot.state.variant} />
+        <CardAppearancePicker />
       </div>
 
       {banner}
