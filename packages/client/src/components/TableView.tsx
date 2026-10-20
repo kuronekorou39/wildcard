@@ -1,16 +1,15 @@
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import type { Action } from '@wildcard/engine';
 import type { TableSnapshot } from '../transport/types.js';
 import { ActionBar } from './ActionBar.js';
 import { RunChoiceBar } from './RunChoiceBar.js';
-import { RuleSheet } from './RulePicker.js';
 import { ShowCardsControl } from './ShowCardsControl.js';
 import { StraddleControl } from './StraddleControl.js';
-import { HandSummaryPanel } from './HandSummaryPanel.js';
+import { HandResultControl } from './HandResultControl.js';
 import { PlayingCard } from './PlayingCard.js';
 import { PokerTable } from './PokerTable.js';
-import { Brand } from './Brand.js';
-import { CardAppearancePicker } from './CardAppearancePicker.js';
+import { TableInfoPanel } from './TableInfoPanel.js';
+import { useTableShape } from '../tableAppearance.js';
 
 interface TableViewProps {
   readonly snapshot: TableSnapshot;
@@ -53,31 +52,41 @@ export function TableView({
   const { state, viewerId } = snapshot;
   const turnPlayer = state.players.find((p) => p.id === state.turnPlayerId);
   const canAct = controllablePlayerId !== null && turnPlayer?.id === controllablePlayerId;
+  const [infoOpen, setInfoOpen] = useState(false);
+  const { shape, updateShape, saveFailed } = useTableShape();
+  const connectionProblem = !['local', 'connected'].includes(snapshot.status);
+  const dealNotice = state.phase !== 'waiting' && (state.exposedCards.length > 0 || state.misdeals > 0);
+  const extraControls = <>
+    <ShowCardsControl state={state} viewerId={viewerId} onAction={onAction} />
+    <StraddleControl state={state} viewerId={viewerId} onAction={onAction} />
+  </>;
 
   return (
-    <div className="screen screen-game">
-      <header className="topbar">
-        <button type="button" className="btn btn-muted btn-small" onClick={onExit}>
-          もどる
-        </button>
-        <Brand compact />
-        <span className="topbar-title">{title}</span>
-        <span className="topbar-blinds">{subtitle}</span>
-      </header>
-
-      <div className="rule-bar">
-        <RuleSheet variant={snapshot.state.variant} />
-        <CardAppearancePicker />
-      </div>
-
-      {banner}
-      <DealNotice snapshot={snapshot} />
+    <div className="screen screen-game" data-phase={state.phase}>
+      <button type="button" className="btn game-corner game-back" onClick={onExit} aria-label="もどる">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14 6-6 6 6 6M8 12h13" /></svg>
+      </button>
+      <button type="button" className="btn game-corner game-info" onClick={() => setInfoOpen(true)}
+        aria-label="卓の情報" aria-haspopup="dialog" aria-expanded={infoOpen}>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 11v6M12 7v1" /></svg>
+        {(connectionProblem || dealNotice) && <span className="info-alert-dot" />}
+      </button>
+      {infoOpen && (
+        <TableInfoPanel state={state} title={title} subtitle={subtitle} shape={shape} onShapeChange={updateShape}
+          shapeSaveFailed={saveFailed} onClose={() => setInfoOpen(false)}
+          notices={<>{banner}<DealNotice snapshot={snapshot} /></>} controls={extraControls} />
+      )}
 
       <main className="table-wrap">
-        <PokerTable state={state} viewerId={viewerId} />
+        <PokerTable state={state} viewerId={viewerId} shape={shape} />
       </main>
 
       <footer className="bottombar">
+        {(connectionProblem || dealNotice) && (
+          <button className="table-notice-link" type="button" onClick={() => setInfoOpen(true)}>
+            {connectionProblem ? snapshot.note ?? '接続状況を確認' : '配牌のお知らせ・露出札を確認'}
+          </button>
+        )}
         {state.phase === 'waiting' && onStartHand !== null && (
           <div className="centered-actions">
             <button
@@ -97,24 +106,21 @@ export function TableView({
         )}
 
         {state.phase === 'showdown' && (
-          <HandSummaryPanel
+          <HandResultControl
             state={state}
-            onNextHand={onStartHand ?? (() => {})}
-            canStartNextHand={onStartHand !== null && startRejection === null}
+            onNextHand={onStartHand}
             blockedReason={
               onStartHand === null
                 ? 'host が次のハンドを開始するのを待っています。'
                 : startRejection
             }
-          />
+          >{extraControls}</HandResultControl>
         )}
-
-        <ShowCardsControl state={state} viewerId={viewerId} onAction={onAction} />
-        <StraddleControl state={state} viewerId={viewerId} onAction={onAction} />
 
         {turnPlayer && (
           <>
             <div className="turn-label">
+              {snapshot.status !== 'local' && <span className="table-host-label">{title} · </span>}
               {state.phase === 'runChoice'
                 ? `${turnPlayer.name} に聞いています`
                 : `${turnPlayer.name} の番`}
@@ -126,7 +132,7 @@ export function TableView({
                 <ActionBar state={state} playerId={turnPlayer.id} onAction={onAction} />
               )
             ) : (
-              <p className="hint centered-actions">相手の行動を待っています…</p>
+              <div className="waiting-actions"><span className="waiting-pulse" />相手の行動を待っています…</div>
             )}
           </>
         )}

@@ -11,6 +11,7 @@
  *   WILDCARD_URL      既定 http://localhost:5173/
  *   WILDCARD_SHOTS    既定 shots-solo/
  *   WILDCARD_RULE     ルールのプリセット id（既定 standard）
+ *   WILDCARD_CPUS     CPU の人数（1〜9、省略時は画面の初期値）
  *   WILDCARD_FOLD     1 にすると最初の手番で降りる（ラビットハントの確認用）
  *   WILDCARD_BROWSER  使う Chromium の実行ファイルパス
  */
@@ -106,6 +107,9 @@ async function readShowdown(page) {
 await page.goto(URL, { waitUntil: 'networkidle' });
 await page.getByRole('tab', { name: 'ソロ' }).click();
 await page.locator('.field', { hasText: 'ルール' }).locator('select').selectOption(RULE);
+if (process.env.WILDCARD_CPUS) {
+  await page.locator('.field', { hasText: 'CPU の人数' }).locator('input').fill(process.env.WILDCARD_CPUS);
+}
 say(`ルール: ${await page.locator('.rule-description').innerText()}`);
 await snap('setup');
 
@@ -117,6 +121,9 @@ await page.getByRole('button', { name: 'ゲーム開始' }).click();
 await page.waitForTimeout(400);
 say(`自分の見えるカード: ${await page.locator('.seat-viewer .card:not(.card-back)').count()} 枚`);
 // ディーラーが札を表にしていれば告知が出る。不具合に見えないための表示。
+if (await page.locator('.table-notice-link').count()) {
+  await page.getByRole('button', { name: '卓の情報', exact: true }).click();
+}
 if (await page.locator('.deal-notice').count()) {
   say(`告知: ${flattenText(await page.locator('.deal-notice').innerText())}`);
   const exposed = await page
@@ -126,16 +133,17 @@ if (await page.locator('.deal-notice').count()) {
   // 手札は公開されないはず
   say(`  他人の表向きの札: ${await page.locator('.seat:not(.seat-viewer) .card:not(.card-back)').count()} 枚`);
 }
+if (await page.getByRole('dialog').count()) await page.keyboard.press('Escape');
 say(`CPU の裏向きカード: ${await page.locator('.seat:not(.seat-viewer) .card-back').count()} 枚`);
 await snap('preflop');
 
 let sawThinking = false;
 let myTurns = 0;
 
-for (let step = 0; step < 80; step++) {
+for (let step = 0; step < 400; step++) {
   if (await page.locator('.summary').count()) break;
 
-  if (await page.locator('.banner-wait').count()) {
+  if (await page.locator('.waiting-actions').count()) {
     sawThinking = true;
     await page.waitForTimeout(300);
     continue;
@@ -177,6 +185,8 @@ say(`自分が行動した回数: ${myTurns}`);
 if (await page.locator('.summary').count()) {
   say('--- ショーダウン ---');
   await assertNoDuplicateCards(page, 'showdown');
+  await snap('showdown-table');
+  await page.getByRole('button', { name: '結果の詳細', exact: true }).click();
   await readShowdown(page);
   const rabbit = await page
     .locator('.summary-rabbit-cards .card')
@@ -188,6 +198,7 @@ if (await page.locator('.summary').count()) {
 } else {
   say('--- ショーダウンに到達しなかった ---');
   await snap('stuck');
+  process.exitCode = 1;
 }
 
 await browser.close();

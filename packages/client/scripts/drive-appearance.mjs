@@ -55,8 +55,9 @@ try {
   await start(page);
   const hand = await page.locator('.seat-viewer .card').evaluateAll(cards => cards.map(c => c.getAttribute('aria-label')));
   await inspect(page, 'table-desktop');
-  const trigger = page.getByRole('button', { name: 'カードのデザイン' });
+  const trigger = page.getByRole('button', { name: '卓の情報', exact: true });
   await trigger.click();
+  await page.getByRole('tab', { name: '見た目', exact: true }).click();
   const dialog = page.getByRole('dialog');
   await dialog.waitFor();
   for (const face of faces) for (const back of backs) {
@@ -89,6 +90,7 @@ try {
     Storage.prototype.setItem = () => { throw new DOMException('Blocked', 'SecurityError'); };
   });
   await trigger.click();
+  await page.getByRole('tab', { name: '見た目', exact: true }).click();
   await dialog.locator('input[name="card-face"][value="bold"]').check();
   assert.equal(await page.locator('.seat-viewer .card-face-bold').count(), 2);
   assert.match(await dialog.getByRole('status').innerText(), /保存はできませんでした/);
@@ -103,7 +105,8 @@ try {
       await start(p, count, rule);
       await inspect(p, `table-${width}-${count}-${rule}`);
       if (count === 6 && rule === 'standard') {
-        await p.getByRole('button', { name: 'カードのデザイン' }).click();
+        await p.getByRole('button', { name: '卓の情報', exact: true }).click();
+        await p.getByRole('tab', { name: '見た目', exact: true }).click();
         await p.getByRole('dialog').waitFor();
         await inspect(p, `card-designs-${width}`);
         // All settings remain reachable on a narrow screen.

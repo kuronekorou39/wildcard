@@ -77,6 +77,7 @@ interface RuleSheetProps {
    */
   readonly variant: Variant | null;
   readonly label?: string;
+  readonly defaultOpen?: boolean;
 }
 
 /**
@@ -86,10 +87,10 @@ interface RuleSheetProps {
  * 独自役は、名前を見ても何が成立するのか分からない。条件の説明と、
  * 実際に成立する札を一緒に出す（→ engine の example.ts）。
  */
-export function RuleSheet({ variant, label = 'ルール' }: RuleSheetProps) {
+export function RuleSheet({ variant, label = 'ルール', defaultOpen = false }: RuleSheetProps) {
   // 例は役ごとに試行を回して作る。卓の画面にも出るので、
   // 開くまでは計算しない。閉じたままなら一度も走らない。
-  const [opened, setOpened] = useState(false);
+  const [opened, setOpened] = useState(defaultOpen);
   const examples = useMemo(
     () =>
       variant && opened ? exampleHands(variant, { seed: 11 }) : new Map<string, Card[] | null>(),
@@ -103,7 +104,7 @@ export function RuleSheet({ variant, label = 'ルール' }: RuleSheetProps) {
   const wilds = describeWilds(variant);
 
   return (
-    <details className="rule-sheet" onToggle={(e) => setOpened(e.currentTarget.open)}>
+    <details className="rule-sheet" open={opened} onToggle={(e) => setOpened(e.currentTarget.open)}>
       <summary className="rule-sheet-summary">{label}</summary>
       <div className="rule-sheet-body">
         <p className="rule-sheet-deck">

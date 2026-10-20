@@ -1,6 +1,7 @@
 import type { VisiblePlayer } from '@wildcard/engine';
+import type { CSSProperties } from 'react';
 import { PlayingCard } from './PlayingCard.js';
-import { seatPosition } from '../seatLayout.js';
+import { seatCoordinates } from '../seatLayout.js';
 
 interface SeatProps {
   readonly slot: number;
@@ -8,13 +9,11 @@ interface SeatProps {
   /** 空席なら null。 */
   readonly player: VisiblePlayer | null;
   readonly isTurn: boolean;
-  readonly isDealer: boolean;
   readonly isViewer: boolean;
 }
 
-export function Seat({ slot, seatCount, player, isTurn, isDealer, isViewer }: SeatProps) {
-  const { left, top } = seatPosition(slot, seatCount);
-  const style = { left: `${left}%`, top: `${top}%` };
+export function Seat({ slot, seatCount, player, isTurn, isViewer }: SeatProps) {
+  const style = seatCoordinates(slot, seatCount) as CSSProperties;
 
   const classes = ['seat'];
   if (!player) classes.push('seat-empty');
@@ -33,7 +32,15 @@ export function Seat({ slot, seatCount, player, isTurn, isDealer, isViewer }: Se
 
   return (
     <div className={classes.join(' ')} style={style} data-slot={slot}>
-      {isDealer && <span className="seat-dealer-button" title="ディーラーボタン">D</span>}
+      <div className="seat-profile">
+        <span className="seat-avatar" role="img" aria-label={`${player.name}のアイコン`} data-tone={player.seat % 4}>
+          {player.name.match(/^(?:CPU|プレイヤー)(\d+)$/)?.[1] ?? Array.from(player.name.trim())[0] ?? '•'}
+        </span>
+        <div className="seat-identity">
+          <div className="seat-name" title={player.name}>{player.name}</div>
+          <div className="seat-chips" aria-label={`持ちチップ ${player.chips.toLocaleString()}`}>{player.chips.toLocaleString()}</div>
+        </div>
+      </div>
 
       <div className="seat-cards">
         {/*
@@ -46,10 +53,7 @@ export function Seat({ slot, seatCount, player, isTurn, isDealer, isViewer }: Se
         ))}
       </div>
 
-      <div className="seat-name">{player.name}</div>
-      <div className="seat-chips">{player.chips.toLocaleString()}</div>
-
-      {player.bet > 0 && <div className="seat-bet">{player.bet.toLocaleString()}</div>}
+      {player.bet > 0 && <div className="seat-bet" aria-label={`ベット ${player.bet.toLocaleString()}`}>{player.bet.toLocaleString()}</div>}
       {player.allIn && <div className="seat-tag seat-tag-allin">オールイン</div>}
       {player.folded && !player.allIn && <div className="seat-tag">フォールド</div>}
       {player.waiting && <div className="seat-tag">次から参加</div>}

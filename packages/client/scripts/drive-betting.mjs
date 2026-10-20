@@ -74,9 +74,11 @@ if (await sitDown('オマハ（ポットリミット）')) {
 // ---- ストラドル ----
 console.log('=== ストラドルあり ===');
 if (await sitDown('ストラドルあり')) {
+  await page.getByRole('button', { name: '卓の情報', exact: true }).click();
   const toggle = page.locator('.straddle-control input');
   console.log(`  申告の口: ${(await toggle.count()) ? 'あり' : 'なし'}`);
   await toggle.check();
+  await page.getByRole('button', { name: '閉じる', exact: true }).click();
 
   // ストラドルを出せるのは BB の左隣にいるハンドだけ。
   // 席は毎ハンド回るので、自分の番が来るまで畳んで進める。

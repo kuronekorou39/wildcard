@@ -46,29 +46,31 @@ export function ActionBar({ state, playerId, onAction }: ActionBarProps) {
     });
 
     return (
-      <div className="action-bar">
-        <div className="raise-header">
-          <span className="raise-amount">{amount.toLocaleString()}</span>
-          {isAllIn && <span className="raise-allin-tag">オールイン</span>}
-        </div>
+      <div className="action-bar action-bar-raising">
+        <div className="raise-popover" role="group" aria-label="レイズ額の調整">
+          <div className="raise-header">
+            <span className="raise-amount">{amount.toLocaleString()}</span>
+            {isAllIn && <span className="raise-allin-tag">オールイン</span>}
+          </div>
 
-        <input
-          className="raise-slider"
-          type="range"
-          min={legal.minRaiseTo}
-          max={legal.maxRaiseTo}
-          step={1}
-          value={amount}
-          onChange={(e) => setAmount(Number(e.target.value))}
-          aria-label="レイズ額"
-        />
+          <input
+            className="raise-slider"
+            type="range"
+            min={legal.minRaiseTo}
+            max={legal.maxRaiseTo}
+            step={1}
+            value={amount}
+            onChange={(e) => setAmount(Number(e.target.value))}
+            aria-label="レイズ額"
+          />
 
-        <div className="raise-quick">
-          {quick.map(({ label, value }) => (
-            <button key={label} type="button" className="btn btn-quick" onClick={() => setAmount(value)}>
-              {label}
-            </button>
-          ))}
+          <div className="raise-quick">
+            {quick.map(({ label, value }) => (
+              <button key={label} type="button" className="btn btn-quick" onClick={() => setAmount(value)}>
+                {label}
+              </button>
+            ))}
+          </div>
         </div>
 
         <div className="action-row">

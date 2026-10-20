@@ -1,6 +1,6 @@
 /*
  * Velvet Club: キャラクターの赤・墨黒・生成りを共通の色にする。
- * 席の位置は seatLayout.ts の楕円上の座標を使う。
+ * 席の位置と表示は seatLayout.ts と game.css で画面サイズに合わせる。
  */
 
 :root {

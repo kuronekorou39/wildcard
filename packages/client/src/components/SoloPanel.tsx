@@ -46,10 +46,11 @@ export function SoloPanel({
           className="range"
           type="range"
           min={1}
-          max={5}
+          max={9}
           value={opponents}
           onChange={(e) => setOpponents(Number(e.target.value))}
         />
+        <span className="hint">あなたを含めて{opponents + 1}人の卓</span>
       </label>
 
       <label className="field">

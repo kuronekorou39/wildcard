@@ -93,6 +93,7 @@ for (let i = 0; i < (await rows.count()); i++) {
   console.log(`  ${i + 1}本目: ${cards.filter(Boolean).join(' ')}`);
 }
 
+await page.getByRole('button', { name: '結果の詳細', exact: true }).click();
 const runs = page.locator('.summary-run');
 console.log(`--- 内訳 --- ${await runs.count()}件`);
 for (let i = 0; i < (await runs.count()); i++) {

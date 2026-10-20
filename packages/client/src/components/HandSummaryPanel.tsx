@@ -6,6 +6,7 @@ interface HandSummaryPanelProps {
   readonly onNextHand: () => void;
   readonly canStartNextHand: boolean;
   readonly blockedReason: string | null;
+  readonly showNextHand?: boolean;
 }
 
 export function HandSummaryPanel({
@@ -13,6 +14,7 @@ export function HandSummaryPanel({
   onNextHand,
   canStartNextHand,
   blockedReason,
+  showNextHand = true,
 }: HandSummaryPanelProps) {
   const summary = state.summary;
   if (!summary) return null;
@@ -90,13 +92,13 @@ export function HandSummaryPanel({
         ))}
       </ul>
 
-      {canStartNextHand ? (
+      {showNextHand && (canStartNextHand ? (
         <button type="button" className="btn btn-primary btn-large" onClick={onNextHand}>
           次のハンド
         </button>
       ) : (
         <p className="summary-note">{blockedReason}</p>
-      )}
+      ))}
     </div>
   );
 }

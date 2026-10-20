@@ -40,3 +40,31 @@ export function seatPosition(slot: number, seatCount: number): SeatPosition {
     top: 50 + 50 * Math.sin(angle),
   };
 }
+
+/** 縦画面は左右に人数を分散させ、中央の場札を空ける。席順は変えない。 */
+export function portraitSeatPosition(slot: number, seatCount: number): SeatPosition {
+  if (slot === 0) return { left: 50, top: 100 };
+  if (seatCount === 2) return { left: 50, top: 0 };
+  if (seatCount === 3) return { left: slot === 1 ? 0 : 100, top: 22 };
+  if (seatCount === 4) return slot === 2
+    ? { left: 50, top: 0 }
+    : { left: slot === 1 ? 0 : 100, top: 58 };
+  const progress = ((slot - 1) / (seatCount - 2)) * 8;
+  if (progress <= 3) return { left: 0, top: 92 - progress * 24 };
+  if (progress <= 4) return { left: (progress - 3) * 50, top: (4 - progress) * 20 };
+  if (progress <= 5) return { left: 50 + (progress - 4) * 50, top: (progress - 4) * 20 };
+  return { left: 100, top: 20 + (progress - 5) * 24 };
+}
+
+export function seatCoordinates(slot: number, seatCount: number) {
+  const portrait = portraitSeatPosition(slot, seatCount);
+  const landscape = seatPosition(slot, seatCount);
+  return {
+    '--portrait-x': `${portrait.left}%`, '--portrait-y': `${portrait.top}%`,
+    '--landscape-x': `${landscape.left}%`, '--landscape-y': `${landscape.top}%`,
+  };
+}
+
+export function seatSide(position: SeatPosition) {
+  return position.left < 30 ? 'left' : position.left > 70 ? 'right' : position.top < 50 ? 'top' : 'bottom';
+}
