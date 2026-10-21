@@ -13,7 +13,7 @@ export type TableEvent = { readonly id: number; readonly at: number } & (
   | { readonly kind: 'deal' }
   | { readonly kind: 'burn'; readonly count: number }
   | { readonly kind: 'board'; readonly run: number; readonly from: number; readonly count: number }
-  | { readonly kind: 'bet' | 'win'; readonly playerId: string; readonly amount: number }
+  | { readonly kind: 'bet' | 'win'; readonly playerId: string; readonly amount: number; readonly raised?: boolean }
   | { readonly kind: 'fold'; readonly playerId: string }
 );
 export interface TableRuntimeSnapshot {
@@ -69,7 +69,7 @@ export class TableRuntime {
         ? (previous?.chips ?? 0) + (after.summary?.payouts.find(p => p.playerId === player.id)?.amount ?? 0) - player.chips
         : player.committed - (action.type === 'startHand' ? 0 : previous?.committed ?? 0);
       if (paid > 0) {
-        append({ kind: 'bet', playerId: player.id, amount: paid });
+        append({ kind: 'bet', playerId: player.id, amount: paid, ...(action.type === 'raise' ? { raised: true } : {}) });
         potChips = addChips(potChips, contributedChips(paid));
         readyAt = Math.max(readyAt, now + T.bet);
       }

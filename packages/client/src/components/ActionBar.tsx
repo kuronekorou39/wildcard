@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { type Action, type VisibleState, legalActions } from '@wildcard/engine';
 import { useActionLatch } from '../hooks/useActionLatch.js';
+import { ActionIcon } from './ActionIcon.js';
 
 interface ActionBarProps {
   readonly state: VisibleState;
@@ -68,11 +69,12 @@ export function ActionBar({ state, playerId, onAction, turnId, locked = false }:
             value={amount}
             onChange={(e) => setAmount(Number(e.target.value))}
             aria-label="レイズ額"
+            aria-orientation="vertical"
           />
 
           <div className="raise-quick">
             {quick.map(({ label, value }) => (
-              <button key={label} type="button" className="btn btn-quick" onClick={() => setAmount(value)}>
+              <button key={label} type="button" className="btn btn-quick" aria-pressed={amount === value} onClick={() => setAmount(value)}>
                 {label}
               </button>
             ))}
@@ -83,13 +85,14 @@ export function ActionBar({ state, playerId, onAction, turnId, locked = false }:
           <button
             type="button"
             className="btn btn-raise"
+            aria-label={isAllIn ? 'オールイン' : `${amount.toLocaleString()} にレイズ`}
             disabled={locked || !latch.enabled}
             onClick={() => send({ type: 'raise', playerId, to: amount })}
           >
-            {isAllIn ? 'オールイン' : `${amount.toLocaleString()} にレイズ`}
+            <ActionIcon kind="raise" /><span>{isAllIn ? 'オールイン' : 'レイズ確定'}</span><strong>{amount.toLocaleString()}</strong>
           </button>
           <button type="button" className="btn btn-muted" onClick={() => setRaising(false)}>
-            やめる
+            <ActionIcon kind="cancel" /><span>やめる</span>
           </button>
         </div>
       </div>
@@ -105,7 +108,7 @@ export function ActionBar({ state, playerId, onAction, turnId, locked = false }:
           disabled={locked || !latch.enabled}
           onClick={() => send({ type: 'fold', playerId })}
         >
-          フォールド
+          <ActionIcon kind="fold" /><span>フォールド</span>
         </button>
 
         {legal.canCheck ? (
@@ -115,16 +118,17 @@ export function ActionBar({ state, playerId, onAction, turnId, locked = false }:
             disabled={locked || !latch.enabled}
             onClick={() => send({ type: 'check', playerId })}
           >
-            チェック
+            <ActionIcon kind="check" /><span>チェック</span>
           </button>
         ) : (
           <button
             type="button"
             className="btn btn-call"
+            aria-label={`コール ${legal.callAmount.toLocaleString()}${legal.callAmount === player.chips ? ' オールイン' : ''}`}
             disabled={locked || !latch.enabled}
             onClick={() => send({ type: 'call', playerId })}
           >
-            コール {legal.callAmount.toLocaleString()}
+            <span>コール</span><strong>{legal.callAmount.toLocaleString()}</strong>
             {legal.callAmount === player.chips && <span className="btn-note">オールイン</span>}
           </button>
         )}
@@ -140,7 +144,7 @@ export function ActionBar({ state, playerId, onAction, turnId, locked = false }:
                 : setRaising(true)
             }
           >
-            {fixedAmount ? `レイズ ${legal.minRaiseTo.toLocaleString()}` : 'レイズ'}
+            <ActionIcon kind="raise" /><span>{fixedAmount ? `レイズ ${legal.minRaiseTo.toLocaleString()}` : 'レイズ'}</span>
           </button>
         )}
       </div>

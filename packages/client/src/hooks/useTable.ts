@@ -1,5 +1,6 @@
 import { useCallback, useSyncExternalStore } from 'react';
 import type { TableSnapshot, Transport } from '../transport/types.js';
+import { useTableAudio } from './useTableAudio.js';
 
 /**
  * Transport の状態を React に繋ぐ。
@@ -10,9 +11,11 @@ import type { TableSnapshot, Transport } from '../transport/types.js';
  */
 export function useTable(transport: Transport): TableSnapshot {
   const getSnapshot = useCallback(() => transport.snapshot(), [transport]);
-  return useSyncExternalStore(
+  const snapshot = useSyncExternalStore(
     useCallback((onChange: () => void) => transport.subscribe(onChange), [transport]),
     getSnapshot,
     getSnapshot,
   );
+  useTableAudio(snapshot);
+  return snapshot;
 }

@@ -5,8 +5,9 @@ import { GameDialog } from './GameDialog.js';
 import { RuleSheet } from './RulePicker.js';
 import { CardAppearanceOptions } from './CardAppearancePicker.js';
 import { TableFelt } from './TableFelt.js';
+import { SoundSettings } from './SoundSettings.js';
 
-const TABS = [['table', 'テーブル'], ['rules', 'ルール'], ['appearance', '見た目']] as const;
+const TABS = [['table', 'テーブル'], ['rules', 'ルール'], ['appearance', '見た目'], ['sound', 'サウンド']] as const;
 
 export function TableInfoPanel({ state, title, subtitle, notices, controls, shape, onShapeChange, shapeSaveFailed, onClose }: {
   readonly state: VisibleState;
@@ -59,6 +60,7 @@ export function TableInfoPanel({ state, title, subtitle, notices, controls, shap
           <div className="table-info-controls">{controls}</div>
         </>}
         {tab === 'rules' && <RuleSheet variant={state.variant} label="役の順位・デッキ" defaultOpen />}
+        {tab === 'sound' && <SoundSettings />}
         {tab === 'appearance' && <>
           <fieldset className="shape-fieldset">
             <legend>テーブルの形</legend>

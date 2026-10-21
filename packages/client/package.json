@@ -16,6 +16,7 @@
     "drive:motion": "node scripts/drive-motion.mjs",
     "drive:pacing": "node scripts/drive-pacing.mjs",
     "drive:seats": "node scripts/drive-seats.mjs",
+    "drive:audio": "node scripts/drive-audio.mjs",
     "drive:viewport": "node scripts/drive-viewport.mjs"
   },
   "dependencies": {

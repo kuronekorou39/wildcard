@@ -22,17 +22,17 @@ export function HandResultControl({ state, onNextHand, blockedReason, children, 
   ).join(' / ');
   return (
     <div className="summary summary-compact">
-      <div className="result-line"><span>ハンド終了</span><strong title={payouts}>{payouts}</strong></div>
+      <div className="result-line"><strong title={payouts}>{payouts}</strong>
+        {seconds !== null ? <span className="next-hand-countdown" role="timer">{seconds > 0 ? `次のハンドまで ${seconds}秒` : '配牌中…'}</span> : <span>ハンド終了</span>}
+      </div>
       <div className="action-row">
         <button type="button" className="btn btn-muted" onClick={() => { onCancelNextHand?.(); setOpen(true); }}>結果の詳細</button>
         {onNextHand && (
           <button type="button" className="btn btn-primary" onClick={() => latch.run(onNextHand)} disabled={seconds === 0 || blockedReason !== null || !latch.enabled}>次のハンド</button>
         )}
+        {onCancelNextHand && seconds !== null && seconds > 0 && <button type="button" className="btn btn-muted"
+          aria-label="自動開始を停止" onClick={onCancelNextHand}>停止</button>}
       </div>
-      {seconds !== null && <div className="next-hand-countdown">
-        <span role="timer">{seconds > 0 ? `次のハンドまで ${seconds}秒` : '配牌中…'}</span>
-        {onCancelNextHand && seconds > 0 && <button type="button" className="btn btn-muted" onClick={onCancelNextHand}>自動開始を停止</button>}
-      </div>}
       {blockedReason && <p className="result-blocked">{blockedReason}</p>}
       {open && (
         <GameDialog title="ハンドの結果" onClose={() => setOpen(false)}>

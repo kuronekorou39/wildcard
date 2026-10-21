@@ -11,7 +11,7 @@ import { PokerTable } from './PokerTable.js';
 import { TableInfoPanel } from './TableInfoPanel.js';
 import { useTableShape } from '../tableAppearance.js';
 import { useFoldReservation } from '../hooks/useFoldReservation.js';
-import { TurnSeconds } from './TurnTimer.js';
+import { ActionIcon } from './ActionIcon.js';
 import { usePresentationTime } from '../hooks/usePresentationTime.js';
 
 interface TableViewProps {
@@ -89,7 +89,7 @@ export function TableView({
         <PokerTable state={state} viewerId={viewerId} shape={shape} runtime={snapshot.runtime ?? null} />
       </main>
 
-      <footer className="bottombar">
+      <footer className="bottombar" data-active={canAct && !foldReservation.awaiting}>
         {(connectionProblem || dealNotice) && (
           <button className="table-notice-link" type="button" onClick={() => setInfoOpen(true)}>
             {connectionProblem ? snapshot.note ?? '接続状況を確認' : '配牌のお知らせ・露出札を確認'}
@@ -130,14 +130,7 @@ export function TableView({
 
         {turnPlayer && (
           <>
-            <div className="turn-label">
-              {snapshot.status !== 'local' && <span className="table-host-label">{title} · </span>}
-              {state.phase === 'runChoice'
-                ? `${turnPlayer.name} に聞いています`
-                : `${turnPlayer.name} の番`}
-              {snapshot.runtime?.clock && <TurnSeconds clock={snapshot.runtime.clock} />}
-            </div>
-            {foldReservation.awaiting ? <div className="waiting-turn"><div className="waiting-actions" role="status">フォールド送信中…</div></div> : canAct ? (
+            {foldReservation.awaiting ? <span className="reservation-pending" role="status">送信中…</span> : canAct ? (
               state.phase === 'runChoice' ? (
                 <RunChoiceBar state={state} playerId={turnPlayer.id} locked={presenting} turnId={snapshot.runtime?.clock?.id ?? 0} onAction={onAction} />
               ) : (
@@ -148,12 +141,12 @@ export function TableView({
               )
             ) : (
               <div className="waiting-turn">
-                <div className="waiting-actions" aria-hidden="true" />
                 {foldReservation.canReserve && (
-                  <button type="button" className="btn fold-reservation" aria-pressed={foldReservation.reserved}
+                  <button type="button" className="btn fold-reservation" aria-label="フォールド予約" aria-pressed={foldReservation.reserved}
                     onClick={foldReservation.toggle}>
-                    <span className="reservation-check" aria-hidden="true">{foldReservation.reserved ? '✓' : ''}</span>
-                    <span>フォールド予約</span>
+                    <ActionIcon kind="fold" />
+                    <span>フォールド<small>予約</small></span>
+                    {foldReservation.reserved && <span className="reservation-check" aria-hidden="true">✓</span>}
                   </button>
                 )}
               </div>

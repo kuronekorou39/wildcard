@@ -136,7 +136,7 @@ if (gated > 0) {
   await page.waitForSelector('.table-area');
 }
 
-say(`手番: ${await page.locator('.turn-label').innerText()}`);
+say(`手番: ${await page.locator('.seat-turn .seat-name').innerText()}`);
 say(`自分の見えるカード枚数: ${await page.locator('.seat-viewer .card:not(.card-back)').count()}`);
 say(`他人の裏向きカード枚数: ${await page.locator('.seat:not(.seat-viewer) .card-back').count()}`);
 await snap('first-turn');

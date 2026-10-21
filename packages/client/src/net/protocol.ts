@@ -237,7 +237,8 @@ export function parseHostMessage(raw: unknown): HostMessage | null {
         switch (event['kind']) {
           case 'deal': return true;
           case 'fold': return isString(event['playerId'], SESSION_ID_MAX_LEN);
-          case 'bet': case 'win': return isString(event['playerId'], SESSION_ID_MAX_LEN) && isFiniteNumber(event['amount']) && event['amount'] >= 0;
+          case 'bet': case 'win': return isString(event['playerId'], SESSION_ID_MAX_LEN) && isFiniteNumber(event['amount']) && event['amount'] >= 0
+            && (event['raised'] === undefined || typeof event['raised'] === 'boolean');
           case 'burn': return isFiniteNumber(event['count']) && event['count'] >= 0;
           case 'board': return ['run', 'from', 'count'].every(key => isFiniteNumber(event[key]) && (event[key] as number) >= 0);
           default: return false;
