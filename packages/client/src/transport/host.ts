@@ -26,6 +26,8 @@ import type { TableSnapshot, Transport } from './types.js';
 import { isDecision, TableRuntime } from './tableRuntime.js';
 
 export interface HostTransportOptions extends CreateGameOptions {
+  readonly paced?: boolean;
+  readonly autoNextHandMs?: number;
   readonly turnTimeMs?: number;
   readonly link: PeerLink;
   readonly roomCode: string;
@@ -94,6 +96,9 @@ export class HostTransport implements Transport {
   private readonly hostPlayerId: string;
   private heartbeat: ReturnType<typeof setInterval> | null = null;
   private readonly runtime: TableRuntime;
+  private closed = false;
+  private starting = false;
+  private autoDealNote: string | null = null;
 
   /** 配牌の記録。セッション終了時にまとめて公開して検証してもらう。 */
   private readonly fairLog: MutableRecord[] = [];
@@ -102,11 +107,19 @@ export class HostTransport implements Transport {
   private revealed = false;
 
   constructor(options: HostTransportOptions) {
-    const { link, roomCode, hostName, hostPlays, startingChips, turnTimeMs, nonceTimeoutMs: _nonceTimeout, ...gameOptions } = options;
+    const { link, roomCode, hostName, hostPlays, startingChips, turnTimeMs, paced = false, autoNextHandMs, nonceTimeoutMs: _nonceTimeout, ...gameOptions } = options;
     this.options = options;
     this.link = link;
     this.hostPlayerId = `host-${roomCode}`;
-    this.runtime = new TableRuntime(playerId => this.apply({ type: 'timeout', playerId }), turnTimeMs);
+    this.runtime = new TableRuntime(playerId => this.apply({ type: 'timeout', playerId }), turnTimeMs, false, {
+      paced, ...(autoNextHandMs !== undefined ? { nextHandDelayMs: autoNextHandMs, onNextHand: () => {
+        void this.startHand().then(result => {
+          if (!result.ok && !this.closed) { this.autoDealNote = result.reason; this.cancelNextHand(); }
+        }).catch(() => {
+          if (!this.closed) { this.autoDealNote = '配牌を開始できませんでした'; this.cancelNextHand(); }
+        });
+      } } : {}),
+    });
 
     let state = createGame(gameOptions);
     if (hostPlays) {
@@ -145,6 +158,7 @@ export class HostTransport implements Transport {
   // ---- host 固有 ----
 
   async start(): Promise<void> {
+    this.closed = false;
     this.runtime.resume();
     await this.link.join(this.options.roomCode);
     // 無音が続くと guest 側が切断と判断するので、変化がなくても定期的に配る。
@@ -153,6 +167,7 @@ export class HostTransport implements Transport {
 
   /** 部屋を閉じる。単なる切断と区別して guest に伝える。 */
   close(): void {
+    this.closed = true;
     this.runtime.dispose();
     if (this.heartbeat !== null) clearInterval(this.heartbeat);
     this.heartbeat = null;
@@ -179,55 +194,62 @@ export class HostTransport implements Transport {
    * 詳しい手順は engine の fair/commit.ts を参照。
    */
   async startHand(): Promise<StartHandResult> {
-    if (this.pendingDeal !== null) {
+    if (this.closed) return { ok: false, reason: '卓は終了しています' };
+    if (this.options.paced && Date.now() < this.runtime.snapshot().readyAt) return { ok: false, reason: '配当中' };
+    this.autoDealNote = null;
+    if (this.starting || this.pendingDeal !== null) {
       return { ok: false, reason: '前のハンドの準備中です' };
     }
     const rejection = validate(this.state, { type: 'startHand', seed: 0 });
     if (rejection !== null) return { ok: false, reason: rejection.reason };
+    this.starting = true;
+    try {
+      const handNo = ++this.handCounter;
+      const secret = randomHex();
+      const commit = await commitOf(secret);
+      if (this.closed) return { ok: false, reason: '卓は終了しています' };
 
-    const handNo = ++this.handCounter;
-    const secret = randomHex();
-    const commit = await commitOf(secret);
+      const record: MutableRecord = {
+        handNo,
+        commit,
+        secret,
+        nonces: [],
+        seedHex: null,
+        aborted: false,
+      };
+      this.fairLog.push(record);
 
-    const record: MutableRecord = {
-      handNo,
-      commit,
-      secret,
-      nonces: [],
-      seedHex: null,
-      aborted: false,
-    };
-    this.fairLog.push(record);
+      // 配る前にコミットを配る。これより後に届く乱数しか採らない。
+      const expected = this.peers.size;
+      const pending: PendingDeal = { handNo, collected: new Map(), expected, resolve: null };
+      this.pendingDeal = pending;
+      this.sendTo(undefined, { type: MSG.DEAL_COMMIT, handNo, commit });
 
-    // 配る前にコミットを配る。これより後に届く乱数しか採らない。
-    const expected = this.peers.size;
-    const pending: PendingDeal = { handNo, collected: new Map(), expected, resolve: null };
-    this.pendingDeal = pending;
-    this.sendTo(undefined, { type: MSG.DEAL_COMMIT, handNo, commit });
+      await this.waitForNonces(pending);
+      this.pendingDeal = null;
 
-    await this.waitForNonces(pending);
-    this.pendingDeal = null;
+      record.nonces = [...pending.collected.entries()].map(([playerId, nonce]) => ({
+        playerId,
+        nonce,
+      }));
 
-    record.nonces = [...pending.collected.entries()].map(([playerId, nonce]) => ({
-      playerId,
-      nonce,
-    }));
+      if (record.nonces.length < expected) {
+        // 揃わないまま配ると、誰かの乱数を外した seed になってしまう。
+        record.aborted = true;
+        this.sendTo(undefined, { type: MSG.DEAL_ABORT, handNo, nonces: record.nonces });
+        diagLog('配牌中断', `hand=${handNo} ${record.nonces.length}/${expected}`);
+        return { ok: false, reason: '全員の乱数が揃わなかったので配りませんでした' };
+      }
 
-    if (record.nonces.length < expected) {
-      // 揃わないまま配ると、誰かの乱数を外した seed になってしまう。
-      record.aborted = true;
-      this.sendTo(undefined, { type: MSG.DEAL_ABORT, handNo, nonces: record.nonces });
-      diagLog('配牌中断', `hand=${handNo} ${record.nonces.length}/${expected}`);
-      return { ok: false, reason: '全員の乱数が揃わなかったので配りませんでした' };
-    }
+      const { seed, seedHex } = await deriveSeed(secret, record.nonces);
+      if (this.closed) return { ok: false, reason: '卓は終了しています' };
+      record.seedHex = seedHex;
 
-    const { seed, seedHex } = await deriveSeed(secret, record.nonces);
-    record.seedHex = seedHex;
-
-    // 先に seed を知らせてから配る。guest 側の記録が state より後にならないように。
-    this.sendTo(undefined, { type: MSG.DEAL_SEED, handNo, nonces: record.nonces, seedHex });
-    this.apply({ type: 'startHand', seed });
-    return { ok: true, reason: null };
+      // 先に seed を知らせてから配る。guest 側の記録が state より後にならないように。
+      this.sendTo(undefined, { type: MSG.DEAL_SEED, handNo, nonces: record.nonces, seedHex });
+      this.apply({ type: 'startHand', seed });
+      return { ok: true, reason: null };
+    } finally { this.starting = false; }
   }
 
   /** 秘密を全員に公開する。これで全ハンドを検証できるようになる。 */
@@ -396,6 +418,7 @@ export class HostTransport implements Transport {
   }
 
   private apply(action: Action): void {
+    if (this.options.paced && (isDecision(action) || action.type === 'startHand') && Date.now() < this.runtime.snapshot().readyAt) return;
     const clock = this.runtime.snapshot().clock;
     if (isDecision(action) && action.type !== 'timeout' && clock?.deadline != null && Date.now() >= clock.deadline) {
       this.apply({ type: 'timeout', playerId: clock.playerId });
@@ -425,6 +448,13 @@ export class HostTransport implements Transport {
   private compute(): TableSnapshot {
     // 席に着いていない host は観戦者として見る。誰のホールカードも映らない。
     const viewerId = this.options.hostPlays ? this.hostPlayerId : null;
-    return { state: project(this.state, viewerId), viewerId, status: 'connected', note: null, runtime: this.runtime.snapshot() };
+    return { state: project(this.state, viewerId), viewerId, status: 'connected', note: this.autoDealNote, runtime: this.runtime.snapshot() };
+  }
+
+  cancelNextHand() {
+    this.runtime.cancelNextHand();
+    this.cached = this.compute();
+    for (const listener of this.listeners) listener(this.cached);
+    this.broadcastState();
   }
 }

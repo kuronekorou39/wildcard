@@ -44,8 +44,8 @@ const inspect = async (page, name) => {
       const target = document.elementFromPoint(r.left+r.width/2,r.top+r.height/2);
       return !el.contains(target);
     }).map(el => el.textContent);
-    const hand = [...document.querySelectorAll('.seat-viewer .card')].map(rect);
-    const handWrapped = hand.length <= 4 && hand.some(card => Math.abs(card.top - hand[0].top) > 1);
+    const hand = [...document.querySelectorAll('.seat-viewer .seat-held-card')];
+    const handWrapped = hand.some(card => card.offsetTop !== hand[0].offsetTop);
     const controls = document.querySelector('.raise-controls');
     const coveredByRaise = controls ? [...document.querySelectorAll('.seat, .table-area .card')]
       .filter(el => intersects(rect(controls), rect(el))).map(el => el.className) : [];

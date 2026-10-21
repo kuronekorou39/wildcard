@@ -20,6 +20,8 @@ export type ViewerPolicy =
   | { readonly kind: 'followTurn' };
 
 export interface LocalTransportOptions extends CreateGameOptions {
+  readonly paced?: boolean;
+  readonly autoNextHandMs?: number;
   readonly turnTimeMs?: number;
   readonly viewer: ViewerPolicy;
   /** 開始時に流しておくアクション（着席など）。 */
@@ -43,11 +45,17 @@ export class LocalTransport implements Transport {
   private readonly policy: ViewerPolicy;
   private readonly listeners = new Set<(snapshot: TableSnapshot) => void>();
   private readonly runtime: TableRuntime;
+  private readonly paced: boolean;
 
   constructor(options: LocalTransportOptions) {
-    const { viewer, setup, turnTimeMs, ...gameOptions } = options;
+    const { viewer, setup, turnTimeMs, paced = false, autoNextHandMs, ...gameOptions } = options;
     this.policy = viewer;
-    this.runtime = new TableRuntime(playerId => this.dispatch({ type: 'timeout', playerId }), turnTimeMs, viewer.kind === 'followTurn');
+    this.paced = paced;
+    this.runtime = new TableRuntime(playerId => this.dispatch({ type: 'timeout', playerId }), turnTimeMs, viewer.kind === 'followTurn', {
+      paced, ...(autoNextHandMs !== undefined ? { nextHandDelayMs: autoNextHandMs, onNextHand: () => {
+        this.dispatch({ type: 'startHand', seed: (Date.now() ^ (this.runtime.snapshot().handId * 2654435761)) >>> 0 });
+      } } : {}),
+    });
     this.state = (setup ?? []).reduce(reduce, createGame(gameOptions));
     this.cached = this.compute();
   }
@@ -62,6 +70,7 @@ export class LocalTransport implements Transport {
   }
 
   dispatch(action: Action): void {
+    if (this.paced && (isDecision(action) || action.type === 'startHand') && Date.now() < this.runtime.snapshot().readyAt) return;
     const clock = this.runtime.snapshot().clock;
     if (isDecision(action) && action.type !== 'timeout' && clock?.deadline != null && Date.now() >= clock.deadline) {
       this.dispatch({ type: 'timeout', playerId: clock.playerId });
@@ -82,6 +91,7 @@ export class LocalTransport implements Transport {
 
   resume() { this.runtime.resume(); }
   dispose() { this.runtime.dispose(); }
+  cancelNextHand() { this.runtime.cancelNextHand(); this.cached = this.compute(); this.emit(); }
   revealTurn() {
     if (this.runtime.revealTurn()) { this.cached = this.compute(); this.emit(); }
   }

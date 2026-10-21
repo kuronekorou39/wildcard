@@ -12,6 +12,7 @@ import { TableInfoPanel } from './TableInfoPanel.js';
 import { useTableShape } from '../tableAppearance.js';
 import { useFoldReservation } from '../hooks/useFoldReservation.js';
 import { TurnSeconds } from './TurnTimer.js';
+import { usePresentationTime } from '../hooks/usePresentationTime.js';
 
 interface TableViewProps {
   readonly snapshot: TableSnapshot;
@@ -28,6 +29,7 @@ interface TableViewProps {
   readonly controllablePlayerId: string | null;
   /** ハンドを開始できる立場なら渡す。渡さなければボタンを出さない。 */
   readonly onStartHand: (() => void) | null;
+  readonly onCancelNextHand?: (() => void) | null;
   /** 開始できない理由。null なら開始できる。 */
   readonly startRejection: string | null;
   /** 卓の上に出す知らせ（接続状態など）。 */
@@ -48,13 +50,16 @@ export function TableView({
   onAction,
   controllablePlayerId,
   onStartHand,
+  onCancelNextHand,
   startRejection,
   banner,
 }: TableViewProps) {
   const { state, viewerId } = snapshot;
+  const now = usePresentationTime(snapshot.runtime?.readyAt ?? 0);
+  const presenting = now < (snapshot.runtime?.readyAt ?? 0);
   const turnPlayer = state.players.find((p) => p.id === state.turnPlayerId);
   const canAct = controllablePlayerId !== null && turnPlayer?.id === controllablePlayerId;
-  const foldReservation = useFoldReservation(snapshot, controllablePlayerId, onAction);
+  const foldReservation = useFoldReservation(snapshot, presenting ? null : controllablePlayerId, onAction);
   const [infoOpen, setInfoOpen] = useState(false);
   const { shape, updateShape, saveFailed } = useTableShape();
   const connectionProblem = !['local', 'connected'].includes(snapshot.status);
@@ -108,17 +113,20 @@ export function TableView({
           <p className="hint centered-actions">host がハンドを開始するのを待っています。</p>
         )}
 
-        {state.phase === 'showdown' && (
+        {state.phase === 'showdown' && !presenting && (
           <HandResultControl
             state={state}
             onNextHand={onStartHand}
+            nextHandAt={snapshot.runtime?.nextHandAt ?? null}
+            onCancelNextHand={onCancelNextHand ?? null}
             blockedReason={
               onStartHand === null
-                ? 'host が次のハンドを開始するのを待っています。'
+                ? null
                 : startRejection
             }
           >{extraControls}</HandResultControl>
         )}
+        {state.phase === 'showdown' && snapshot.note && <p className="result-blocked" role="status">{snapshot.note}</p>}
 
         {turnPlayer && (
           <>
@@ -131,24 +139,21 @@ export function TableView({
             </div>
             {foldReservation.awaiting ? <div className="waiting-turn"><div className="waiting-actions" role="status">フォールド送信中…</div></div> : canAct ? (
               state.phase === 'runChoice' ? (
-                <RunChoiceBar state={state} playerId={turnPlayer.id} turnId={snapshot.runtime?.clock?.id ?? 0} onAction={onAction} />
+                <RunChoiceBar state={state} playerId={turnPlayer.id} locked={presenting} turnId={snapshot.runtime?.clock?.id ?? 0} onAction={onAction} />
               ) : (
-                <ActionBar state={state} playerId={turnPlayer.id} turnId={snapshot.runtime?.clock?.id ?? 0} onAction={action => {
+                <ActionBar state={state} playerId={turnPlayer.id} locked={presenting} turnId={snapshot.runtime?.clock?.id ?? 0} onAction={action => {
                   foldReservation.cancel();
                   onAction(action);
                 }} />
               )
             ) : (
               <div className="waiting-turn">
-                <div className="waiting-actions" role="status">
-                  <span className="waiting-pulse" />
-                  {foldReservation.reserved ? '自分の番でフォールドします' : '相手の行動を待っています…'}
-                </div>
+                <div className="waiting-actions" aria-hidden="true" />
                 {foldReservation.canReserve && (
                   <button type="button" className="btn fold-reservation" aria-pressed={foldReservation.reserved}
                     onClick={foldReservation.toggle}>
                     <span className="reservation-check" aria-hidden="true">{foldReservation.reserved ? '✓' : ''}</span>
-                    <span>フォールド予約<small>{foldReservation.reserved ? 'オン · もう一度押すと解除' : 'オフ · 手番が来たら実行'}</small></span>
+                    <span>フォールド予約</span>
                   </button>
                 )}
               </div>

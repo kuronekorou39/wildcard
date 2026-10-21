@@ -3,15 +3,20 @@ import type { VisibleState } from '@wildcard/engine';
 import { GameDialog } from './GameDialog.js';
 import { HandSummaryPanel } from './HandSummaryPanel.js';
 import { useActionLatch } from '../hooks/useActionLatch.js';
+import { usePresentationTime } from '../hooks/usePresentationTime.js';
 
-export function HandResultControl({ state, onNextHand, blockedReason, children }: {
+export function HandResultControl({ state, onNextHand, blockedReason, children, nextHandAt, onCancelNextHand }: {
   readonly state: VisibleState;
   readonly onNextHand: (() => void) | null;
   readonly blockedReason: string | null;
   readonly children: ReactNode;
+  readonly nextHandAt: number | null;
+  readonly onCancelNextHand: (() => void) | null;
 }) {
   const [open, setOpen] = useState(false);
   const latch = useActionLatch(JSON.stringify([state.dealerSeat, state.summary]));
+  const now = usePresentationTime(nextHandAt ?? 0);
+  const seconds = nextHandAt === null ? null : Math.max(0, Math.ceil((nextHandAt - now) / 1000));
   const payouts = state.summary?.payouts.map(payout =>
     `${state.players.find(p => p.id === payout.playerId)?.name ?? payout.playerId} +${payout.amount.toLocaleString()}`,
   ).join(' / ');
@@ -19,11 +24,15 @@ export function HandResultControl({ state, onNextHand, blockedReason, children }
     <div className="summary summary-compact">
       <div className="result-line"><span>ハンド終了</span><strong title={payouts}>{payouts}</strong></div>
       <div className="action-row">
-        <button type="button" className="btn btn-muted" onClick={() => setOpen(true)}>結果の詳細</button>
+        <button type="button" className="btn btn-muted" onClick={() => { onCancelNextHand?.(); setOpen(true); }}>結果の詳細</button>
         {onNextHand && (
-          <button type="button" className="btn btn-primary" onClick={() => latch.run(onNextHand)} disabled={blockedReason !== null || !latch.enabled}>次のハンド</button>
+          <button type="button" className="btn btn-primary" onClick={() => latch.run(onNextHand)} disabled={seconds === 0 || blockedReason !== null || !latch.enabled}>次のハンド</button>
         )}
       </div>
+      {seconds !== null && <div className="next-hand-countdown">
+        <span role="timer">{seconds > 0 ? `次のハンドまで ${seconds}秒` : '配牌中…'}</span>
+        {onCancelNextHand && seconds > 0 && <button type="button" className="btn btn-muted" onClick={onCancelNextHand}>自動開始を停止</button>}
+      </div>}
       {blockedReason && <p className="result-blocked">{blockedReason}</p>}
       {open && (
         <GameDialog title="ハンドの結果" onClose={() => setOpen(false)}>

@@ -6,15 +6,103 @@ import { HostTransport } from '../src/transport/host.js';
 import { GuestTransport } from '../src/transport/guest.js';
 import { FakeNetwork } from './fakeLink.js';
 import { MSG } from '../src/net/protocol.js';
+import { chipsTotal, TABLE_TIMING as T } from '../src/transport/presentation.js';
 
 beforeEach(() => { vi.useFakeTimers(); vi.setSystemTime(100_000); });
 afterEach(() => { vi.clearAllTimers(); vi.useRealTimers(); });
 
-const table = (hotseat = false, runs = false) => new LocalTransport({
+const table = (hotseat = false, runs = false, paced = false) => new LocalTransport({
+  paced, ...(paced ? { autoNextHandMs: T.nextHand } : {}),
   seatCount: 3, smallBlind: 10, bigBlind: 20, turnTimeMs: 1000,
   viewer: hotseat ? { kind: 'followTurn' } : { kind: 'fixed', playerId: 'p0' },
   variant: runs ? { ...STANDARD_VARIANT, options: { ...STANDARD_VARIANT.options, runItTwice: { max: 2 } } } : STANDARD_VARIANT,
   setup: [0, 1, 2].map(seat => ({ type: 'sit', playerId: `p${seat}`, name: `Player${seat}`, seat, chips: 1000 })),
+});
+
+const settle = (t: LocalTransport) => vi.advanceTimersByTime(Math.max(0, t.snapshot().runtime!.readyAt - Date.now()));
+
+describe('演出を待つ進行と次のハンド', () => {
+  it('配牌と場札が揃うまで次の操作を受け付けず、持ち時間を消費しない', () => {
+    const t = table(false, false, true); start(t);
+    const ready = t.snapshot().runtime!.readyAt;
+    expect(ready - Date.now()).toBeGreaterThan(1500);
+    call(t);
+    expect(t.rawState().turnPlayerId).toBe('p0');
+    settle(t);
+    expect(t.snapshot().runtime!.clock!.deadline! - Date.now()).toBe(1000);
+    call(t); settle(t); call(t); settle(t); call(t);
+    const events = t.snapshot().runtime!.events;
+    const burn = events.find(e => e.kind === 'burn')!;
+    const board = events.find(e => e.kind === 'board')!;
+    expect(board.at).toBeGreaterThanOrEqual(burn.at + T.card);
+    expect(t.snapshot().runtime!.readyAt).toBeGreaterThan(board.at + T.card);
+    const turn = t.rawState().turnPlayerId;
+    call(t); expect(t.rawState().turnPlayerId).toBe(turn);
+  });
+  it('オールインでもフロップ、ターン、リバー、配当の順序と間を保つ', () => {
+    const t = table(false, false, true); start(t); settle(t);
+    t.dispatch({ type: 'raise', playerId: 'p0', to: 1000 }); settle(t); call(t); settle(t); call(t);
+    const events = t.snapshot().runtime!.events;
+    const boards = events.filter(e => e.kind === 'board');
+    expect(boards.map(e => e.kind === 'board' && e.count)).toEqual([3, 1, 1]);
+    expect(boards[1]!.at - boards[0]!.at).toBeGreaterThan(1800);
+    expect(boards[2]!.at - boards[1]!.at).toBeGreaterThan(1800);
+    const win = events.find(e => e.kind === 'win')!;
+    expect(win.at).toBeGreaterThanOrEqual(boards[2]!.at + T.card + T.showdownPause);
+    expect(t.snapshot().runtime!.readyAt).toBe(win.at + T.win);
+  });
+  it('配当後8秒で一度だけ自動開始し、次のハンドでチップの記録を作り直す', () => {
+    const t = table(false, false, true); start(t); settle(t);
+    t.dispatch({ type: 'fold', playerId: 'p0' }); settle(t);
+    t.dispatch({ type: 'fold', playerId: 'p1' });
+    const runtime = t.snapshot().runtime!;
+    expect(runtime.nextHandAt).toBe(runtime.readyAt + T.nextHand);
+    vi.advanceTimersByTime(runtime.nextHandAt! - Date.now() - 1);
+    expect(t.rawState().phase).toBe('showdown');
+    vi.advanceTimersByTime(1);
+    expect(t.rawState().phase).toBe('betting');
+    expect(t.snapshot().runtime!.handId).toBe(2);
+    expect(chipsTotal(t.snapshot().runtime!.potChips)).toBe(t.rawState().pot);
+    expect(t.snapshot().runtime!.nextHandAt).toBeNull();
+  });
+  it('自動開始は停止でき、退出後も勝手に配らない', () => {
+    for (const cancel of [true, false]) {
+      const t = table(false, false, true); start(t); settle(t);
+      t.dispatch({ type: 'fold', playerId: 'p0' }); settle(t);
+      t.dispatch({ type: 'fold', playerId: 'p1' });
+      if (cancel) t.cancelNextHand(); else t.dispose();
+      vi.advanceTimersByTime(20000);
+      expect(t.rawState().phase).toBe('showdown');
+      expect(t.snapshot().runtime!.handId).toBe(1);
+    }
+  });
+  it('手渡し画面で公開しても配牌の間は手番の時間を減らさない', () => {
+    const t = table(true, false, true); start(t); t.revealTurn();
+    expect(t.snapshot().runtime!.clock!.deadline).toBe(t.snapshot().runtime!.readyAt + 1000);
+    settle(t); vi.advanceTimersByTime(999);
+    expect(t.rawState().players[0]!.folded).toBe(false);
+    vi.advanceTimersByTime(1);
+    expect(t.rawState().players[0]!.folded).toBe(true);
+  });
+});
+
+describe('ポットに出たチップを両替しない', () => {
+  it('20ずつ集めて100を超えても10のチップのまま残る', () => {
+    const t = table(); start(t); call(t); call(t); call(t);
+    expect(t.snapshot().runtime!.potChips).toEqual([{ value: 10, count: 6 }]);
+    t.dispatch({ type: 'raise', playerId: 'p1', to: 20 }); call(t); call(t);
+    expect(t.rawState().pot).toBe(120);
+    expect(t.snapshot().runtime!.potChips).toEqual([{ value: 10, count: 12 }]);
+    t.dispatch({ type: 'raise', playerId: 'p1', to: 100 });
+    expect(t.snapshot().runtime!.potChips).toEqual([{ value: 100, count: 1 }, { value: 10, count: 12 }]);
+    expect(chipsTotal(t.snapshot().runtime!.potChips)).toBe(t.rawState().pot);
+  });
+  it('配当直前も最後のコールまで内訳を保持する', () => {
+    const t = table(); start(t); t.dispatch({ type: 'raise', playerId: 'p0', to: 1000 }); call(t); call(t);
+    expect(t.rawState().pot).toBe(0);
+    expect(chipsTotal(t.snapshot().runtime!.potChips)).toBe(3000);
+    expect(t.snapshot().runtime!.potChips).toEqual([{ value: 1000, count: 1 }, { value: 100, count: 18 }, { value: 10, count: 20 }]);
+  });
 });
 const start = (t: LocalTransport) => t.dispatch({ type: 'startHand', seed: 5 });
 const call = (t: LocalTransport) => {

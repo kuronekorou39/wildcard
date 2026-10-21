@@ -9,6 +9,8 @@ import { TablePositionMarkers } from './TablePositionMarkers.js';
 import type { TableShape } from '../tableAppearance.js';
 import type { TableRuntimeSnapshot } from '../transport/tableRuntime.js';
 import { PotChips, TableMotion, TableStock } from './TableMotion.js';
+import { chipsTotal, contributedChips, TABLE_TIMING as T } from '../transport/presentation.js';
+import { usePresentationTime } from '../hooks/usePresentationTime.js';
 
 /**
  * 今どの段階かの表示。
@@ -31,6 +33,17 @@ interface PokerTableProps {
 }
 
 export function PokerTable({ state, viewerId, shape = 'racetrack', runtime = null }: PokerTableProps) {
+  const events = runtime?.events ?? [];
+  const until = Math.max(runtime?.readyAt ?? 0, ...events.map(event => event.at + T.win + T.card));
+  const now = usePresentationTime(until);
+  const winEvents = events.filter(event => event.kind === 'win');
+  const payoutAt = winEvents.length ? Math.min(...winEvents.map(event => event.at)) : 0;
+  const potCleared = state.phase === 'showdown' && now >= payoutAt + T.win;
+  const potChips = potCleared ? [] : runtime?.potChips ?? contributedChips(state.pot);
+  const pot = state.phase === 'showdown' ? chipsTotal(potChips) : state.pot;
+  const revealShowdown = now >= payoutAt - T.showdownPause;
+  const pendingBurns = events.reduce((sum, event) => sum +
+    (event.kind === 'burn' && now < event.at + T.card ? event.count : 0), 0);
   const viewer = state.players.find((p) => p.id === viewerId);
   // 自分を必ず手前（スロット0）に置く。観戦者は席番号そのままで並べる。
   const viewerSeat = viewer?.seat ?? null;
@@ -44,7 +57,12 @@ export function PokerTable({ state, viewerId, shape = 'racetrack', runtime = nul
   const boardLength = boardSize(state.variant.structure);
   const boardRows = boards.length * (boardLength > 5 ? Math.ceil(boardLength / 4) : 1);
   const renderSeat = (slot: number) => {
-    const player = bySlot.get(slot) ?? null;
+    const actual = bySlot.get(slot) ?? null;
+    const payout = actual && winEvents.find(event => event.kind === 'win' && event.playerId === actual.id);
+    const player = actual && state.phase === 'showdown' ? { ...actual,
+      chips: actual.chips - (payout?.kind === 'win' && now < payout.at + T.win ? payout.amount : 0),
+      holeCards: actual.holeCards.map((card, index) => revealShowdown || actual.id === viewerId || actual.exposedHoleCards.includes(index) ? card : null),
+    } : actual;
     return (
       <Seat
         key={slot}
@@ -69,9 +87,11 @@ export function PokerTable({ state, viewerId, shape = 'racetrack', runtime = nul
         <TableFelt shape={shape} />
 
         <div className="table-center">
-          {state.phase !== 'waiting' && <TableStock burnedCount={state.burnedCount} />}
+          {state.phase !== 'waiting' && <TableStock burnedCount={Math.max(0, state.burnedCount - pendingBurns)} />}
           <div className="table-watermark"><Brand compact /></div>
-          <div className="table-phase">{phaseLabel(state)}</div>
+          <div className="table-phase">{state.phase === 'showdown' && !potCleared
+            ? now >= payoutAt ? '配当' : revealShowdown ? 'ショーダウン' : 'ランアウト'
+            : phaseLabel(state)}</div>
 
           {/* 2本走ったら、ボードの数だけ並ぶ。1本なら今までどおり1列。 */}
           {boards.map((board, run) => (
@@ -81,13 +101,13 @@ export function PokerTable({ state, viewerId, shape = 'racetrack', runtime = nul
               {Array.from({ length: boardLength }, (_, i) => {
                 const card = board[i];
                 const reveal = runtime?.events.slice().reverse().find(event => event.kind === 'board' && event.run === run && i >= event.from && i < event.from + event.count);
-                return card ? <PlayingCard key={i} card={card} revealAt={reveal?.at ?? null} revealKind="board"
-                  revealDelay={240 + (reveal?.kind === 'board' ? i - reveal.from : 0) * 90 + run * 220} /> : <CardSlot key={i} />;
+                return card && (!reveal || now >= reveal.at) ? <PlayingCard key={i} card={card} revealAt={reveal?.at ?? null} revealKind="board"
+                  revealDelay={(reveal?.kind === 'board' ? i - reveal.from : 0) * T.boardGap} /> : <CardSlot key={i} />;
               })}
             </div>
           ))}
 
-          <div className="table-pot"><PotChips amount={state.pot} /><span>ポット {state.pot.toLocaleString()}</span></div>
+          <div className="table-pot"><PotChips stacks={potChips} /><span>ポット {pot.toLocaleString()}</span></div>
         </div>
 
         {Array.from({ length: state.seatCount }, (_, slot) =>

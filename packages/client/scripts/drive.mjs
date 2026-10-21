@@ -143,6 +143,8 @@ await snap('first-turn');
 
 // 1ハンド遊ぶ
 for (let step = 0; step < 60; step++) {
+  if (await page.locator('.screen-game[data-phase="showdown"]').count())
+    await page.locator('.summary-compact').waitFor({ timeout: 30000 });
   if (await page.locator('.summary').count()) break;
 
   if (await page.locator('.gate').count()) {

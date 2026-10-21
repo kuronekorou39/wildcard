@@ -67,10 +67,11 @@ try {
   await page.screenshot({ path: `${out}/deal.png` });
   await page.waitForTimeout(1200);
   for (let i = 0; i < 6; i++) await call('advance');
-  assert.equal(await page.locator('.community-cards .card:not(.card-slot)').count(), 3);
+  await page.waitForTimeout(850);
   assert.ok(await page.locator('.motion-piece[data-kind="burn"]').count() > 0);
-  assert.equal(await page.locator('.stock-burn-used').count(), 1);
   await page.screenshot({ path: `${out}/burn-and-flop.png` });
+  await page.waitForFunction(() => document.querySelectorAll('.community-cards .card:not(.card-slot)').length === 3);
+  assert.equal(await page.locator('.stock-burn-used').count(), 1);
   await page.waitForTimeout(1000);
   await page.screenshot({ path: `${out}/flop.png` });
   assert.ok(await page.locator('.chip-stack i').count() > 0);
@@ -80,7 +81,7 @@ try {
   assert.equal(await page.locator('.seat-folded .card').count(), 0);
   assert.equal(await page.locator('.seat-tag', { hasText: 'フォールド' }).count(), 0);
   await page.screenshot({ path: `${out}/payout.png` });
-  await page.waitForTimeout(1900);
+  await page.waitForTimeout(3000);
   assert.equal(await page.locator('.motion-piece').count(), 0, 'Finished motion is removed');
 
   await call('timed', 1500);

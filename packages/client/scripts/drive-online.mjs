@@ -152,6 +152,8 @@ await snap(host, 'host-preflop');
 await snap(guest, 'guest-preflop');
 
 for (let step = 0; step < 40; step++) {
+  if (await host.locator('.screen-game[data-phase="showdown"]').count())
+    await host.locator('.summary-compact').waitFor({ timeout: 30000 });
   if (await host.locator('.summary').count()) break;
 
   // どちらの端末に操作ボタンが出ているかを見て、出ているほうを押す。
@@ -186,6 +188,8 @@ for (let step = 0; step < 40; step++) {
 }
 
 if (await host.locator('.summary').count()) {
+  const stopAuto = host.getByRole('button', { name: '自動開始を停止', exact: true });
+  if (await stopAuto.count()) await stopAuto.click();
   say('--- ショーダウン ---');
   await assertNoDuplicateCards(host, 'host showdown');
   say(await host.locator('.summary').innerText());

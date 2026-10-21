@@ -13,7 +13,7 @@ import type { TableRuntimeSnapshot } from '../transport/tableRuntime.js';
  */
 
 /** スキーマを変えたら上げる。版が違う相手とは繋がない。 */
-export const PROTO_VERSION = 4;
+export const PROTO_VERSION = 5;
 
 export const MSG = {
   // guest → host
@@ -228,6 +228,10 @@ export function parseHostMessage(raw: unknown): HostMessage | null {
       if (typeof state['phase'] !== 'string') return null;
       const runtime = raw['runtime'];
       if (!isRecord(runtime) || !isFiniteNumber(runtime['handId']) || !Array.isArray(runtime['events'])) return null;
+      if (!isFiniteNumber(runtime['readyAt']) || (runtime['nextHandAt'] !== null && !isFiniteNumber(runtime['nextHandAt']))) return null;
+      if (!Array.isArray(runtime['potChips']) || runtime['potChips'].length > 4 || !runtime['potChips'].every(stack =>
+        isRecord(stack) && [1, 10, 100, 1000].includes(stack['value'] as number) &&
+        isFiniteNumber(stack['count']) && Number.isSafeInteger(stack['count']) && stack['count'] >= 0)) return null;
       if (runtime['events'].length > 80 || !runtime['events'].every(event => {
         if (!isRecord(event) || !isFiniteNumber(event['id']) || !isFiniteNumber(event['at'])) return false;
         switch (event['kind']) {

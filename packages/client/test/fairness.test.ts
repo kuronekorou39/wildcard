@@ -11,7 +11,7 @@ interface Table {
   readonly guests: { readonly transport: GuestTransport; readonly link: FakeLink }[];
 }
 
-async function setupTable(names: readonly string[]): Promise<Table> {
+async function setupTable(names: readonly string[], autoNextHandMs?: number): Promise<Table> {
   const net = new FakeNetwork();
   const host = new HostTransport({
     link: net.host,
@@ -24,6 +24,7 @@ async function setupTable(names: readonly string[]): Promise<Table> {
     bigBlind: 20,
     // 揃わない場合をすぐ試せるように短くする。
     nonceTimeoutMs: 50,
+    ...(autoNextHandMs !== undefined ? { autoNextHandMs } : {}),
   });
   await host.start();
 
@@ -44,6 +45,45 @@ async function setupTable(names: readonly string[]): Promise<Table> {
 }
 
 describe('配る前のやりとり', () => {
+  it('同時の開始要求でも配牌の準備は一度だけ行う', async () => {
+    const { host, guests } = await setupTable(['あかり']);
+    const results = await Promise.all([host.startHand(), host.startHand()]);
+    expect(results.filter(result => result.ok)).toHaveLength(1);
+    expect(host.fairnessRecords()).toHaveLength(1);
+    host.close(); guests.forEach(guest => guest.transport.leave());
+  });
+  it('自動開始でも新しいコミットと全員の乱数を使い、ゲストへ同じ期限を届ける', async () => {
+    const { host, guests } = await setupTable(['あかり'], 30);
+    await host.startHand();
+    host.dispatch({ type: 'fold', playerId: host.rawState().turnPlayerId! });
+    expect(guests[0]!.transport.snapshot().runtime!.nextHandAt).toBe(host.snapshot().runtime!.nextHandAt);
+    await new Promise<void>(resolve => {
+      const unsubscribe = host.subscribe(snapshot => {
+        if (snapshot.runtime!.handId === 2) { unsubscribe(); resolve(); }
+      });
+    });
+    const records = host.fairnessRecords();
+    expect(records).toHaveLength(2);
+    expect(records[1]!.commit).not.toBe(records[0]!.commit);
+    expect(records[1]!.nonces).toHaveLength(1);
+    expect(guests[0]!.transport.fairnessRecords()[1]!.seedHex).toBe(records[1]!.seedHex);
+    host.close(); guests.forEach(guest => guest.transport.leave());
+  });
+  it('自動開始で乱数が揃わなければ配らず、繰り返し開始もしない', async () => {
+    const { host, guests } = await setupTable(['あかり'], 30);
+    await host.startHand();
+    guests[0]!.link.leave();
+    host.dispatch({ type: 'fold', playerId: host.rawState().turnPlayerId! });
+    await new Promise<void>(resolve => {
+      const unsubscribe = host.subscribe(snapshot => {
+        if (snapshot.note?.includes('揃わなかった')) { unsubscribe(); resolve(); }
+      });
+    });
+    expect(host.rawState().phase).toBe('showdown');
+    expect(host.snapshot().runtime!.nextHandAt).toBeNull();
+    expect(host.fairnessRecords()[1]!.aborted).toBe(true);
+    host.close(); guests.forEach(guest => guest.transport.leave());
+  });
   it('コミットが配られ、全員の乱数が集まってから配られる', async () => {
     const { host, guests } = await setupTable(['あかり', 'ばしょう']);
 

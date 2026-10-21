@@ -6,6 +6,7 @@ interface RunChoiceBarProps {
   readonly playerId: string;
   readonly onAction: (action: Action) => void;
   readonly turnId?: number;
+  readonly locked?: boolean;
 }
 
 /**
@@ -17,7 +18,7 @@ interface RunChoiceBarProps {
  * **全員の同意が要る**ので、断る側のボタンも同じ大きさで出す。
  * 押しにくくすると「断りづらい卓」になってしまう。
  */
-export function RunChoiceBar({ state, playerId, onAction, turnId }: RunChoiceBarProps) {
+export function RunChoiceBar({ state, playerId, onAction, turnId, locked = false }: RunChoiceBarProps) {
   const latch = useActionLatch(JSON.stringify([playerId, turnId, state.runChoice?.agreed]));
   if (state.phase !== 'runChoice' || state.turnPlayerId !== playerId) return null;
 
@@ -27,14 +28,13 @@ export function RunChoiceBar({ state, playerId, onAction, turnId }: RunChoiceBar
   return (
     <div className="run-choice">
       <p className="run-choice-note">
-        オールインです。残りの札を{runs}本走らせて、ポットを{runs}つに分けますか？
-        {agreed > 0 && `（${agreed}人が同意済み）`}
+        ラン数{agreed > 0 && ` · ${agreed}人同意`}
       </p>
       <div className="run-choice-buttons">
         <button
           type="button"
           className="btn btn-primary"
-          disabled={!latch.enabled}
+          disabled={locked || !latch.enabled}
           onClick={() => latch.run(() => onAction({ type: 'runItTwice', playerId, agree: true }))}
         >
           {runs}本走る
@@ -42,7 +42,7 @@ export function RunChoiceBar({ state, playerId, onAction, turnId }: RunChoiceBar
         <button
           type="button"
           className="btn"
-          disabled={!latch.enabled}
+          disabled={locked || !latch.enabled}
           onClick={() => latch.run(() => onAction({ type: 'runItTwice', playerId, agree: false }))}
         >
           1本でいい

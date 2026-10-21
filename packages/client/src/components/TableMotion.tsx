@@ -3,6 +3,7 @@ import type { VisibleState } from '@wildcard/engine';
 import type { TableRuntimeSnapshot } from '../transport/tableRuntime.js';
 import { useCardAppearance } from '../cardAppearance.js';
 import { CharacterMark } from './Brand.js';
+import { contributedChips, TABLE_TIMING as T, type ChipStack } from '../transport/presentation.js';
 
 /** Decorative only: never contains card faces or determines game state. */
 export function TableStock({ burnedCount }: { readonly burnedCount: number }) {
@@ -15,13 +16,11 @@ export function TableStock({ burnedCount }: { readonly burnedCount: number }) {
   </div>;
 }
 
-export function PotChips({ amount }: { readonly amount: number }) {
-  // Denominations convey scale; the adjacent numeric total is always authoritative.
-  const stacks = [1000, 100, 10, 1].map(value => ({ value, count: Math.floor(amount / value) % (value === 1000 ? Infinity : 10) }))
-    .filter(stack => stack.count > 0);
+export function PotChips({ stacks }: { readonly stacks: readonly ChipStack[] }) {
   return <span className="pot-chips" aria-hidden="true">
-    {stacks.map(({ value, count }) => <span key={value} className="chip-stack" data-value={value}>
-      {Array.from({ length: Math.min(count, 5) }, (_, index) => <i key={index} style={{ '--level': index } as CSSProperties} />)}
+    {stacks.map(({ value, count }) => <span key={value} className="chip-stack" data-value={value} data-count={count}>
+      {Array.from({ length: Math.min(count, 10) }, (_, index) => <i key={index} style={{ '--level': index } as CSSProperties} />)}
+      {count > 10 && <small>×{count}</small>}
     </span>)}
   </span>;
 }
@@ -50,13 +49,14 @@ export function TableMotion({ state, runtime }: { readonly state: VisibleState; 
     const burn = center(table.querySelector('.stock-burn'));
     const pot = center(table.querySelector('.table-pot'));
     const seatOf = (id: string) => [...table.querySelectorAll<HTMLElement>('.seat')].find(seat => seat.dataset.playerId === id) ?? null;
-    const fly = (from: ReturnType<typeof center>, to: ReturnType<typeof center>, kind: string, at: number, delay = 0) => {
-      const duration = kind === 'win' ? 650 : 340;
+    const fly = (from: ReturnType<typeof center>, to: ReturnType<typeof center>, kind: string, at: number, delay = 0, value = 10) => {
+      const duration = kind === 'win' ? T.win : kind === 'bet' ? T.bet : T.card;
       const elapsed = Date.now() - at - delay;
       if (!from || !to || reduced || elapsed >= duration) return;
       const piece = document.createElement('span');
       piece.className = `motion-piece ${kind === 'bet' || kind === 'win' ? 'motion-chips' : 'motion-card'}`;
       piece.dataset.kind = kind;
+      piece.dataset.value = String(value);
       piece.dataset.back = appearance.back;
       if (kind !== 'bet' && kind !== 'win') {
         const emblem = table.querySelector('.stock-deck .motion-card-mark');
@@ -79,23 +79,24 @@ export function TableMotion({ state, runtime }: { readonly state: VisibleState; 
     for (const event of runtime.events) {
       if (seen.current.has(event.id)) continue;
       seen.current.add(event.id);
-      if (Date.now() - event.at > 2200) continue;
+      if (Date.now() - event.at > T.history) continue;
       if (event.kind === 'deal') {
         // Start left of the dealer; deal one round at a time, including Omaha.
         const players = state.players.filter(player => player.inHand).sort((a, b) =>
           ((a.seat - state.dealerSeat - 1 + state.seatCount) % state.seatCount) - ((b.seat - state.dealerSeat - 1 + state.seatCount) % state.seatCount));
         players.forEach((player, order) => player.holeCards.forEach((_, index) => {
           const seat = seatOf(player.id);
-          fly(deck, center(seat?.querySelector('.seat-cards') ?? seat), 'deal', event.at, (index * state.seatCount + order) * 22);
+          fly(deck, center(seat?.querySelector('.seat-cards') ?? seat), 'deal', event.at, (index * state.seatCount + order) * T.dealGap);
         }));
       } else if (event.kind === 'burn') {
-        for (let i = 0; i < Math.min(event.count, 6); i++) fly(deck, burn, 'burn', event.at, i * 100);
+        for (let i = 0; i < Math.min(event.count, 6); i++) fly(deck, burn, 'burn', event.at, i * T.dealGap);
       } else if (event.kind === 'fold') {
         fly(center(seatOf(event.playerId)), burn, 'fold', event.at);
       } else if (event.kind === 'bet' || event.kind === 'win') {
         const seat = center(seatOf(event.playerId));
-        fly(event.kind === 'win' ? pot : seat, event.kind === 'win' ? seat : pot, event.kind, event.at,
-          event.kind === 'win' ? (runtime.events.some(e => e.kind === 'board' && e.at === event.at) ? 1100 : 300) : 0);
+        const chips = event.kind === 'bet' ? contributedChips(event.amount) : runtime.potChips;
+        chips.forEach((chip, index) => fly(event.kind === 'win' ? pot : seat, event.kind === 'win' ? seat : pot,
+          event.kind, event.at, index * 35, chip.value));
       }
     }
     // IDs are monotonic, but do not retain every event over a long session.

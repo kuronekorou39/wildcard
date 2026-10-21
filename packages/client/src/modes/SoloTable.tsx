@@ -4,6 +4,7 @@ import { TableView } from '../components/TableView.js';
 import { useTable } from '../hooks/useTable.js';
 import { LocalTransport } from '../transport/local.js';
 import { resolveVariant } from '../rules/customVariants.js';
+import { TABLE_TIMING } from '../transport/presentation.js';
 
 export interface SoloSettings {
   readonly name: string;
@@ -23,7 +24,7 @@ interface SoloTableProps {
 
 const HUMAN_ID = 'you';
 /** CPU が考えているように見せる間。短すぎると展開を追えない。 */
-const THINK_MS = 700;
+const THINK_MS = TABLE_TIMING.think;
 
 /**
  * CPU を相手に一人で遊ぶ。
@@ -54,6 +55,7 @@ export function SoloTable({ settings, onExit }: SoloTableProps) {
 
     const variant = resolveVariant(settings.variantId);
     return new LocalTransport({
+      paced: true, autoNextHandMs: TABLE_TIMING.nextHand,
       seatCount,
       smallBlind: settings.smallBlind,
       bigBlind: settings.bigBlind,
@@ -92,7 +94,7 @@ export function SoloTable({ settings, onExit }: SoloTableProps) {
       });
       if (decision) transport.dispatch(decision.action);
       setThinking(null);
-    }, THINK_MS);
+    }, Math.max(0, (snapshot.runtime?.readyAt ?? 0) - Date.now()) + THINK_MS);
 
     return () => {
       cancelled = true;
@@ -119,6 +121,7 @@ export function SoloTable({ settings, onExit }: SoloTableProps) {
       // 操作できるのは自分の番だけ。CPU の番は見ているだけ。
       controllablePlayerId={turnId === HUMAN_ID ? HUMAN_ID : null}
       onStartHand={startHand}
+      onCancelNextHand={() => transport.cancelNextHand()}
       startRejection={startRejection}
       banner={thinking !== null ? <div className="banner banner-wait">{thinking} が考えています…</div> : null}
     />

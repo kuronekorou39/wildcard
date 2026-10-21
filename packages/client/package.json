@@ -14,6 +14,8 @@
     "drive:solo": "node scripts/drive-solo.mjs",
     "drive:controls": "node scripts/drive-reservation.mjs",
     "drive:motion": "node scripts/drive-motion.mjs",
+    "drive:pacing": "node scripts/drive-pacing.mjs",
+    "drive:seats": "node scripts/drive-seats.mjs",
     "drive:viewport": "node scripts/drive-viewport.mjs"
   },
   "dependencies": {

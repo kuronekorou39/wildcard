@@ -5,6 +5,7 @@ import { useTable } from '../hooks/useTable.js';
 import { PassDeviceGate } from '../components/PassDeviceGate.js';
 import { TableView } from '../components/TableView.js';
 import { resolveVariant } from '../rules/customVariants.js';
+import { TABLE_TIMING } from '../transport/presentation.js';
 
 export interface HotSeatSettings {
   readonly names: readonly string[];
@@ -39,6 +40,7 @@ export function HotSeatTable({ settings, onExit }: HotSeatTableProps) {
 
     const variant = resolveVariant(settings.variantId);
     return new LocalTransport({
+      paced: true, autoNextHandMs: TABLE_TIMING.nextHand,
       seatCount,
       smallBlind: settings.smallBlind,
       bigBlind: settings.bigBlind,
@@ -71,13 +73,14 @@ export function HotSeatTable({ settings, onExit }: HotSeatTableProps) {
   const startRejection =
     validate(transport.rawState(), { type: 'startHand', seed: 0 })?.reason ?? null;
   const turnPlayer = snapshot.state.players.find((p) => p.id === snapshot.state.turnPlayerId);
+  const revealKey = `${snapshot.runtime?.handId}:${snapshot.runtime?.clock?.id}:${turnPlayer?.id}`;
 
   // 手番が移った直後は、本人が「見る」を押すまで卓を描かない。
   // オーバーレイで覆うだけだと DOM に次の人のホールカードが載ってしまう。
-  if (turnPlayer && revealedFor !== turnPlayer.id) {
+  if (turnPlayer && revealedFor !== revealKey) {
     return (
       <PassDeviceGate playerName={turnPlayer.name} onReveal={() => {
-        setRevealedFor(turnPlayer.id);
+        setRevealedFor(revealKey);
         transport.revealTurn();
       }} />
     );
@@ -93,6 +96,7 @@ export function HotSeatTable({ settings, onExit }: HotSeatTableProps) {
       // 1台を回しているので、手番の人は誰でも操作できる。
       controllablePlayerId={snapshot.state.turnPlayerId}
       onStartHand={startHand}
+      onCancelNextHand={() => transport.cancelNextHand()}
       startRejection={startRejection}
       banner={null}
     />

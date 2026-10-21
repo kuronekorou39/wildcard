@@ -7,6 +7,7 @@ interface ActionBarProps {
   readonly playerId: string;
   readonly onAction: (action: Action) => void;
   readonly turnId?: number;
+  readonly locked?: boolean;
 }
 
 /**
@@ -15,12 +16,12 @@ interface ActionBarProps {
  * 何が押せるか、レイズ額の下限と上限は、すべてエンジンの legalActions() が決める。
  * ここで独自に計算すると必ずどこかでエンジンと食い違う。
  */
-export function ActionBar({ state, playerId, onAction, turnId }: ActionBarProps) {
+export function ActionBar({ state, playerId, onAction, turnId, locked = false }: ActionBarProps) {
   const legal = legalActions(state, playerId);
   const [raising, setRaising] = useState(false);
   const [amount, setAmount] = useState(0);
   const latch = useActionLatch(JSON.stringify([turnId, playerId, state.phase, state.streetIndex, state.currentBet, raising]));
-  const send = (action: Action) => latch.run(() => onAction(action));
+  const send = (action: Action) => { if (!locked) latch.run(() => onAction(action)); };
 
   // 手番や状況が変わったらレイズ入力を畳んで、額を下限に戻す。
   useEffect(() => {
@@ -82,7 +83,7 @@ export function ActionBar({ state, playerId, onAction, turnId }: ActionBarProps)
           <button
             type="button"
             className="btn btn-raise"
-            disabled={!latch.enabled}
+            disabled={locked || !latch.enabled}
             onClick={() => send({ type: 'raise', playerId, to: amount })}
           >
             {isAllIn ? 'オールイン' : `${amount.toLocaleString()} にレイズ`}
@@ -97,16 +98,11 @@ export function ActionBar({ state, playerId, onAction, turnId }: ActionBarProps)
 
   return (
     <div className="action-bar">
-      <div className="action-guidance">
-        <span>あなたのアクション</span>
-        <strong>{legal.canCheck ? 'チェックできます' : `コール ${legal.callAmount.toLocaleString()}`}</strong>
-        {legal.canRaise && !fixedAmount && <small>レイズを選ぶと、ここで金額を調整できます</small>}
-      </div>
       <div className="action-row">
         <button
           type="button"
           className="btn btn-fold"
-          disabled={!latch.enabled}
+          disabled={locked || !latch.enabled}
           onClick={() => send({ type: 'fold', playerId })}
         >
           フォールド
@@ -116,7 +112,7 @@ export function ActionBar({ state, playerId, onAction, turnId }: ActionBarProps)
           <button
             type="button"
             className="btn btn-call"
-            disabled={!latch.enabled}
+            disabled={locked || !latch.enabled}
             onClick={() => send({ type: 'check', playerId })}
           >
             チェック
@@ -125,7 +121,7 @@ export function ActionBar({ state, playerId, onAction, turnId }: ActionBarProps)
           <button
             type="button"
             className="btn btn-call"
-            disabled={!latch.enabled}
+            disabled={locked || !latch.enabled}
             onClick={() => send({ type: 'call', playerId })}
           >
             コール {legal.callAmount.toLocaleString()}
@@ -137,7 +133,7 @@ export function ActionBar({ state, playerId, onAction, turnId }: ActionBarProps)
           <button
             type="button"
             className="btn btn-raise"
-            disabled={!latch.enabled}
+            disabled={locked || !latch.enabled}
             onClick={() =>
               fixedAmount
                 ? send({ type: 'raise', playerId, to: legal.minRaiseTo })

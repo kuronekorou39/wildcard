@@ -82,7 +82,9 @@ await page.screenshot({ path: `${SHOTS}/20-run-choice.png`, fullPage: true });
 
 // 同意する。CPU も同意するので2本走る。
 await page.locator('.run-choice').getByRole('button', { name: /本走る/ }).click();
-await page.waitForTimeout(1200);
+await page.locator('.summary-compact').waitFor({ timeout: 30000 });
+const stopAuto = page.getByRole('button', { name: '自動開始を停止', exact: true });
+if (await stopAuto.count()) await stopAuto.click();
 
 const rows = page.locator('.community-cards');
 console.log(`--- 走った --- ボード ${await rows.count()}本`);

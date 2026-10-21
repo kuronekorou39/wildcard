@@ -2,6 +2,7 @@ import type { Card, Suit } from '@wildcard/engine';
 import { useCardAppearance, type BackStyle, type FaceStyle } from '../cardAppearance.js';
 import { CharacterMark } from './Brand.js';
 import { useMemo, type CSSProperties } from 'react';
+import { TABLE_TIMING as T } from '../transport/presentation.js';
 
 const SUIT_GLYPH: Record<Suit, string> = {
   spades: '♠',
@@ -34,9 +35,9 @@ interface PlayingCardProps {
 export function PlayingCard({ card, size = 'md', highlighted = false, faceStyle, backStyle, revealAt, revealDelay = 0, revealKind = 'deal' }: PlayingCardProps) {
   const { appearance } = useCardAppearance();
   const motion = useMemo<CSSProperties | undefined>(() => {
-    if (revealAt == null || Date.now() - revealAt > 2200) return undefined;
+    if (revealAt == null || Date.now() - revealAt > revealDelay + T.card) return undefined;
     return { animationName: revealKind === 'board' ? 'board-reveal' : 'hand-reveal',
-      animationDelay: `${revealAt + revealDelay - Date.now()}ms` };
+      animationDelay: `${revealAt + revealDelay - Date.now()}ms`, animationDuration: `${T.card}ms` };
   }, [revealAt, revealDelay, revealKind]);
   const face = faceStyle ?? appearance.face;
   const back = backStyle ?? appearance.back;

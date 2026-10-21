@@ -9,6 +9,7 @@ import { HostTransport } from '../transport/host.js';
 import { resolveVariant } from '../rules/customVariants.js';
 import type { TableSnapshot } from '../transport/types.js';
 import { sessionId } from '../session.js';
+import { TABLE_TIMING } from '../transport/presentation.js';
 
 export interface OnlineSettings {
   readonly role: 'host' | 'guest';
@@ -34,6 +35,7 @@ export function OnlineTable({ settings, onExit }: OnlineTableProps) {
     if (settings.role === 'host') {
       const variant = resolveVariant(settings.variantId);
       return new HostTransport({
+        paced: true, autoNextHandMs: TABLE_TIMING.nextHand,
         link,
         roomCode: settings.roomCode,
         hostName: settings.name,
@@ -113,6 +115,7 @@ export function OnlineTable({ settings, onExit }: OnlineTableProps) {
       onAction={act}
       controllablePlayerId={controllablePlayerId}
       onStartHand={isHost ? startHand : null}
+      onCancelNextHand={isHost ? () => transport.cancelNextHand() : null}
       startRejection={startRejection}
       banner={
         <>

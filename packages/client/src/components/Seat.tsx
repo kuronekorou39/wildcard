@@ -4,6 +4,7 @@ import { PlayingCard } from './PlayingCard.js';
 import { seatCoordinates } from '../seatLayout.js';
 import type { TurnClock } from '../transport/tableRuntime.js';
 import { TurnRing } from './TurnTimer.js';
+import { TABLE_TIMING as T } from '../transport/presentation.js';
 
 interface SeatProps {
   readonly slot: number;
@@ -18,7 +19,7 @@ interface SeatProps {
 }
 
 export function Seat({ slot, seatCount, player, isTurn, isViewer, clock, dealtAt, dealOrder = 0 }: SeatProps) {
-  const style = seatCoordinates(slot, seatCount) as CSSProperties;
+  const style = { ...seatCoordinates(slot, seatCount), '--hand-count': Math.max(1, player?.holeCards.length ?? 0) } as CSSProperties;
 
   const classes = ['seat'];
   if (!player) classes.push('seat-empty');
@@ -38,15 +39,17 @@ export function Seat({ slot, seatCount, player, isTurn, isViewer, clock, dealtAt
   return (
     <div className={classes.join(' ')} style={style} data-slot={slot} data-player-id={player.id}
       aria-label={player.folded ? `${player.name}：フォールド済み` : player.name}>
-      {isTurn && clock && <TurnRing clock={clock} />}
       <div className="seat-profile">
-        <span className="seat-avatar" role="img" aria-label={`${player.name}のアイコン`} data-tone={player.seat % 4}>
-          {player.name.match(/^(?:CPU|プレイヤー)(\d+)$/)?.[1] ?? Array.from(player.name.trim())[0] ?? '•'}
-        </span>
-        <div className="seat-identity">
+        {isTurn && clock && <TurnRing clock={clock} />}
+        <div className="seat-heading">
+          <span className="seat-avatar" role="img" aria-label={`${player.name}のアイコン`} data-tone={player.seat % 4}>
+            {player.name.match(/^(?:CPU|プレイヤー)(\d+)$/)?.[1] ?? Array.from(player.name.trim())[0] ?? '•'}
+          </span>
           <div className="seat-name" title={player.name}>{player.name}</div>
-          <div className="seat-chips" aria-label={`持ちチップ ${player.chips.toLocaleString()}`}>{player.chips.toLocaleString()}</div>
         </div>
+        <div className="seat-chips" title={player.chips.toLocaleString()}
+          style={{ '--chip-length': Math.max(8, player.chips.toLocaleString().length) } as CSSProperties}
+          aria-label={`持ちチップ ${player.chips.toLocaleString()}`}>{player.chips.toLocaleString()}</div>
       </div>
 
       <div className="seat-cards">
@@ -57,8 +60,12 @@ export function Seat({ slot, seatCount, player, isTurn, isViewer, clock, dealtAt
         */}
         {player.holeCards.map((card, i) =>
           !player.folded || player.exposedHoleCards.includes(i)
-            ? <PlayingCard key={i} card={card} size={isViewer ? 'lg' : 'sm'}
-                revealAt={dealtAt ?? null} revealDelay={180 + (i * seatCount + dealOrder) * 22} /> : null,
+            ? <div key={i} className="seat-held-card" style={{
+                '--fan-position': player.holeCards.length > 1 ? i / (player.holeCards.length - 1) - .5 : 0,
+              } as CSSProperties}>
+                <PlayingCard card={card} size={isViewer ? 'lg' : 'sm'}
+                  revealAt={dealtAt ?? null} revealDelay={T.dealReveal + (i * seatCount + dealOrder) * T.dealGap} />
+              </div> : null,
         )}
       </div>
 

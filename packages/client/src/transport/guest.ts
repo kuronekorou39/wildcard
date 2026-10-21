@@ -52,7 +52,7 @@ export class GuestTransport implements Transport {
   private lastHeard = 0;
   private silenceTimer: ReturnType<typeof setInterval> | null = null;
   private readonly emptyState: VisibleState;
-  private runtime: TableRuntimeSnapshot = { handId: 0, handStartedAt: null, clock: null, events: [] };
+  private runtime: TableRuntimeSnapshot = { handId: 0, handStartedAt: null, clock: null, events: [], readyAt: 0, nextHandAt: null, potChips: [] };
   /** 配牌の記録。host が秘密を公開したら、これで全ハンドを検証できる。 */
   private readonly fairLog = new Map<number, MutableRecord>();
 
