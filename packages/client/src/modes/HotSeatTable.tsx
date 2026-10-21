@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { type Action, validate } from '@wildcard/engine';
 import { LocalTransport } from '../transport/local.js';
 import { useTable } from '../hooks/useTable.js';
@@ -49,6 +49,7 @@ export function HotSeatTable({ settings, onExit }: HotSeatTableProps) {
   }, [settings]);
 
   const snapshot = useTable(transport);
+  useEffect(() => { transport.resume(); return () => transport.dispose(); }, [transport]);
 
   /** 今カードを見せてよい相手。手番が移ると食い違い、目隠しが入る。 */
   const [revealedFor, setRevealedFor] = useState<string | null>(null);
@@ -75,7 +76,10 @@ export function HotSeatTable({ settings, onExit }: HotSeatTableProps) {
   // オーバーレイで覆うだけだと DOM に次の人のホールカードが載ってしまう。
   if (turnPlayer && revealedFor !== turnPlayer.id) {
     return (
-      <PassDeviceGate playerName={turnPlayer.name} onReveal={() => setRevealedFor(turnPlayer.id)} />
+      <PassDeviceGate playerName={turnPlayer.name} onReveal={() => {
+        setRevealedFor(turnPlayer.id);
+        transport.revealTurn();
+      }} />
     );
   }
 

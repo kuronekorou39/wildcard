@@ -11,6 +11,7 @@ import { PokerTable } from './PokerTable.js';
 import { TableInfoPanel } from './TableInfoPanel.js';
 import { useTableShape } from '../tableAppearance.js';
 import { useFoldReservation } from '../hooks/useFoldReservation.js';
+import { TurnSeconds } from './TurnTimer.js';
 
 interface TableViewProps {
   readonly snapshot: TableSnapshot;
@@ -80,7 +81,7 @@ export function TableView({
       )}
 
       <main className="table-wrap">
-        <PokerTable state={state} viewerId={viewerId} shape={shape} />
+        <PokerTable state={state} viewerId={viewerId} shape={shape} runtime={snapshot.runtime ?? null} />
       </main>
 
       <footer className="bottombar">
@@ -126,12 +127,13 @@ export function TableView({
               {state.phase === 'runChoice'
                 ? `${turnPlayer.name} に聞いています`
                 : `${turnPlayer.name} の番`}
+              {snapshot.runtime?.clock && <TurnSeconds clock={snapshot.runtime.clock} />}
             </div>
-            {canAct ? (
+            {foldReservation.awaiting ? <div className="waiting-turn"><div className="waiting-actions" role="status">フォールド送信中…</div></div> : canAct ? (
               state.phase === 'runChoice' ? (
-                <RunChoiceBar state={state} playerId={turnPlayer.id} onAction={onAction} />
+                <RunChoiceBar state={state} playerId={turnPlayer.id} turnId={snapshot.runtime?.clock?.id ?? 0} onAction={onAction} />
               ) : (
-                <ActionBar state={state} playerId={turnPlayer.id} onAction={action => {
+                <ActionBar state={state} playerId={turnPlayer.id} turnId={snapshot.runtime?.clock?.id ?? 0} onAction={action => {
                   foldReservation.cancel();
                   onAction(action);
                 }} />

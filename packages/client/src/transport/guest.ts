@@ -12,6 +12,7 @@ import { diagLog } from '../net/diag.js';
 import type { PeerLink } from '../net/peerLink.js';
 import { MSG, PROTO_VERSION, parseHostMessage } from '../net/protocol.js';
 import type { ConnectionStatus, TableSnapshot, Transport } from './types.js';
+import { receiveRuntime, type TableRuntimeSnapshot } from './tableRuntime.js';
 
 /** 記録は commit → seed → 公開 の順に埋まっていく。 */
 interface MutableRecord {
@@ -51,6 +52,7 @@ export class GuestTransport implements Transport {
   private lastHeard = 0;
   private silenceTimer: ReturnType<typeof setInterval> | null = null;
   private readonly emptyState: VisibleState;
+  private runtime: TableRuntimeSnapshot = { handId: 0, handStartedAt: null, clock: null, events: [] };
   /** 配牌の記録。host が秘密を公開したら、これで全ハンドを検証できる。 */
   private readonly fairLog = new Map<number, MutableRecord>();
 
@@ -87,7 +89,7 @@ export class GuestTransport implements Transport {
    */
   dispatch(action: Action): void {
     if (this.playerId === null) return;
-    this.link.send({ type: MSG.ACTION, action });
+    this.link.send({ type: MSG.ACTION, action, turnId: this.runtime.clock?.id ?? null });
   }
 
   // ---- guest 固有 ----
@@ -133,6 +135,7 @@ export class GuestTransport implements Transport {
       case MSG.STATE:
         this.status = 'connected';
         this.note = null;
+        this.runtime = receiveRuntime(message.runtime, message.serverNow);
         this.publish(message.state);
         break;
 
@@ -234,6 +237,6 @@ export class GuestTransport implements Transport {
   }
 
   private compute(state: VisibleState): TableSnapshot {
-    return { state, viewerId: this.playerId, status: this.status, note: this.note };
+    return { state, viewerId: this.playerId, status: this.status, note: this.note, runtime: this.runtime };
   }
 }

@@ -1,4 +1,5 @@
 import type { Action, NonceEntry, VisibleState } from '@wildcard/engine';
+import type { TableRuntimeSnapshot } from '../transport/tableRuntime.js';
 
 /**
  * 卓のネットワークプロトコル。
@@ -12,7 +13,7 @@ import type { Action, NonceEntry, VisibleState } from '@wildcard/engine';
  */
 
 /** スキーマを変えたら上げる。版が違う相手とは繋がない。 */
-export const PROTO_VERSION = 3;
+export const PROTO_VERSION = 4;
 
 export const MSG = {
   // guest → host
@@ -55,6 +56,7 @@ export interface HelloMessage {
 export interface ActionMessage {
   readonly type: typeof MSG.ACTION;
   readonly action: Action;
+  readonly turnId: number | null;
 }
 
 export interface WelcomeMessage {
@@ -74,6 +76,8 @@ export interface RejectedMessage {
 export interface StateMessage {
   readonly type: typeof MSG.STATE;
   readonly state: VisibleState;
+  readonly runtime: TableRuntimeSnapshot;
+  readonly serverNow: number;
 }
 
 export interface ClosedMessage {
@@ -166,7 +170,9 @@ export function parseGuestMessage(raw: unknown): GuestMessage | null {
 
     case MSG.ACTION: {
       const action = parseAction(raw['action']);
-      return action === null ? null : { type: MSG.ACTION, action };
+      const turnId = raw['turnId'];
+      if (turnId != null && !isFiniteNumber(turnId)) return null;
+      return action === null ? null : { type: MSG.ACTION, action, turnId: turnId ?? null };
     }
 
     case MSG.DEAL_NONCE:
@@ -220,7 +226,30 @@ export function parseHostMessage(raw: unknown): HostMessage | null {
       if (!isRecord(state)) return null;
       if (!Array.isArray(state['players'])) return null;
       if (typeof state['phase'] !== 'string') return null;
-      return { type: MSG.STATE, state: state as unknown as VisibleState };
+      const runtime = raw['runtime'];
+      if (!isRecord(runtime) || !isFiniteNumber(runtime['handId']) || !Array.isArray(runtime['events'])) return null;
+      if (runtime['events'].length > 80 || !runtime['events'].every(event => {
+        if (!isRecord(event) || !isFiniteNumber(event['id']) || !isFiniteNumber(event['at'])) return false;
+        switch (event['kind']) {
+          case 'deal': return true;
+          case 'fold': return isString(event['playerId'], SESSION_ID_MAX_LEN);
+          case 'bet': case 'win': return isString(event['playerId'], SESSION_ID_MAX_LEN) && isFiniteNumber(event['amount']) && event['amount'] >= 0;
+          case 'burn': return isFiniteNumber(event['count']) && event['count'] >= 0;
+          case 'board': return ['run', 'from', 'count'].every(key => isFiniteNumber(event[key]) && (event[key] as number) >= 0);
+          default: return false;
+        }
+      })) return null;
+      if (runtime['handStartedAt'] !== null && !isFiniteNumber(runtime['handStartedAt'])) return null;
+      const clock = runtime['clock'];
+      if (clock !== null) {
+        if (!isRecord(clock) || !isFiniteNumber(clock['id']) || !isString(clock['playerId'], SESSION_ID_MAX_LEN) ||
+          !isFiniteNumber(clock['durationMs']) || clock['durationMs'] <= 0) return null;
+        if (clock['startedAt'] !== null && !isFiniteNumber(clock['startedAt'])) return null;
+        if (clock['deadline'] !== null && !isFiniteNumber(clock['deadline'])) return null;
+      }
+      if (!isFiniteNumber(raw['serverNow'])) return null;
+      return { type: MSG.STATE, state: state as unknown as VisibleState,
+        runtime: runtime as unknown as TableRuntimeSnapshot, serverNow: raw['serverNow'] };
     }
 
     case MSG.CLOSED:

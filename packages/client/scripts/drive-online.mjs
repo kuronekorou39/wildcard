@@ -98,10 +98,12 @@ await host.locator('.field', { hasText: 'あなたの名前' }).locator('input')
 await snap(host, 'host-setup');
 await host.getByRole('button', { name: '部屋を作る', exact: true }).last().click();
 
+await host.getByRole('button', { name: '卓の情報', exact: true }).click();
 await host.waitForSelector('.room-code');
 const roomCode = (await host.locator('.room-code').innerText()).trim();
 say(`ルームコード: ${roomCode}`);
 await snap(host, 'host-room');
+await host.keyboard.press('Escape');
 
 // ---- guest 側: 参加する ----
 await guest.goto(URL, { waitUntil: 'networkidle' });
@@ -199,6 +201,7 @@ for (const [label, page] of [
   ['host', host],
   ['guest', guest],
 ]) {
+  await page.getByRole('button', { name: '卓の情報', exact: true }).click();
   await page.locator('.fair-panel .rule-sheet-summary').click();
   say(`[${label}] ${flatten(await page.locator('.fair-summary').innerText(), ' / ')}`);
 }

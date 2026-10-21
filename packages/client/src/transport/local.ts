@@ -7,6 +7,7 @@ import {
   reduce,
 } from '@wildcard/engine';
 import type { TableSnapshot, Transport } from './types.js';
+import { isDecision, TableRuntime } from './tableRuntime.js';
 
 /**
  * 視点の決め方。ソロとホットシートの違いはここだけに現れる。
@@ -19,6 +20,7 @@ export type ViewerPolicy =
   | { readonly kind: 'followTurn' };
 
 export interface LocalTransportOptions extends CreateGameOptions {
+  readonly turnTimeMs?: number;
   readonly viewer: ViewerPolicy;
   /** 開始時に流しておくアクション（着席など）。 */
   readonly setup?: readonly Action[];
@@ -40,10 +42,12 @@ export class LocalTransport implements Transport {
   private cached: TableSnapshot;
   private readonly policy: ViewerPolicy;
   private readonly listeners = new Set<(snapshot: TableSnapshot) => void>();
+  private readonly runtime: TableRuntime;
 
   constructor(options: LocalTransportOptions) {
-    const { viewer, setup, ...gameOptions } = options;
+    const { viewer, setup, turnTimeMs, ...gameOptions } = options;
     this.policy = viewer;
+    this.runtime = new TableRuntime(playerId => this.dispatch({ type: 'timeout', playerId }), turnTimeMs, viewer.kind === 'followTurn');
     this.state = (setup ?? []).reduce(reduce, createGame(gameOptions));
     this.cached = this.compute();
   }
@@ -58,8 +62,14 @@ export class LocalTransport implements Transport {
   }
 
   dispatch(action: Action): void {
+    const clock = this.runtime.snapshot().clock;
+    if (isDecision(action) && action.type !== 'timeout' && clock?.deadline != null && Date.now() >= clock.deadline) {
+      this.dispatch({ type: 'timeout', playerId: clock.playerId });
+      return;
+    }
     const next = reduce(this.state, action);
     if (next === this.state) return;
+    this.runtime.advance(this.state, next, action);
     this.state = next;
     this.cached = this.compute();
     this.emit();
@@ -70,6 +80,12 @@ export class LocalTransport implements Transport {
     return this.state;
   }
 
+  resume() { this.runtime.resume(); }
+  dispose() { this.runtime.dispose(); }
+  revealTurn() {
+    if (this.runtime.revealTurn()) { this.cached = this.compute(); this.emit(); }
+  }
+
   private viewerId(): string | null {
     if (this.policy.kind === 'fixed') return this.policy.playerId;
     return this.state.turnPlayerId;
@@ -77,7 +93,7 @@ export class LocalTransport implements Transport {
 
   private compute(): TableSnapshot {
     const viewerId = this.viewerId();
-    return { state: project(this.state, viewerId), viewerId, status: 'local', note: null };
+    return { state: project(this.state, viewerId), viewerId, status: 'local', note: null, runtime: this.runtime.snapshot() };
   }
 
   private emit(): void {

@@ -23,8 +23,10 @@ import {
   type HostMessage,
 } from '../net/protocol.js';
 import type { TableSnapshot, Transport } from './types.js';
+import { isDecision, TableRuntime } from './tableRuntime.js';
 
 export interface HostTransportOptions extends CreateGameOptions {
+  readonly turnTimeMs?: number;
   readonly link: PeerLink;
   readonly roomCode: string;
   readonly hostName: string;
@@ -91,6 +93,7 @@ export class HostTransport implements Transport {
   private readonly seatsBySession = new Map<string, string>();
   private readonly hostPlayerId: string;
   private heartbeat: ReturnType<typeof setInterval> | null = null;
+  private readonly runtime: TableRuntime;
 
   /** 配牌の記録。セッション終了時にまとめて公開して検証してもらう。 */
   private readonly fairLog: MutableRecord[] = [];
@@ -99,10 +102,11 @@ export class HostTransport implements Transport {
   private revealed = false;
 
   constructor(options: HostTransportOptions) {
-    const { link, roomCode, hostName, hostPlays, startingChips, ...gameOptions } = options;
+    const { link, roomCode, hostName, hostPlays, startingChips, turnTimeMs, nonceTimeoutMs: _nonceTimeout, ...gameOptions } = options;
     this.options = options;
     this.link = link;
     this.hostPlayerId = `host-${roomCode}`;
+    this.runtime = new TableRuntime(playerId => this.apply({ type: 'timeout', playerId }), turnTimeMs);
 
     let state = createGame(gameOptions);
     if (hostPlays) {
@@ -141,6 +145,7 @@ export class HostTransport implements Transport {
   // ---- host 固有 ----
 
   async start(): Promise<void> {
+    this.runtime.resume();
     await this.link.join(this.options.roomCode);
     // 無音が続くと guest 側が切断と判断するので、変化がなくても定期的に配る。
     this.heartbeat = setInterval(() => this.broadcastState(), NET_CONFIG.hostHeartbeatMs);
@@ -148,6 +153,7 @@ export class HostTransport implements Transport {
 
   /** 部屋を閉じる。単なる切断と区別して guest に伝える。 */
   close(): void {
+    this.runtime.dispose();
     if (this.heartbeat !== null) clearInterval(this.heartbeat);
     this.heartbeat = null;
     this.sendTo(undefined, { type: MSG.CLOSED });
@@ -297,6 +303,8 @@ export class HostTransport implements Transport {
       return;
     }
 
+    // A delayed double tap must never become a decision in a later turn.
+    if (isDecision(message.action) && message.turnId !== this.runtime.snapshot().clock?.id) return;
     this.apply(message.action);
   }
 
@@ -388,9 +396,15 @@ export class HostTransport implements Transport {
   }
 
   private apply(action: Action): void {
+    const clock = this.runtime.snapshot().clock;
+    if (isDecision(action) && action.type !== 'timeout' && clock?.deadline != null && Date.now() >= clock.deadline) {
+      this.apply({ type: 'timeout', playerId: clock.playerId });
+      return;
+    }
     if (validate(this.state, action) !== null) return;
     const next = reduce(this.state, action);
     if (next === this.state) return;
+    this.runtime.advance(this.state, next, action);
     this.state = next;
     this.cached = this.compute();
     for (const listener of this.listeners) listener(this.cached);
@@ -400,7 +414,7 @@ export class HostTransport implements Transport {
   /** 各 guest にその人向けの状態を送る。全員に同じものは送らない。 */
   private broadcastState(): void {
     for (const [peerId, peer] of this.peers) {
-      this.sendTo(peerId, { type: MSG.STATE, state: project(this.state, peer.playerId) });
+      this.sendTo(peerId, { type: MSG.STATE, state: project(this.state, peer.playerId), runtime: this.runtime.snapshot(), serverNow: Date.now() });
     }
   }
 
@@ -411,6 +425,6 @@ export class HostTransport implements Transport {
   private compute(): TableSnapshot {
     // 席に着いていない host は観戦者として見る。誰のホールカードも映らない。
     const viewerId = this.options.hostPlays ? this.hostPlayerId : null;
-    return { state: project(this.state, viewerId), viewerId, status: 'connected', note: null };
+    return { state: project(this.state, viewerId), viewerId, status: 'connected', note: null, runtime: this.runtime.snapshot() };
   }
 }

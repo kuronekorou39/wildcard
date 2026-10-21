@@ -1,4 +1,5 @@
 import type { Action, VisibleState } from '@wildcard/engine';
+import type { TableRuntimeSnapshot } from './tableRuntime.js';
 
 /**
  * 通信の状態。ローカル実装では常に 'local'。
@@ -13,6 +14,7 @@ export type ConnectionStatus =
   | 'closed';
 
 export interface TableSnapshot {
+  readonly runtime?: TableRuntimeSnapshot;
   /** この視点から見える状態。見えないカードはエンジン側で伏せられている。 */
   readonly state: VisibleState;
   /** 視点の持ち主。観戦なら null。 */

@@ -1,6 +1,7 @@
 import type { Card, Suit } from '@wildcard/engine';
 import { useCardAppearance, type BackStyle, type FaceStyle } from '../cardAppearance.js';
 import { CharacterMark } from './Brand.js';
+import { useMemo, type CSSProperties } from 'react';
 
 const SUIT_GLYPH: Record<Suit, string> = {
   spades: '♠',
@@ -25,13 +26,22 @@ interface PlayingCardProps {
   readonly highlighted?: boolean;
   readonly faceStyle?: FaceStyle;
   readonly backStyle?: BackStyle;
+  readonly revealAt?: number | null;
+  readonly revealDelay?: number;
+  readonly revealKind?: 'deal' | 'board';
 }
 
-export function PlayingCard({ card, size = 'md', highlighted = false, faceStyle, backStyle }: PlayingCardProps) {
+export function PlayingCard({ card, size = 'md', highlighted = false, faceStyle, backStyle, revealAt, revealDelay = 0, revealKind = 'deal' }: PlayingCardProps) {
   const { appearance } = useCardAppearance();
+  const motion = useMemo<CSSProperties | undefined>(() => {
+    if (revealAt == null || Date.now() - revealAt > 2200) return undefined;
+    return { animationName: revealKind === 'board' ? 'board-reveal' : 'hand-reveal',
+      animationDelay: `${revealAt + revealDelay - Date.now()}ms` };
+  }, [revealAt, revealDelay, revealKind]);
   const face = faceStyle ?? appearance.face;
   const back = backStyle ?? appearance.back;
   const classes = ['card', `card-${size}`];
+  if (motion) classes.push('card-revealing');
   if (!card) classes.push('card-back', `card-back-${back}`);
   else {
     classes.push(`card-face-${face}`);
@@ -44,7 +54,7 @@ export function PlayingCard({ card, size = 'md', highlighted = false, faceStyle,
 
   if (!card) {
     return (
-      <div className={classes.join(' ')} aria-label="裏向きのカード">
+      <div className={classes.join(' ')} style={motion} aria-label="裏向きのカード">
         <span className="card-back-emblem" aria-hidden="true">
           {back === 'dragon' ? <CharacterMark /> : back === 'diamond' ? '◆' : 'W'}
         </span>
@@ -56,7 +66,7 @@ export function PlayingCard({ card, size = 'md', highlighted = false, faceStyle,
   // そのまま描くと実在の札に見えてしまうので、専用の見た目にする。
   if (card.joker !== undefined) {
     return (
-      <div className={[...classes, 'card-joker'].join(' ')} aria-label={cardLabel(card)}>
+      <div className={[...classes, 'card-joker'].join(' ')} style={motion} aria-label={cardLabel(card)}>
         <span className="card-rank">★</span>
         <span className="card-joker-label">JOKER</span>
       </div>
@@ -64,7 +74,7 @@ export function PlayingCard({ card, size = 'md', highlighted = false, faceStyle,
   }
 
   return (
-    <div className={classes.join(' ')} aria-label={cardLabel(card)}>
+    <div className={classes.join(' ')} style={motion} aria-label={cardLabel(card)}>
       <span className="card-index" aria-hidden="true">
         <span className="card-rank">{card.rank}</span>
         <span className="card-suit">{SUIT_GLYPH[card.suit]}</span>

@@ -47,7 +47,9 @@ export function TableInfoPanel({ state, title, subtitle, notices, controls, shap
             <div><dt>ルール</dt><dd>{state.variant.name}</dd></div>
             <div><dt>参加者</dt><dd>{state.players.length} / {state.seatCount}人</dd></div>
             <div><dt>ブラインド</dt><dd>SB {state.smallBlind} / BB {state.bigBlind}</dd></div>
+            <div><dt>持ち時間</dt><dd>1手番 30秒</dd></div>
           </dl>
+          <p className="hint">時間切れはチェックできればチェック、それ以外はフォールドします。本数の選択は1本になります。</p>
           <div className="position-legend">
             <span><b className="table-position-chip position-d">D</b>ディーラー</span>
             <span><b className="table-position-chip position-sb">SB</b>スモール</span>

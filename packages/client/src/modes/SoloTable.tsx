@@ -65,6 +65,7 @@ export function SoloTable({ settings, onExit }: SoloTableProps) {
   }, [settings]);
 
   const snapshot = useTable(transport);
+  useEffect(() => { transport.resume(); return () => transport.dispose(); }, [transport]);
   const handCounter = useRef(0);
   const decisionSeed = useRef(1);
   const [thinking, setThinking] = useState<string | null>(null);

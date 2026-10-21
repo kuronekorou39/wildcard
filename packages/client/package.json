@@ -13,6 +13,7 @@
     "drive:online": "node scripts/drive-online.mjs",
     "drive:solo": "node scripts/drive-solo.mjs",
     "drive:controls": "node scripts/drive-reservation.mjs",
+    "drive:motion": "node scripts/drive-motion.mjs",
     "drive:viewport": "node scripts/drive-viewport.mjs"
   },
   "dependencies": {

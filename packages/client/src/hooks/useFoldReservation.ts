@@ -9,8 +9,10 @@ export function useFoldReservation(snapshot: TableSnapshot, controllablePlayerId
   const eligible = (status === 'local' || status === 'connected') && state.phase === 'betting'
     && !!player && player.inHand && !player.folded && !player.allIn && !player.away;
   // 配牌・視点が変わった予約を次のハンドや別の人へ持ち越さない。
-  const handKey = JSON.stringify([viewerId, state.dealerSeat, player?.holeCards]);
+  const handKey = JSON.stringify([snapshot.runtime?.handId, viewerId, state.dealerSeat, player?.holeCards]);
+  const turnKey = JSON.stringify([handKey, snapshot.runtime?.clock?.id, state.turnPlayerId, state.streetIndex, state.currentBet]);
   const pending = useRef<string | null>(null);
+  const [submitted, setSubmitted] = useState<string | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
   const canReserve = eligible && state.turnPlayerId !== viewerId;
   const reserved = eligible && selected === handKey;
@@ -26,12 +28,13 @@ export function useFoldReservation(snapshot: TableSnapshot, controllablePlayerId
       // 通信の応答待ちや StrictMode の再実行でも二重送信しない。
       pending.current = null;
       setSelected(null);
+      setSubmitted(turnKey);
       onAction({ type: 'fold', playerId: viewerId });
     }
-  }, [eligible, handKey, viewerId, controllablePlayerId, state, onAction]);
+  }, [eligible, handKey, turnKey, viewerId, controllablePlayerId, state, onAction]);
 
   return {
-    canReserve, reserved, cancel,
+    canReserve, reserved, cancel, awaiting: eligible && submitted === turnKey,
     toggle: () => {
       if (!canReserve) return;
       pending.current = pending.current === handKey ? null : handKey;

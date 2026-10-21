@@ -171,6 +171,7 @@ describe('認可', () => {
     const turnBefore = host.rawState().turnPlayerId;
     attacker!.link.injectToPeer({
       type: MSG.ACTION,
+      turnId: host.snapshot().runtime!.clock!.id,
       action: { type: 'fold', playerId: victimId },
     });
 
@@ -188,6 +189,7 @@ describe('認可', () => {
 
     attacker.link.injectToPeer({
       type: MSG.ACTION,
+      turnId: host.snapshot().runtime!.clock!.id,
       action: { type: 'raise', playerId: victimId, to: 1000 },
     });
 
@@ -223,6 +225,7 @@ describe('認可', () => {
 
     attacker!.link.injectToPeer({
       type: MSG.ACTION,
+      turnId: host.snapshot().runtime!.clock!.id,
       action: { type: 'runItTwice', playerId: askedId, agree: false },
     });
 
@@ -255,10 +258,7 @@ describe('認可', () => {
     const owner = guests.find((g) => g.transport.snapshot().viewerId === askedId);
 
     if (owner) {
-      owner.link.injectToPeer({
-        type: MSG.ACTION,
-        action: { type: 'runItTwice', playerId: askedId, agree: false },
-      });
+      owner.transport.dispatch({ type: 'runItTwice', playerId: askedId, agree: false });
     } else {
       // 聞かれているのが host 自身なら、こちらから答える。
       host.dispatch({ type: 'runItTwice', playerId: askedId, agree: false });

@@ -7,6 +7,8 @@ import { Brand } from './Brand.js';
 import { TableFelt } from './TableFelt.js';
 import { TablePositionMarkers } from './TablePositionMarkers.js';
 import type { TableShape } from '../tableAppearance.js';
+import type { TableRuntimeSnapshot } from '../transport/tableRuntime.js';
+import { PotChips, TableMotion, TableStock } from './TableMotion.js';
 
 /**
  * 今どの段階かの表示。
@@ -25,9 +27,10 @@ interface PokerTableProps {
   readonly state: VisibleState;
   readonly viewerId: string | null;
   readonly shape?: TableShape;
+  readonly runtime?: TableRuntimeSnapshot | null;
 }
 
-export function PokerTable({ state, viewerId, shape = 'racetrack' }: PokerTableProps) {
+export function PokerTable({ state, viewerId, shape = 'racetrack', runtime = null }: PokerTableProps) {
   const viewer = state.players.find((p) => p.id === viewerId);
   // 自分を必ず手前（スロット0）に置く。観戦者は席番号そのままで並べる。
   const viewerSeat = viewer?.seat ?? null;
@@ -50,6 +53,9 @@ export function PokerTable({ state, viewerId, shape = 'racetrack' }: PokerTableP
         player={player}
         isTurn={player !== null && player.id === state.turnPlayerId}
         isViewer={player !== null && player.id === viewerId}
+        clock={runtime?.clock ?? null}
+        dealtAt={runtime?.handStartedAt ?? null}
+        dealOrder={player ? (player.seat - state.dealerSeat - 1 + state.seatCount) % state.seatCount : 0}
       />
     );
   };
@@ -63,6 +69,7 @@ export function PokerTable({ state, viewerId, shape = 'racetrack' }: PokerTableP
         <TableFelt shape={shape} />
 
         <div className="table-center">
+          {state.phase !== 'waiting' && <TableStock burnedCount={state.burnedCount} />}
           <div className="table-watermark"><Brand compact /></div>
           <div className="table-phase">{phaseLabel(state)}</div>
 
@@ -73,12 +80,14 @@ export function PokerTable({ state, viewerId, shape = 'racetrack' }: PokerTableP
               {/* 枠の数はバリアントが決める。フロップ6枚なら場は8枚になる。 */}
               {Array.from({ length: boardLength }, (_, i) => {
                 const card = board[i];
-                return card ? <PlayingCard key={i} card={card} /> : <CardSlot key={i} />;
+                const reveal = runtime?.events.slice().reverse().find(event => event.kind === 'board' && event.run === run && i >= event.from && i < event.from + event.count);
+                return card ? <PlayingCard key={i} card={card} revealAt={reveal?.at ?? null} revealKind="board"
+                  revealDelay={240 + (reveal?.kind === 'board' ? i - reveal.from : 0) * 90 + run * 220} /> : <CardSlot key={i} />;
               })}
             </div>
           ))}
 
-          <div className="table-pot">ポット {state.pot.toLocaleString()}</div>
+          <div className="table-pot"><PotChips amount={state.pot} /><span>ポット {state.pot.toLocaleString()}</span></div>
         </div>
 
         {Array.from({ length: state.seatCount }, (_, slot) =>
@@ -87,6 +96,7 @@ export function PokerTable({ state, viewerId, shape = 'racetrack' }: PokerTableP
         <TablePositionMarkers state={state} viewerSeat={viewerSeat} />
       </div>
       {viewer && <div className="table-player">{renderSeat(0)}</div>}
+      <TableMotion state={state} runtime={runtime} />
     </div>
   );
 }

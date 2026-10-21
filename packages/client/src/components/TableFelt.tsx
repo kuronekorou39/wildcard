@@ -9,18 +9,25 @@ const OUTLINES: Record<TableShape, string> = {
 
 export function TableFelt({ shape }: { readonly shape: TableShape }) {
   const gradientId = useId();
+  const railId = useId();
   return (
-    <svg className="table-felt" viewBox="0 0 1000 600" preserveAspectRatio="none" aria-hidden="true">
+    <svg className="table-felt" viewBox="0 0 1000 620" preserveAspectRatio="none" aria-hidden="true">
       <defs>
         <radialGradient id={gradientId}>
           <stop offset="0" stopColor="#3d353a" />
           <stop offset="1" stopColor="#302a2e" />
         </radialGradient>
+        <linearGradient id={railId} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#393038" />
+          <stop offset="1" stopColor="#282125" />
+        </linearGradient>
       </defs>
-      <path d={OUTLINES[shape]} fill={`url(#${gradientId})`} stroke="#252124" strokeWidth="24" />
-      <path d={OUTLINES[shape]} fill="none" stroke="#78646b" strokeOpacity=".5" strokeWidth="1.5" />
-      <path d={OUTLINES[shape]} transform="translate(500 300) scale(.95 .94) translate(-500 -300)"
-        fill="none" stroke="#dbc5a6" strokeOpacity=".13" strokeWidth="1" />
+      {/* The top covers the rear of this extrusion; only the near edge has a visible side. */}
+      <path d={OUTLINES[shape]} transform="translate(0 16)" fill="#171316" />
+      <path d={OUTLINES[shape]} fill={`url(#${railId})`} stroke="#66545c" strokeWidth="1.5" />
+      {/* Six units of rail at the far edge, a wider rail towards the viewer. */}
+      <path d={OUTLINES[shape]} transform="translate(0 6) translate(500 18) scale(.955 .94) translate(-500 -18)"
+        fill={`url(#${gradientId})`} stroke="#9c827a" strokeOpacity=".22" strokeWidth="1.5" />
     </svg>
   );
 }

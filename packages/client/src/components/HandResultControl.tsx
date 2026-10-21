@@ -2,6 +2,7 @@ import { useState, type ReactNode } from 'react';
 import type { VisibleState } from '@wildcard/engine';
 import { GameDialog } from './GameDialog.js';
 import { HandSummaryPanel } from './HandSummaryPanel.js';
+import { useActionLatch } from '../hooks/useActionLatch.js';
 
 export function HandResultControl({ state, onNextHand, blockedReason, children }: {
   readonly state: VisibleState;
@@ -10,6 +11,7 @@ export function HandResultControl({ state, onNextHand, blockedReason, children }
   readonly children: ReactNode;
 }) {
   const [open, setOpen] = useState(false);
+  const latch = useActionLatch(JSON.stringify([state.dealerSeat, state.summary]));
   const payouts = state.summary?.payouts.map(payout =>
     `${state.players.find(p => p.id === payout.playerId)?.name ?? payout.playerId} +${payout.amount.toLocaleString()}`,
   ).join(' / ');
@@ -19,7 +21,7 @@ export function HandResultControl({ state, onNextHand, blockedReason, children }
       <div className="action-row">
         <button type="button" className="btn btn-muted" onClick={() => setOpen(true)}>結果の詳細</button>
         {onNextHand && (
-          <button type="button" className="btn btn-primary" onClick={onNextHand} disabled={blockedReason !== null}>次のハンド</button>
+          <button type="button" className="btn btn-primary" onClick={() => latch.run(onNextHand)} disabled={blockedReason !== null || !latch.enabled}>次のハンド</button>
         )}
       </div>
       {blockedReason && <p className="result-blocked">{blockedReason}</p>}

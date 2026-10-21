@@ -9,6 +9,12 @@ await mkdir(out, { recursive: true });
 const browser = await chromium.launch();
 const checks = [], errors = [];
 const inspect = async (page, name) => {
+  // Layout assertions compare resting positions, not the staggered deal animation.
+  await page.locator('.table-area').evaluate(async table => {
+    await Promise.all(table.getAnimations({ subtree: true })
+      .filter(animation => animation.effect?.target?.classList?.contains('card'))
+      .map(animation => animation.finished.catch(() => {})));
+  });
   const result = await page.evaluate(() => {
     const w = innerWidth, h = innerHeight;
     const rect = el => {
