@@ -56,7 +56,13 @@ describe('配る前のやりとり', () => {
     const { host, guests } = await setupTable(['あかり'], 30);
     await host.startHand();
     host.dispatch({ type: 'fold', playerId: host.rawState().turnPlayerId! });
-    expect(guests[0]!.transport.snapshot().runtime!.nextHandAt).toBe(host.snapshot().runtime!.nextHandAt);
+    const hostTime = host.snapshot().runtime!;
+    const guestTime = guests[0]!.transport.snapshot().runtime!;
+    expect(hostTime.nextHandAt).not.toBeNull();
+    expect(guestTime.nextHandAt).not.toBeNull();
+    // Guest timestamps include receive-time clock correction; their intervals must match.
+    expect(hostTime.nextHandAt! - hostTime.readyAt).toBe(30);
+    expect(guestTime.nextHandAt! - guestTime.readyAt).toBe(30);
     await new Promise<void>(resolve => {
       const unsubscribe = host.subscribe(snapshot => {
         if (snapshot.runtime!.handId === 2) { unsubscribe(); resolve(); }
