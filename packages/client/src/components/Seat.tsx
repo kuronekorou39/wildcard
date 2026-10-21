@@ -16,9 +16,10 @@ interface SeatProps {
   readonly clock?: TurnClock | null;
   readonly dealtAt?: number | null;
   readonly dealOrder?: number;
+  readonly winner?: { readonly amount: number; readonly ranking: string } | null;
 }
 
-export function Seat({ slot, seatCount, player, isTurn, isViewer, clock, dealtAt, dealOrder = 0 }: SeatProps) {
+export function Seat({ slot, seatCount, player, isTurn, isViewer, clock, dealtAt, dealOrder = 0, winner = null }: SeatProps) {
   const style = { ...seatCoordinates(slot, seatCount), '--hand-count': Math.max(1, player?.holeCards.length ?? 0) } as CSSProperties;
 
   const classes = ['seat'];
@@ -27,6 +28,7 @@ export function Seat({ slot, seatCount, player, isTurn, isViewer, clock, dealtAt
   if (isViewer) classes.push('seat-viewer');
   if (player?.folded) classes.push('seat-folded');
   if (player?.away) classes.push('seat-away');
+  if (winner) classes.push('seat-winner');
 
   if (!player) {
     return (
@@ -40,6 +42,8 @@ export function Seat({ slot, seatCount, player, isTurn, isViewer, clock, dealtAt
     <div className={classes.join(' ')} style={style} data-slot={slot} data-player-id={player.id}
       aria-label={player.folded ? `${player.name}：フォールド済み` : player.name}>
       <div className="seat-profile">
+        {winner && <span className="seat-win-badge" title={`${winner.ranking} +${winner.amount.toLocaleString()}`}
+          aria-label={`勝利、${winner.ranking}、${winner.amount.toLocaleString()}獲得`}>★ WIN</span>}
         {isTurn && clock && <TurnRing clock={clock} />}
         <div className="seat-heading">
           <span className="seat-avatar" role="img" aria-label={`${player.name}のアイコン`} data-tone={player.seat % 4}>

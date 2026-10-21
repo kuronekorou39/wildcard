@@ -4,6 +4,7 @@ import { GameDialog } from './GameDialog.js';
 import { HandSummaryPanel } from './HandSummaryPanel.js';
 import { useActionLatch } from '../hooks/useActionLatch.js';
 import { usePresentationTime } from '../hooks/usePresentationTime.js';
+import { ActionIcon } from './ActionIcon.js';
 
 export function HandResultControl({ state, onNextHand, blockedReason, children, nextHandAt, onCancelNextHand }: {
   readonly state: VisibleState;
@@ -26,12 +27,12 @@ export function HandResultControl({ state, onNextHand, blockedReason, children, 
         {seconds !== null ? <span className="next-hand-countdown" role="timer">{seconds > 0 ? `次のハンドまで ${seconds}秒` : '配牌中…'}</span> : <span>ハンド終了</span>}
       </div>
       <div className="action-row">
-        <button type="button" className="btn btn-muted" onClick={() => { onCancelNextHand?.(); setOpen(true); }}>結果の詳細</button>
+        <button type="button" className="btn table-command" onClick={() => { onCancelNextHand?.(); setOpen(true); }}><ActionIcon kind="result" /><span>結果の詳細</span></button>
         {onNextHand && (
-          <button type="button" className="btn btn-primary" onClick={() => latch.run(onNextHand)} disabled={seconds === 0 || blockedReason !== null || !latch.enabled}>次のハンド</button>
+          <button type="button" className="btn table-command table-command-primary" onClick={() => latch.run(onNextHand)} disabled={seconds === 0 || blockedReason !== null || !latch.enabled}><ActionIcon kind="next" /><span>次のハンド</span></button>
         )}
-        {onCancelNextHand && seconds !== null && seconds > 0 && <button type="button" className="btn btn-muted"
-          aria-label="自動開始を停止" onClick={onCancelNextHand}>停止</button>}
+        {onCancelNextHand && seconds !== null && seconds > 0 && <button type="button" className="btn table-command"
+          aria-label="自動開始を停止" onClick={onCancelNextHand}><ActionIcon kind="pause" /><span>停止</span></button>}
       </div>
       {blockedReason && <p className="result-blocked">{blockedReason}</p>}
       {open && (

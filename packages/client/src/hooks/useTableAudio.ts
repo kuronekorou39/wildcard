@@ -17,10 +17,25 @@ export function soundCues(snapshot: TableSnapshot): SoundCue[] {
       for (let i = 0; i < event.count; i++) add('board', i * T.boardGap, .4, String(i));
     } else if (event.kind === 'burn') add('deal', 0, .25);
     else if (event.kind === 'fold') add('fold', 0, .4);
+    else if (event.kind === 'check') add('check', 0, .7);
     else if (event.kind === 'bet') add(event.raised ? 'raise' : 'bet');
     else if (event.kind === 'win') add('win', T.win * .7, .75);
   }
   return cues;
+}
+/** Only the local player's live, revealed turn has notification/countdown sounds. */
+export function turnSoundCues(snapshot: TableSnapshot): SoundCue[] {
+  const clock = snapshot.runtime?.clock;
+  if (!clock || clock.startedAt === null || clock.deadline === null || snapshot.viewerId !== clock.playerId ||
+    snapshot.state.turnPlayerId !== clock.playerId || !['local', 'connected'].includes(snapshot.status)) return [];
+  const key = `turn:${snapshot.runtime!.handId}:${clock.id}`;
+  return [
+    { key, at: clock.startedAt, sound: 'turn', gain: .8 },
+    ...[5, 4, 3, 2, 1].filter(seconds => clock.deadline! - seconds * 1000 > clock.startedAt!).map(seconds => ({
+      key: `${key}:${seconds}`, at: clock.deadline! - seconds * 1000,
+      sound: seconds === 1 ? 'urgent' as const : 'tick' as const, gain: .7,
+    })),
+  ];
 }
 export function useTableAudio(snapshot: TableSnapshot) {
   const seen = useRef(new Set<string>());
@@ -49,4 +64,18 @@ export function useTableAudio(snapshot: TableSnapshot) {
       timers.current.add(timer);
     }
   }, [snapshot]);
+  const turnSeen = useRef(new Set<string>());
+  const turnCues = turnSoundCues(snapshot);
+  // Unrelated snapshots must not replay the notice. Turn changes cancel every pending tick.
+  const turnSignature = JSON.stringify(turnCues);
+  useEffect(() => {
+    const cues: SoundCue[] = JSON.parse(turnSignature);
+    const live = new Set(cues.map(cue => cue.key));
+    for (const key of turnSeen.current) if (!live.has(key)) turnSeen.current.delete(key);
+    const pending = cues.filter(cue => !turnSeen.current.has(cue.key) && Date.now() - cue.at <= 250).map(cue => setTimeout(() => {
+      turnSeen.current.add(cue.key);
+      void tableAudio.play(cue.sound, cue.gain, cue.at);
+    }, Math.max(0, cue.at - Date.now())));
+    return () => pending.forEach(clearTimeout);
+  }, [turnSignature]);
 }

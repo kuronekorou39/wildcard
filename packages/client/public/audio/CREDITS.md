@@ -19,6 +19,9 @@ Converted from Ogg Vorbis to mono 44.1 kHz, 96 kbps MP3:
 | bet.mp3 | chips-handle-1.ogg |
 | raise.mp3 | chips-stack-2.ogg |
 | win.mp3 | chips-collide-1.ogg |
+| check.mp3 | chip-lay-1.ogg |
+
+Turn and countdown notifications are short original synthesized tones generated in audio.ts.
 
 ## Music
 

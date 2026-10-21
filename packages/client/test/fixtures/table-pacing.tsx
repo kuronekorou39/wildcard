@@ -13,6 +13,7 @@ import '../../src/game.css';
 
 function makeTable(seatCount = 6) {
   return new LocalTransport({ seatCount, smallBlind: 10, bigBlind: 20, paced: true, autoNextHandMs: TABLE_TIMING.nextHand,
+    turnTimeMs: Number(new URLSearchParams(location.search).get('turnMs')) || 30000,
     viewer: { kind: 'fixed', playerId: 'p0' },
     setup: Array.from({ length: seatCount }, (_, seat) => ({ type: 'sit', playerId: `p${seat}`, name: seat ? `CPU${seat}` : 'あなた', seat, chips: 1000 })),
   });

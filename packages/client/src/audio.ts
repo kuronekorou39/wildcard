@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from 'react';
 
-export type SoundName = 'deal' | 'board' | 'fold' | 'bet' | 'raise' | 'win';
+export type SoundName = 'deal' | 'board' | 'fold' | 'bet' | 'raise' | 'win' | 'check' | 'turn' | 'tick' | 'urgent';
 export interface SoundSettings { readonly muted: boolean; readonly effects: number; readonly music: number }
 const DEFAULTS: SoundSettings = { muted: false, effects: .55, music: .16 };
 const KEY = 'wildcard.sound.v1';
@@ -51,7 +51,7 @@ class TableAudio {
       if (this.active && !document.hidden && !settings.muted && settings.music > 0) void this.music?.play().catch(() => {});
       await resumed;
       this.sync();
-      if (this.active) for (const name of ['deal', 'board', 'fold', 'bet', 'raise', 'win'] as const) void this.buffer(name);
+      if (this.active) for (const name of ['deal', 'board', 'fold', 'bet', 'raise', 'win', 'check', 'turn', 'tick', 'urgent'] as const) void this.buffer(name);
     } catch { /* A blocked or unavailable audio device does not block the game. */ }
   }
   attach() {
@@ -80,6 +80,21 @@ class TableAudio {
     if (!audible || settings.effects === 0) this.stopEffects();
   }
   private buffer(name: SoundName) {
+    if (!this.buffers.has(name) && (name === 'turn' || name === 'tick' || name === 'urgent')) {
+      // Short original notification tones, kept in the same gain/mute graph as the recorded effects.
+      const duration = name === 'turn' ? .48 : name === 'urgent' ? .16 : .09;
+      const buffer = this.context!.createBuffer(1, Math.ceil(this.context!.sampleRate * duration), this.context!.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < data.length; i++) {
+        const t = i / buffer.sampleRate;
+        const second = name === 'turn' && t >= .19;
+        const elapsed = second ? t - .19 : t;
+        const frequency = name === 'turn' ? (second ? 880 : 660) : name === 'urgent' ? 1046 : 784;
+        const envelope = Math.min(1, elapsed / .008) * Math.exp(-elapsed * (name === 'turn' ? 15 : 35)) * Math.min(1, (duration - t) / .015);
+        data[i] = .3 * envelope * (Math.sin(2 * Math.PI * frequency * elapsed) + .15 * Math.sin(4 * Math.PI * frequency * elapsed));
+      }
+      this.buffers.set(name, Promise.resolve(buffer));
+    }
     if (!this.buffers.has(name)) this.buffers.set(name, fetch(asset(name)).then(response => {
       if (!response.ok) throw new Error('Audio unavailable');
       return response.arrayBuffer();

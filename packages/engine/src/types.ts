@@ -412,6 +412,8 @@ export interface RunResult {
 /** ハンドの決着内容。 */
 export interface HandSummary {
   readonly payouts: readonly Payout[];
+  /** Pot awards only, excluding uncalled-bet refunds. Optional for older saved hands. */
+  readonly awards?: readonly Payout[];
   /**
    * 公開された手。全員がフォールドして決着した場合は空
    * （勝者は手を見せる必要がない）。

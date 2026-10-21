@@ -1013,6 +1013,7 @@ function settle(state: GameState): GameState {
 
   const summary: HandSummary = {
     payouts: [...credited.entries()].map(([playerId, amount]) => ({ playerId, amount })),
+    awards: winnings,
     revealed,
     rabbit,
     ...(runs ? { runs } : {}),

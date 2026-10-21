@@ -11,6 +11,7 @@ import type { TableRuntimeSnapshot } from '../transport/tableRuntime.js';
 import { PotChips, TableMotion, TableStock } from './TableMotion.js';
 import { chipsTotal, contributedChips, TABLE_TIMING as T } from '../transport/presentation.js';
 import { usePresentationTime } from '../hooks/usePresentationTime.js';
+import { ShowdownResult, showdownWinners } from './ShowdownResult.js';
 
 /**
  * 今どの段階かの表示。
@@ -39,6 +40,7 @@ export function PokerTable({ state, viewerId, shape = 'racetrack', runtime = nul
   const winEvents = events.filter(event => event.kind === 'win');
   const payoutAt = winEvents.length ? Math.min(...winEvents.map(event => event.at)) : 0;
   const potCleared = state.phase === 'showdown' && now >= payoutAt + T.win;
+  const winners = state.phase === 'showdown' && now >= payoutAt ? showdownWinners(state) : [];
   const potChips = potCleared ? [] : runtime?.potChips ?? contributedChips(state.pot);
   const pot = state.phase === 'showdown' ? chipsTotal(potChips) : state.pot;
   const revealShowdown = now >= payoutAt - T.showdownPause;
@@ -54,6 +56,7 @@ export function PokerTable({ state, viewerId, shape = 'racetrack', runtime = nul
   }
 
   const boards = boardsOf(state);
+  const resultInHandArea = potCleared && boards.length > 1 && viewer !== undefined;
   const boardLength = boardSize(state.variant.structure);
   const boardRows = boards.length * (boardLength > 5 ? Math.ceil(boardLength / 4) : 1);
   const renderSeat = (slot: number) => {
@@ -71,6 +74,7 @@ export function PokerTable({ state, viewerId, shape = 'racetrack', runtime = nul
         player={player}
         isTurn={player !== null && player.id === state.turnPlayerId}
         isViewer={player !== null && player.id === viewerId}
+        winner={winners.find(winner => winner.playerId === player?.id) ?? null}
         clock={runtime?.clock ?? null}
         dealtAt={runtime?.handStartedAt ?? null}
         dealOrder={player ? (player.seat - state.dealerSeat - 1 + state.seatCount) % state.seatCount : 0}
@@ -79,7 +83,7 @@ export function PokerTable({ state, viewerId, shape = 'racetrack', runtime = nul
   };
 
   return (
-    <div className="table-area" data-seats={state.seatCount} data-shape={shape} data-boards={boards.length} style={{
+    <div className="table-area" data-seats={state.seatCount} data-shape={shape} data-boards={boards.length} data-settled={potCleared} data-result-rail={resultInHandArea} style={{
       '--board-rows': boardRows,
       '--desktop-board-rows': boards.length * Math.ceil(boardLength / 8),
     } as CSSProperties}>
@@ -87,11 +91,11 @@ export function PokerTable({ state, viewerId, shape = 'racetrack', runtime = nul
         <TableFelt shape={shape} />
 
         <div className="table-center">
-          {state.phase !== 'waiting' && <TableStock burnedCount={Math.max(0, state.burnedCount - pendingBurns)} />}
-          <div className="table-watermark"><Brand compact /></div>
-          <div className="table-phase">{state.phase === 'showdown' && !potCleared
+          {state.phase !== 'waiting' && !potCleared && <TableStock burnedCount={Math.max(0, state.burnedCount - pendingBurns)} />}
+          {!potCleared && <div className="table-watermark"><Brand compact /></div>}
+          {!potCleared && <div className="table-phase">{state.phase === 'showdown'
             ? now >= payoutAt ? '配当' : revealShowdown ? 'ショーダウン' : 'ランアウト'
-            : phaseLabel(state)}</div>
+            : phaseLabel(state)}</div>}
 
           {/* 2本走ったら、ボードの数だけ並ぶ。1本なら今までどおり1列。 */}
           {boards.map((board, run) => (
@@ -107,7 +111,8 @@ export function PokerTable({ state, viewerId, shape = 'racetrack', runtime = nul
             </div>
           ))}
 
-          <div className="table-pot"><PotChips stacks={potChips} /><span>ポット {pot.toLocaleString()}</span></div>
+          {potCleared ? !resultInHandArea && <ShowdownResult key={runtime?.handId ?? state.dealerSeat} state={state} />
+            : <div className="table-pot"><PotChips stacks={potChips} /><span>ポット {pot.toLocaleString()}</span></div>}
         </div>
 
         {Array.from({ length: state.seatCount }, (_, slot) =>
@@ -115,7 +120,9 @@ export function PokerTable({ state, viewerId, shape = 'racetrack', runtime = nul
         )}
         <TablePositionMarkers state={state} viewerSeat={viewerSeat} />
       </div>
-      {viewer && <div className="table-player">{renderSeat(0)}</div>}
+      {viewer && <div className="table-player">{renderSeat(0)}
+        {resultInHandArea && <ShowdownResult key={runtime?.handId ?? state.dealerSeat} state={state} />}
+      </div>}
       <TableMotion state={state} runtime={runtime} />
     </div>
   );

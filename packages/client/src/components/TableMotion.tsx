@@ -9,10 +9,12 @@ import { contributedChips, TABLE_TIMING as T, type ChipStack } from '../transpor
 export function TableStock({ burnedCount }: { readonly burnedCount: number }) {
   const { appearance } = useCardAppearance();
   return <div className="table-stock" aria-label={`山札とバーン済み${burnedCount}枚`}>
-    <span className="stock-deck motion-card" data-back={appearance.back} aria-hidden="true">
+    <span className="stock-pile"><span className="stock-deck motion-card" data-back={appearance.back} aria-hidden="true">
       <span className="motion-card-mark">{appearance.back === 'dragon' ? <CharacterMark /> : appearance.back === 'diamond' ? '◆' : 'W'}</span>
-    </span>
-    <span className={`stock-burn${burnedCount ? ' stock-burn-used' : ''}`} aria-hidden="true" />
+    </span><small>DECK</small></span>
+    <span className="stock-pile"><span className={`stock-burn${burnedCount ? ' stock-burn-used' : ''}`} data-back={appearance.back} aria-hidden="true">
+      {burnedCount > 0 && <><span className="motion-card-mark">{appearance.back === 'dragon' ? <CharacterMark /> : appearance.back === 'diamond' ? '◆' : 'W'}</span><b className="stock-count">{burnedCount}</b></>}
+    </span><small>BURN</small></span>
   </div>;
 }
 

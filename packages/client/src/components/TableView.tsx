@@ -99,11 +99,11 @@ export function TableView({
           <div className="centered-actions">
             <button
               type="button"
-              className="btn btn-primary btn-large"
+              className="btn table-command table-command-primary table-start"
               onClick={onStartHand}
               disabled={startRejection !== null}
             >
-              ゲーム開始
+              <ActionIcon kind="play" /><span>ゲーム開始</span>
             </button>
             {startRejection !== null && <p className="hint">{startRejection}</p>}
           </div>

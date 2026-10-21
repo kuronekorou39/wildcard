@@ -14,7 +14,7 @@ export type TableEvent = { readonly id: number; readonly at: number } & (
   | { readonly kind: 'burn'; readonly count: number }
   | { readonly kind: 'board'; readonly run: number; readonly from: number; readonly count: number }
   | { readonly kind: 'bet' | 'win'; readonly playerId: string; readonly amount: number; readonly raised?: boolean }
-  | { readonly kind: 'fold'; readonly playerId: string }
+  | { readonly kind: 'fold' | 'check'; readonly playerId: string }
 );
 export interface TableRuntimeSnapshot {
   readonly handId: number;
@@ -54,10 +54,13 @@ export class TableRuntime {
       Omit<Extract<TableEvent, { kind: 'burn' }>, 'id' | 'at'> |
       Omit<Extract<TableEvent, { kind: 'board' }>, 'id' | 'at'> |
       Omit<Extract<TableEvent, { kind: 'bet' | 'win' }>, 'id' | 'at'> |
-      Omit<Extract<TableEvent, { kind: 'fold' }>, 'id' | 'at'>, at = now) => {
+      Omit<Extract<TableEvent, { kind: 'fold' | 'check' }>, 'id' | 'at'>, at = now) => {
       events.push({ ...event, id: ++this.eventSequence, at } as TableEvent);
     };
     let readyAt = now;
+    if (action.type === 'check' || (action.type === 'timeout' && before.phase === 'betting' && before.currentBet === before.players.find(p => p.id === action.playerId)?.bet)) {
+      append({ kind: 'check', playerId: action.playerId });
+    }
     if (action.type === 'startHand') append({ kind: 'deal' });
     if (action.type === 'startHand') {
       const cards = Math.max(0, ...after.players.map(p => p.holeCards.length));

@@ -27,12 +27,13 @@ const inspect = async (page, name) => {
     const overlaps = [];
     for (let i=0; i<seats.length; i++) for (let j=i+1; j<seats.length; j++)
       if (intersects(seats[i].r, seats[j].r)) overlaps.push([seats[i].id, seats[j].id]);
-    const obstructions = [...document.querySelectorAll('.table-surface .table-position-chip, .game-corner')]
+    const obstructions = [...document.querySelectorAll('.table-surface .table-position-chip, .game-corner, .stock-pile')]
       .map(el => ({ id: el.getAttribute('aria-label') ?? el.textContent, r: rect(el) }));
     const coveredCards = [];
     for (const card of document.querySelectorAll('.community-cards .card'))
       for (const object of [...seats, ...obstructions])
         if (intersects(rect(card),object.r)) coveredCards.push(object.id);
+    const stockCovered = [...document.querySelectorAll('.stock-pile')].flatMap(el => seats.filter(seat => intersects(rect(el), seat.r)).map(seat => seat.id));
     const clipped = [...document.querySelectorAll('.table-area .card, .seat, .table-surface .table-position-chip, .bottombar .btn, .raise-controls')]
       .filter(el => {
         const r = rect(el);
@@ -52,14 +53,15 @@ const inspect = async (page, name) => {
     const footer = rect(document.querySelector('.bottombar'));
     const raiseNotVertical = controls && (getComputedStyle(document.querySelector('.raise-slider')).writingMode !== 'vertical-lr');
     return { w, h, pageHeight: document.documentElement.scrollHeight, pageWidth: document.documentElement.scrollWidth,
-      footer, overlaps, coveredCards, clipped, cornerCovered, blockedActions, handWrapped, coveredByRaise, raiseNotVertical };
+      footer, overlaps, coveredCards, stockCovered, clipped, cornerCovered, blockedActions, handWrapped, coveredByRaise, raiseNotVertical };
   });
   checks.push({ name, ...result });
   await page.screenshot({ path: `${out}/${name}.png` });
 };
 
 try {
-  const sizes = [[320,568], [390,844], [719,800], [720,800], [1024,768], [1280,900], [844,390], [667,375]];
+  const sizes = process.env.WILDCARD_SIZES ? process.env.WILDCARD_SIZES.split(',').map(s => s.split('x').map(Number))
+    : [[320,568], [390,844], [719,800], [720,800], [1024,768], [1100,700], [1280,900], [1920,1080], [2560,1440], [844,390], [667,375]];
   const cases = process.env.WILDCARD_QUICK === '1' ? [[10,'standard']] : [[2,'standard'], [6,'standard'], [10,'standard'], [10,'omaha'], [6,'six-card-flop']];
   for (const [width,height] of sizes) for (const [count,rule] of cases) {
     const page = await browser.newPage({ viewport: { width, height } });
@@ -114,7 +116,7 @@ try {
   await inspect(solo,'solo-nine-cpus');
   await solo.close();
   const failures=checks.filter(c=>c.pageHeight>c.h+1||c.pageWidth>c.w+1||Math.abs(c.footer.bottom-c.h)>1||
-    c.overlaps.length||c.coveredCards.length||c.clipped.length||c.cornerCovered.length||c.blockedActions.length||c.handWrapped||c.coveredByRaise.length||c.raiseNotVertical);
+    c.overlaps.length||c.coveredCards.length||c.stockCovered.length||c.clipped.length||c.cornerCovered.length||c.blockedActions.length||c.handWrapped||c.coveredByRaise.length||c.raiseNotVertical);
   await writeFile(`${out}/qa.json`,JSON.stringify({errors,checks,failures},null,2));
   console.log(JSON.stringify({count:checks.length,errors,failures},null,2));
   assert.equal(errors.length+failures.length,0);

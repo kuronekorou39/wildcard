@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { createGame, project, reduce } from '@wildcard/engine';
 import { parseSoundSettings } from '../src/audio.js';
-import { soundCues } from '../src/hooks/useTableAudio.js';
+import { soundCues, turnSoundCues } from '../src/hooks/useTableAudio.js';
 import { LocalTransport } from '../src/transport/local.js';
 import type { TableSnapshot } from '../src/transport/types.js';
 
@@ -43,5 +43,32 @@ describe('サウンド', () => {
     transport.dispatch({ type: 'raise', playerId, to: 100 });
     expect(soundCues(transport.snapshot()).filter(c => c.sound === 'raise')).toHaveLength(1);
     transport.dispose();
+  });
+  it('成立したチェックを鳴らし、拒否されたチェックでは鳴らさない', () => {
+    const transport = new LocalTransport({ seatCount: 2, viewer: { kind: 'fixed', playerId: 'p0' }, setup: [
+      { type: 'sit', playerId: 'p0', seat: 0, name: 'P0', chips: 1000 },
+      { type: 'sit', playerId: 'p1', seat: 1, name: 'P1', chips: 1000 },
+    ] });
+    transport.dispatch({ type: 'startHand', seed: 2 });
+    transport.dispatch({ type: 'check', playerId: transport.rawState().turnPlayerId! });
+    expect(soundCues(transport.snapshot()).filter(c => c.sound === 'check')).toHaveLength(0);
+    transport.dispatch({ type: 'call', playerId: transport.rawState().turnPlayerId! });
+    transport.dispatch({ type: 'check', playerId: transport.rawState().turnPlayerId! });
+    expect(soundCues(transport.snapshot()).filter(c => c.sound === 'check')).toHaveLength(1);
+    transport.dispose();
+  });
+  it('自分の手番開始と最後の5秒だけを予約し、目隠し・観戦・切断中には鳴らさない', () => {
+    const state = { ...project(createGame({ seatCount: 2 }), 'p0'), turnPlayerId: 'p0' };
+    const snapshot: TableSnapshot = { state, viewerId: 'p0', status: 'local', note: null, runtime: {
+      handId: 1, handStartedAt: 0, readyAt: 1000, nextHandAt: null, events: [], potChips: [],
+      clock: { id: 2, playerId: 'p0', durationMs: 30000, startedAt: 1000, deadline: 31000 },
+    } };
+    expect(turnSoundCues(snapshot).map(c => [c.at, c.sound])).toEqual([
+      [1000, 'turn'], [26000, 'tick'], [27000, 'tick'], [28000, 'tick'], [29000, 'tick'], [30000, 'urgent'],
+    ]);
+    expect(turnSoundCues({ ...snapshot, viewerId: 'p1' })).toEqual([]);
+    expect(turnSoundCues({ ...snapshot, viewerId: null })).toEqual([]);
+    expect(turnSoundCues({ ...snapshot, status: 'disconnected' })).toEqual([]);
+    expect(turnSoundCues({ ...snapshot, runtime: { ...snapshot.runtime!, clock: { ...snapshot.runtime!.clock!, startedAt: null, deadline: null } } })).toEqual([]);
   });
 });
