@@ -6,6 +6,7 @@
  */
 import { chromium } from 'playwright';
 import { mkdir } from 'node:fs/promises';
+import assert from 'node:assert/strict';
 
 const URL = process.env.WILDCARD_URL ?? 'http://localhost:5173/';
 const SHOTS = process.env.WILDCARD_SHOTS ?? 'shots';
@@ -93,6 +94,19 @@ for (let i = 0; i < (await rows.count()); i++) {
   console.log(`  ${i + 1}本目: ${cards.filter(Boolean).join(' ')}`);
 }
 
+for (const [width, height] of [[320, 568], [390, 844], [844, 390], [667, 375]]) {
+  await page.setViewportSize({ width, height });
+  const layout = await page.evaluate(() => {
+    const intersects = (a, b) => Math.min(a.right, b.right) - Math.max(a.left, b.left) > 2 &&
+      Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top) > 2;
+    const objects = [...document.querySelectorAll('.seat, .table-surface .table-position-chip')].map(el => el.getBoundingClientRect());
+    const covered = [...document.querySelectorAll('.community-cards .card')].some(el => objects.some(r => intersects(el.getBoundingClientRect(), r)));
+    return { covered, overflow: document.documentElement.scrollHeight > innerHeight };
+  });
+  assert.deepEqual(layout, { covered: false, overflow: false });
+  await page.screenshot({ path: `${SHOTS}/21-boards-${width}x${height}.png` });
+}
+await page.setViewportSize({ width: 420, height: 900 });
 await page.getByRole('button', { name: '結果の詳細', exact: true }).click();
 const runs = page.locator('.summary-run');
 console.log(`--- 内訳 --- ${await runs.count()}件`);

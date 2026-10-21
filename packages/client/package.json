@@ -11,7 +11,9 @@
     "test": "vitest run",
     "drive": "node scripts/drive.mjs",
     "drive:online": "node scripts/drive-online.mjs",
-    "drive:solo": "node scripts/drive-solo.mjs"
+    "drive:solo": "node scripts/drive-solo.mjs",
+    "drive:controls": "node scripts/drive-reservation.mjs",
+    "drive:viewport": "node scripts/drive-viewport.mjs"
   },
   "dependencies": {
     "@wildcard/engine": "*",

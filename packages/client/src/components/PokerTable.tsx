@@ -69,7 +69,7 @@ export function PokerTable({ state, viewerId, shape = 'racetrack' }: PokerTableP
           {/* 2本走ったら、ボードの数だけ並ぶ。1本なら今までどおり1列。 */}
           {boards.map((board, run) => (
             <div key={run} className={`community-cards${boardLength > 5 ? ' community-cards-wide' : ''}`}>
-              {run > 0 && <span className="community-run">{run + 1}本目</span>}
+              {boards.length > 1 && <span className="community-run">{run + 1}本目</span>}
               {/* 枠の数はバリアントが決める。フロップ6枚なら場は8枚になる。 */}
               {Array.from({ length: boardLength }, (_, i) => {
                 const card = board[i];

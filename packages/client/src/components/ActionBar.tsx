@@ -47,8 +47,9 @@ export function ActionBar({ state, playerId, onAction }: ActionBarProps) {
 
     return (
       <div className="action-bar action-bar-raising">
-        <div className="raise-popover" role="group" aria-label="レイズ額の調整">
+        <div className="raise-controls" role="group" aria-label="レイズ額の調整">
           <div className="raise-header">
+            <span className="raise-label">レイズ先</span>
             <span className="raise-amount">{amount.toLocaleString()}</span>
             {isAllIn && <span className="raise-allin-tag">オールイン</span>}
           </div>
@@ -91,6 +92,11 @@ export function ActionBar({ state, playerId, onAction }: ActionBarProps) {
 
   return (
     <div className="action-bar">
+      <div className="action-guidance">
+        <span>あなたのアクション</span>
+        <strong>{legal.canCheck ? 'チェックできます' : `コール ${legal.callAmount.toLocaleString()}`}</strong>
+        {legal.canRaise && !fixedAmount && <small>レイズを選ぶと、ここで金額を調整できます</small>}
+      </div>
       <div className="action-row">
         <button
           type="button"

@@ -27,7 +27,7 @@ const inspect = async (page, name) => {
     for (const card of document.querySelectorAll('.community-cards .card'))
       for (const object of [...seats, ...obstructions])
         if (intersects(rect(card),object.r)) coveredCards.push(object.id);
-    const clipped = [...document.querySelectorAll('.table-area .card, .seat, .table-surface .table-position-chip, .bottombar .action-row .btn, .raise-popover')]
+    const clipped = [...document.querySelectorAll('.table-area .card, .seat, .table-surface .table-position-chip, .bottombar .btn, .raise-controls')]
       .filter(el => {
         const r = rect(el);
         return r.left < -1 || r.right > w+1 || r.top < -1 || r.bottom > h+1;
@@ -40,15 +40,20 @@ const inspect = async (page, name) => {
     }).map(el => el.textContent);
     const hand = [...document.querySelectorAll('.seat-viewer .card')].map(rect);
     const handWrapped = hand.length <= 4 && hand.some(card => Math.abs(card.top - hand[0].top) > 1);
+    const controls = document.querySelector('.raise-controls');
+    const coveredByRaise = controls ? [...document.querySelectorAll('.seat, .table-area .card')]
+      .filter(el => intersects(rect(controls), rect(el))).map(el => el.className) : [];
+    const footer = rect(document.querySelector('.bottombar'));
+    const raiseOutsideDock = controls && rect(controls).top < footer.top;
     return { w, h, pageHeight: document.documentElement.scrollHeight, pageWidth: document.documentElement.scrollWidth,
-      footer: rect(document.querySelector('.bottombar')), overlaps, coveredCards, clipped, cornerCovered, blockedActions, handWrapped };
+      footer, overlaps, coveredCards, clipped, cornerCovered, blockedActions, handWrapped, coveredByRaise, raiseOutsideDock };
   });
   checks.push({ name, ...result });
   await page.screenshot({ path: `${out}/${name}.png` });
 };
 
 try {
-  const sizes = [[320,568], [390,844], [719,800], [720,800], [1024,768], [1280,900], [844,390]];
+  const sizes = [[320,568], [390,844], [719,800], [720,800], [1024,768], [1280,900], [844,390], [667,375]];
   const cases = process.env.WILDCARD_QUICK === '1' ? [[10,'standard']] : [[2,'standard'], [6,'standard'], [10,'standard'], [10,'omaha'], [6,'six-card-flop']];
   for (const [width,height] of sizes) for (const [count,rule] of cases) {
     const page = await browser.newPage({ viewport: { width, height } });
@@ -103,7 +108,7 @@ try {
   await inspect(solo,'solo-nine-cpus');
   await solo.close();
   const failures=checks.filter(c=>c.pageHeight>c.h+1||c.pageWidth>c.w+1||Math.abs(c.footer.bottom-c.h)>1||
-    c.overlaps.length||c.coveredCards.length||c.clipped.length||c.cornerCovered.length||c.blockedActions.length||c.handWrapped);
+    c.overlaps.length||c.coveredCards.length||c.clipped.length||c.cornerCovered.length||c.blockedActions.length||c.handWrapped||c.coveredByRaise.length||c.raiseOutsideDock);
   await writeFile(`${out}/qa.json`,JSON.stringify({errors,checks,failures},null,2));
   console.log(JSON.stringify({count:checks.length,errors,failures},null,2));
   assert.equal(errors.length+failures.length,0);
