@@ -16,7 +16,8 @@ async function inspectPresets(page, width) {
   assert.ok(Math.abs(presets.at(-1).right - Math.max(...presets.map(p => p.right))) < 1, 'The maximum stays at the right edge');
   const allin = await page.locator('.btn-quick-allin').boundingBox();
   const normal = await page.locator('.btn-quick:not(.btn-quick-allin)').first().boundingBox();
-  assert.ok(allin.width > normal.width && allin.height > normal.height, 'All-in has a larger target than other presets');
+  const gap = await page.locator('.raise-quick').evaluate(e => parseFloat(getComputedStyle(e).columnGap));
+  assert.ok(Math.abs(allin.width - (normal.width * 2 + gap)) < 1, 'All-in spans exactly two preset buttons');
   const clipped = await page.locator('.raise-controls .btn').evaluateAll(buttons => buttons.flatMap(button => {
     const b = button.getBoundingClientRect(), problems = [];
     if (b.height < 35 || b.width < 29) problems.push('small target');

@@ -23,3 +23,16 @@ export function useTableShape() {
   };
   return { shape, updateShape, saveFailed };
 }
+
+export function useRunoutReveal() {
+  const key = 'wildcard.runout-reveal.v1';
+  const [revealRunout, setValue] = useState(() => {
+    try { return localStorage.getItem(key) !== 'false'; } catch { return true; }
+  });
+  const [saveFailed, setSaveFailed] = useState(false);
+  const updateRunout = (value: boolean) => {
+    setValue(value);
+    try { localStorage.setItem(key, String(value)); setSaveFailed(false); } catch { setSaveFailed(true); }
+  };
+  return { revealRunout, updateRunout, saveFailed };
+}

@@ -9,7 +9,10 @@ import { SoundSettings } from './SoundSettings.js';
 
 const TABS = [['table', 'テーブル'], ['rules', 'ルール'], ['appearance', '見た目'], ['sound', 'サウンド']] as const;
 
-export function TableInfoPanel({ state, title, subtitle, notices, controls, shape, onShapeChange, shapeSaveFailed, onClose }: {
+export function TableInfoPanel({ state, title, subtitle, notices, controls, shape, onShapeChange, shapeSaveFailed, onClose, revealRunout, onRunoutChange, runoutSaveFailed }: {
+  readonly revealRunout: boolean;
+  readonly onRunoutChange: (value: boolean) => void;
+  readonly runoutSaveFailed: boolean;
   readonly state: VisibleState;
   readonly title: string;
   readonly subtitle: ReactNode;
@@ -62,6 +65,9 @@ export function TableInfoPanel({ state, title, subtitle, notices, controls, shap
         {tab === 'rules' && <RuleSheet variant={state.variant} label="役の順位・デッキ" defaultOpen />}
         {tab === 'sound' && <SoundSettings />}
         {tab === 'appearance' && <>
+          <label className="checkline runout-setting"><input type="checkbox" checked={revealRunout} onChange={e => onRunoutChange(e.target.checked)} />
+            <span>オールイン勝負は手札を開いてランアウト</span></label>
+          {runoutSaveFailed && <p className="hint">表示を変更しました。このブラウザへの保存はできませんでした。</p>}
           <fieldset className="shape-fieldset">
             <legend>テーブルの形</legend>
             <div className="shape-options">

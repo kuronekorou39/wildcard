@@ -47,6 +47,6 @@ export function project(state: GameState, viewerId: string | null): VisibleState
     };
   });
 
-  const { players: _players, deck, burned, ...rest } = state;
-  return { ...rest, players, viewerId, deckCount: deck.length, burnedCount: burned.length };
+  const { players: _players, deck, burned, history, ...rest } = state;
+  return { ...rest, ...(state.phase === 'showdown' && history ? { history } : {}), players, viewerId, deckCount: deck.length, burnedCount: burned.length };
 }

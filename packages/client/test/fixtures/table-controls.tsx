@@ -11,7 +11,8 @@ import '../../src/cards.css';
 import '../../src/game.css';
 
 let emitCurrent = () => {};
-let runtime = new TableRuntime(playerId => { apply({ type: 'timeout', playerId }); emitCurrent(); });
+const pacing = { paced: false };
+let runtime = new TableRuntime(playerId => { apply({ type: 'timeout', playerId }); emitCurrent(); }, 30000, false, pacing);
 function deal(seed = 11) {
   const seatCount = Number(new URLSearchParams(location.search).get('seats')) || 6;
   let game = createGame({ seatCount, smallBlind: 10, bigBlind: 20 });
@@ -55,6 +56,13 @@ function Harness() {
     finish: () => {
       while (game.phase === 'betting' && game.turnPlayerId)
         apply({ type: 'fold', playerId: game.turnPlayerId });
+      emit();
+    },
+    runout: () => {
+      pacing.paced = true;
+      const playerId = game.turnPlayerId!;
+      apply({ type: 'raise', playerId, to: legalActions(game, playerId)!.maxRaiseTo });
+      while (game.phase === 'betting' && game.turnPlayerId) apply({ type: 'call', playerId: game.turnPlayerId });
       emit();
     },
     next: () => { apply({ type: 'startHand', seed: 22 }); emit(); },

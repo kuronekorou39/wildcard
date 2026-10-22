@@ -386,6 +386,22 @@ export interface RevealedHand {
   readonly holeCards: readonly Card[];
   readonly rankingId: string;
   readonly rankingName: string;
+  /** Physical cards selected by the evaluator, including kickers and original wild cards. */
+  readonly usedCards?: readonly Card[];
+}
+
+export interface HandHistoryStep {
+  readonly kind: 'deal' | 'blind' | 'straddle' | 'fold' | 'check' | 'call' | 'raise' | 'timeout-check' | 'timeout-fold' | 'run-once' | 'run-agree' | 'collect' | 'burn' | 'board' | 'refund' | 'award';
+  readonly playerId?: string;
+  readonly amount?: number;
+  readonly to?: number;
+  readonly blind?: 'SB' | 'BB';
+  readonly run?: number;
+  readonly streetIndex: number;
+  /** Public board cards only. Never includes seeds, hidden hands, or burn identities. */
+  readonly boards: readonly (readonly Card[])[];
+  readonly pot: number;
+  readonly players: readonly Pick<Player, 'id' | 'name' | 'chips' | 'bet' | 'folded' | 'allIn'>[];
 }
 
 /**
@@ -435,6 +451,8 @@ export interface HandSummary {
 }
 
 export interface GameState {
+  /** Current hand's public action/transfer ledger; replaced on the next deal. */
+  readonly history?: readonly HandHistoryStep[];
   readonly phase: Phase;
   /**
    * 今どのストリートか。PREFLOP(-1) は場が開く前。

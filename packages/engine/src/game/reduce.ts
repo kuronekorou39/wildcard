@@ -30,6 +30,7 @@ import {
 } from '../variant.js';
 import { awardPotsAcrossRuns, buildPotLayers, returnUncalledBets } from './pot.js';
 import { blindPositions, firstClockwise, nextClockwise, orderClockwise } from './seats.js';
+import { recordHandHistory, type AutomaticFold } from './history.js';
 
 export interface CreateGameOptions {
   readonly seatCount?: number;
@@ -292,25 +293,31 @@ export function validate(state: GameState, action: Action): RejectedAction | nul
  * 不正なアクションは状態を変えずに同じ state を返す（理由は validate で取れる）。
  */
 export function reduce(state: GameState, action: Action): GameState {
+  const automaticFolds: AutomaticFold[] = [];
+  const next = reduceAction(state, action, automaticFolds);
+  return next === state ? state : recordHandHistory(state, next, action, automaticFolds);
+}
+
+function reduceAction(state: GameState, action: Action, automaticFolds: AutomaticFold[]): GameState {
   if (validate(state, action)) return state;
 
   switch (action.type) {
     case 'sit':
       return applySit(state, action.playerId, action.name, action.seat, action.chips);
     case 'leave':
-      return applyLeave(state, action.playerId);
+      return applyLeave(state, action.playerId, automaticFolds);
     case 'setAway':
-      return applySetAway(state, action.playerId, action.away);
+      return applySetAway(state, action.playerId, action.away, automaticFolds);
     case 'startHand':
-      return startHand(state, action.seed);
+      return startHand(state, action.seed, automaticFolds);
     case 'fold':
-      return actThenAdvance(state, action.playerId, (p) => ({ ...p, folded: true, hasActed: true }));
+      return actThenAdvance(state, action.playerId, (p) => ({ ...p, folded: true, hasActed: true }), automaticFolds);
     case 'check':
-      return actThenAdvance(state, action.playerId, (p) => ({ ...p, hasActed: true }));
+      return actThenAdvance(state, action.playerId, (p) => ({ ...p, hasActed: true }), automaticFolds);
     case 'call':
-      return actThenAdvance(state, action.playerId, (p) => payTo(p, state.currentBet));
+      return actThenAdvance(state, action.playerId, (p) => payTo(p, state.currentBet), automaticFolds);
     case 'raise':
-      return applyRaise(state, action.playerId, action.to);
+      return applyRaise(state, action.playerId, action.to, automaticFolds);
     case 'showCard':
       return updatePlayer(state, action.playerId, (p) => ({
         ...p,
@@ -326,8 +333,8 @@ export function reduce(state: GameState, action: Action): GameState {
       if (state.phase === 'runChoice') return applyRunChoice(state, action.playerId, false);
       // 時間切れは「払う必要がなければチェック、あればフォールド」。
       return state.currentBet > (byId(state, action.playerId)?.bet ?? 0)
-        ? reduce(state, { type: 'fold', playerId: action.playerId })
-        : reduce(state, { type: 'check', playerId: action.playerId });
+        ? reduceAction(state, { type: 'fold', playerId: action.playerId }, automaticFolds)
+        : reduceAction(state, { type: 'check', playerId: action.playerId }, automaticFolds);
   }
 }
 
@@ -364,7 +371,7 @@ function applySit(
   return { ...state, players: [...state.players, player] };
 }
 
-function applyLeave(state: GameState, playerId: string): GameState {
+function applyLeave(state: GameState, playerId: string, automaticFolds: AutomaticFold[]): GameState {
   const player = byId(state, playerId);
   if (!player) return state;
 
@@ -384,10 +391,10 @@ function applyLeave(state: GameState, playerId: string): GameState {
   }));
 
   if (state.turnPlayerId !== playerId) return marked;
-  return afterAction(marked, player.seat);
+  return afterAction(marked, player.seat, automaticFolds);
 }
 
-function applySetAway(state: GameState, playerId: string, away: boolean): GameState {
+function applySetAway(state: GameState, playerId: string, away: boolean, automaticFolds: AutomaticFold[]): GameState {
   const player = byId(state, playerId);
   if (!player) return state;
 
@@ -395,7 +402,7 @@ function applySetAway(state: GameState, playerId: string, away: boolean): GameSt
 
   // 離席した本人の手番だったなら自動フォールドで進行を止めない。
   if (away && state.turnPlayerId === playerId && player.inHand && !player.folded) {
-    return reduce(updated, { type: 'fold', playerId });
+    return reduceAction(updated, { type: 'fold', playerId }, automaticFolds);
   }
   return updated;
 }
@@ -409,7 +416,7 @@ function eligibleForNextHand(state: GameState): Player[] {
   return state.players.filter((p) => !p.leaving && !p.away && p.chips > 0);
 }
 
-function startHand(state: GameState, seed: number): GameState {
+function startHand(state: GameState, seed: number, automaticFolds: AutomaticFold[]): GameState {
   const remaining = state.players.filter((p) => !p.leaving);
   const participants = remaining.filter((p) => !p.away && p.chips > 0);
   const seats = participants.map((p) => p.seat);
@@ -477,7 +484,7 @@ function startHand(state: GameState, seed: number): GameState {
 
   // ブラインドで全員オールインになった場合など、誰も行動できなければ
   // assignTurn がそのまま次のストリートへ送る。
-  return assignTurn(started, straddled.firstToActSeat);
+  return assignTurn(started, straddled.firstToActSeat, automaticFolds);
 }
 
 /**
@@ -659,14 +666,15 @@ function actThenAdvance(
   state: GameState,
   playerId: string,
   change: (player: Player) => Player,
+  automaticFolds: AutomaticFold[],
 ): GameState {
   const player = byId(state, playerId);
   if (!player) return state;
   const updated = withPot(updatePlayer(state, playerId, change));
-  return afterAction(updated, player.seat);
+  return afterAction(updated, player.seat, automaticFolds);
 }
 
-function applyRaise(state: GameState, playerId: string, to: number): GameState {
+function applyRaise(state: GameState, playerId: string, to: number, automaticFolds: AutomaticFold[]): GameState {
   const player = byId(state, playerId);
   if (!player) return state;
 
@@ -687,12 +695,12 @@ function applyRaise(state: GameState, playerId: string, to: number): GameState {
     ),
   };
 
-  return afterAction(next, player.seat);
+  return afterAction(next, player.seat, automaticFolds);
 }
 
 /** 行動後の進行判断。行動した席の次から手番を探す。 */
-function afterAction(state: GameState, actedSeat: number): GameState {
-  return assignTurn(state, (actedSeat + 1) % state.seatCount);
+function afterAction(state: GameState, actedSeat: number, automaticFolds: AutomaticFold[]): GameState {
+  return assignTurn(state, (actedSeat + 1) % state.seatCount, automaticFolds);
 }
 
 /**
@@ -706,17 +714,18 @@ function afterAction(state: GameState, actedSeat: number): GameState {
  * 他人の手番中に離席し、あとから順番が回ってきた場合も折らないと、
  * そこで進行が永久に止まる（旧 poker-web-test が踏んでいた穴）。
  */
-function assignTurn(state: GameState, fromSeat: number): GameState {
+function assignTurn(state: GameState, fromSeat: number, automaticFolds: AutomaticFold[]): GameState {
   let current = state;
   let seat = fromSeat;
 
   for (;;) {
     if (contenders(current).length <= 1) return settle(current);
-    if (roundComplete(current)) return advanceStreet(current);
+    if (roundComplete(current)) return advanceStreet(current, automaticFolds);
 
     const candidate = nextActorFrom(current, seat);
-    if (!candidate) return advanceStreet(current);
+    if (!candidate) return advanceStreet(current, automaticFolds);
     if (!candidate.away) return { ...current, turnPlayerId: candidate.id };
+    automaticFolds.push({ playerId: candidate.id, streetIndex: current.streetIndex });
 
     current = withPot(
       updatePlayer(current, candidate.id, (p) => ({ ...p, folded: true, hasActed: true })),
@@ -760,7 +769,7 @@ function nextActorFrom(state: GameState, fromSeat: number): Player | undefined {
  * バーンカードは山札から落として burned に積む。結果の確率分布は変わらないが、
  * 1ハンドで消える枚数が変わるので、ルールとして指定できる必要がある。
  */
-function advanceStreet(state: GameState): GameState {
+function advanceStreet(state: GameState, automaticFolds: AutomaticFold[]): GameState {
   const streets = state.variant.structure.streets;
   if (state.streetIndex + 1 >= streets.length) return settle(state);
 
@@ -771,10 +780,10 @@ function advanceStreet(state: GameState): GameState {
   const opened = openStreet(state);
 
   // 行動できるのが1人以下ならベッティングは成立しない。次のストリートへ。
-  if (canActPlayers(opened).length <= 1) return advanceStreet(opened);
+  if (canActPlayers(opened).length <= 1) return advanceStreet(opened, automaticFolds);
 
   // フロップ以降はディーラーの次から。ヘッズアップならそれが BB になり、これも正しい。
-  return assignTurn(opened, (opened.dealerSeat + 1) % opened.seatCount);
+  return assignTurn(opened, (opened.dealerSeat + 1) % opened.seatCount, automaticFolds);
 }
 
 /** 次のストリートを1つ開く。ベッティングの手番は決めない。 */
@@ -954,6 +963,7 @@ function settle(state: GameState): GameState {
               holeCards: player.holeCards,
               rankingId: result.rankingId,
               rankingName: result.rankingName,
+              usedCards: result.cards,
             };
           })
           .filter((r): r is RevealedHand => r !== null),

@@ -1,5 +1,6 @@
 import { type VisibleState, boardSize, boardsOf, streetName } from '@wildcard/engine';
-import type { CSSProperties } from 'react';
+import { useMemo, useState, type CSSProperties } from 'react';
+import { showdownSelections, usesCard } from '../showdownSelection.js';
 import { CardSlot, PlayingCard } from './PlayingCard.js';
 import { Seat } from './Seat.js';
 import { displaySlot } from '../seatLayout.js';
@@ -33,9 +34,13 @@ interface PokerTableProps {
   readonly viewerId: string | null;
   readonly shape?: TableShape;
   readonly runtime?: TableRuntimeSnapshot | null;
+  readonly revealRunout?: boolean;
 }
 
-export function PokerTable({ state, viewerId, shape = 'racetrack', runtime = null }: PokerTableProps) {
+export function PokerTable({ state, viewerId, shape = 'racetrack', runtime = null, revealRunout = true }: PokerTableProps) {
+  const [selection, setSelection] = useState({ summary: state.summary, index: 0 });
+  const selectedIndex = selection.summary === state.summary ? selection.index : 0;
+  const selections = useMemo(() => showdownSelections(state), [state.summary, state.variant, state.communityCards, state.players]);
   const events = runtime?.events ?? [];
   const until = Math.max(runtime?.readyAt ?? 0, ...events.map(event => event.at + T.win + T.card));
   const now = usePresentationTime(until);
@@ -43,6 +48,8 @@ export function PokerTable({ state, viewerId, shape = 'racetrack', runtime = nul
   const payoutAt = winEvents.length ? Math.min(...winEvents.map(event => event.at)) : 0;
   const potCleared = state.phase === 'showdown' && now >= payoutAt + T.win;
   const winners = state.phase === 'showdown' && now >= payoutAt ? showdownWinners(state) : [];
+  const selected = now >= payoutAt ? selections[selectedIndex % selections.length] : undefined;
+  const result = <ShowdownResult state={state} selectedIndex={selectedIndex} onSelect={index => setSelection({ summary: state.summary, index })} />;
   const fallbackBets = state.players.map(player => ({ playerId: player.id, chips: contributedChips(player.bet) }));
   const fallbackPending = state.players.reduce((sum, player) => sum + player.bet, 0);
   const chips = runtime ? presentedChips(runtime, now) : {
@@ -50,7 +57,9 @@ export function PokerTable({ state, viewerId, shape = 'racetrack', runtime = nul
   };
   const potChips = potCleared ? [] : chips.pot;
   const pot = chipsTotal(potChips);
-  const revealShowdown = now >= payoutAt - T.showdownPause;
+  const showdownReady = now >= payoutAt - T.showdownPause;
+  const revealShowdown = showdownReady ||
+    (revealRunout && runtime?.runoutAt != null && now >= runtime.runoutAt);
   const pendingBurns = events.reduce((sum, event) => sum +
     (event.kind === 'burn' && now < event.at + T.card ? event.count : 0), 0);
   const viewer = state.players.find((p) => p.id === viewerId);
@@ -82,6 +91,7 @@ export function PokerTable({ state, viewerId, shape = 'racetrack', runtime = nul
         isTurn={player !== null && player.id === state.turnPlayerId}
         isViewer={player !== null && player.id === viewerId}
         winner={winners.find(winner => winner.playerId === player?.id) ?? null}
+        usedCards={selected && selected.playerId === player?.id && selected.usedCards.length ? selected.usedCards : undefined}
         clock={runtime?.clock ?? null}
         dealtAt={runtime?.handStartedAt ?? null}
         dealOrder={player ? (player.seat - state.dealerSeat - 1 + state.seatCount) % state.seatCount : 0}
@@ -101,7 +111,7 @@ export function PokerTable({ state, viewerId, shape = 'racetrack', runtime = nul
           {state.phase !== 'waiting' && !potCleared && <TableStock burnedCount={Math.max(0, state.burnedCount - pendingBurns)} />}
           {!potCleared && <div className="table-watermark"><Brand compact /></div>}
           {!potCleared && <div className="table-phase">{state.phase === 'showdown'
-            ? now >= payoutAt ? '配当' : revealShowdown ? 'ショーダウン' : 'ランアウト'
+            ? now >= payoutAt ? '配当' : showdownReady ? 'ショーダウン' : 'ランアウト'
             : phaseLabel(state)}</div>}
 
           {/* 2本走ったら、ボードの数だけ並ぶ。1本なら今までどおり1列。 */}
@@ -113,12 +123,14 @@ export function PokerTable({ state, viewerId, shape = 'racetrack', runtime = nul
                 const card = board[i];
                 const reveal = runtime?.events.slice().reverse().find(event => event.kind === 'board' && event.run === run && i >= event.from && i < event.from + event.count);
                 return card && (!reveal || now >= reveal.at) ? <PlayingCard key={i} card={card} revealAt={reveal?.at ?? null} revealKind="board"
+                  highlighted={selected?.run === run && usesCard(selected.usedCards, card)}
+                  dimmed={selected?.run === run && selected.usedCards.length > 0 && !usesCard(selected.usedCards, card)}
                   revealDelay={(reveal?.kind === 'board' ? i - reveal.from : 0) * T.boardGap} /> : <CardSlot key={i} />;
               })}
             </div>
           ))}
 
-          {potCleared ? !resultInHandArea && <ShowdownResult key={runtime?.handId ?? state.dealerSeat} state={state} />
+          {potCleared ? !resultInHandArea && result
             : <div className="table-pot" data-collected={pot} data-pending={chips.pending}
                 aria-label={`回収済み ${pot.toLocaleString()}、未回収 ${chips.pending.toLocaleString()}`}>
                 <PotChips stacks={potChips} /><span className="pot-value">{pot.toLocaleString()}</span>
@@ -133,7 +145,7 @@ export function PokerTable({ state, viewerId, shape = 'racetrack', runtime = nul
         {!potCleared && <TableBets state={state} viewerSeat={viewerSeat} bets={chips.bets} />}
       </div>
       {viewer && <div className="table-player">{renderSeat(0)}
-        {resultInHandArea && <ShowdownResult key={runtime?.handId ?? state.dealerSeat} state={state} />}
+        {resultInHandArea && result}
       </div>}
       <TableMotion state={state} runtime={runtime} />
     </div>

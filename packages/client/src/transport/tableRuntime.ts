@@ -27,6 +27,8 @@ export interface TableRuntimeSnapshot {
   /** All contributed chips, including the bets still in front of each player. */
   readonly potChips: readonly ChipStack[];
   readonly bets: readonly PostedBet[];
+  /** Public showdown hands may open here, before the remaining board animations. */
+  readonly runoutAt?: number | null;
 }
 
 export const isDecision = (action: Action) =>
@@ -101,6 +103,9 @@ export class TableRuntime {
       bets = [];
       readyAt += T.collect;
     }
+    const runoutAt = after.phase === 'showdown' && before.phase !== 'showdown' && (after.summary?.revealed.length ?? 0) > 1 &&
+      (after.communityCards.length > before.communityCards.length || after.extraBoards.length > before.extraBoards.length)
+      ? readyAt : action.type === 'startHand' ? null : this.value.runoutAt ?? null;
     let burned = Math.max(0, after.burned.length - before.burned.length);
     const previousBoards = [before.communityCards, ...before.extraBoards];
     [after.communityCards, ...after.extraBoards].forEach((board, run) => {
@@ -152,7 +157,7 @@ export class TableRuntime {
     } else if (nextHandAt !== null && validate(after, { type: 'startHand', seed: 0 }) !== null) {
       nextHandAt = null; this.clearNextTimer();
     }
-    this.value = { handId, handStartedAt, clock, events: events.slice(-80), readyAt, nextHandAt, potChips, bets };
+    this.value = { handId, handStartedAt, clock, events: events.slice(-80), readyAt, nextHandAt, potChips, bets, runoutAt };
     this.schedule();
   }
 
@@ -199,6 +204,7 @@ export class TableRuntime {
 export function receiveRuntime(value: TableRuntimeSnapshot, serverNow: number): TableRuntimeSnapshot {
   const offset = Date.now() - serverNow;
   return { ...value,
+    runoutAt: value.runoutAt == null ? null : value.runoutAt + offset,
     readyAt: value.readyAt + offset,
     nextHandAt: value.nextHandAt === null ? null : value.nextHandAt + offset,
     handStartedAt: value.handStartedAt === null ? null : value.handStartedAt + offset,

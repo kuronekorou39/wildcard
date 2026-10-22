@@ -9,7 +9,7 @@ import { HandResultControl } from './HandResultControl.js';
 import { PlayingCard } from './PlayingCard.js';
 import { PokerTable } from './PokerTable.js';
 import { TableInfoPanel } from './TableInfoPanel.js';
-import { useTableShape } from '../tableAppearance.js';
+import { useTableShape, useRunoutReveal } from '../tableAppearance.js';
 import { useFoldReservation } from '../hooks/useFoldReservation.js';
 import { ActionIcon } from './ActionIcon.js';
 import { usePresentationTime } from '../hooks/usePresentationTime.js';
@@ -62,6 +62,7 @@ export function TableView({
   const foldReservation = useFoldReservation(snapshot, presenting ? null : controllablePlayerId, onAction);
   const [infoOpen, setInfoOpen] = useState(false);
   const { shape, updateShape, saveFailed } = useTableShape();
+  const runout = useRunoutReveal();
   const connectionProblem = !['local', 'connected'].includes(snapshot.status);
   const dealNotice = state.phase !== 'waiting' && (state.exposedCards.length > 0 || state.misdeals > 0);
   const extraControls = <>
@@ -81,12 +82,13 @@ export function TableView({
       </button>
       {infoOpen && (
         <TableInfoPanel state={state} title={title} subtitle={subtitle} shape={shape} onShapeChange={updateShape}
+          revealRunout={runout.revealRunout} onRunoutChange={runout.updateRunout} runoutSaveFailed={runout.saveFailed}
           shapeSaveFailed={saveFailed} onClose={() => setInfoOpen(false)}
           notices={<>{banner}<DealNotice snapshot={snapshot} /></>} controls={extraControls} />
       )}
 
       <main className="table-wrap">
-        <PokerTable state={state} viewerId={viewerId} shape={shape} runtime={snapshot.runtime ?? null} />
+        <PokerTable state={state} viewerId={viewerId} shape={shape} runtime={snapshot.runtime ?? null} revealRunout={runout.revealRunout} />
       </main>
 
       <footer className="bottombar" data-active={canAct && !foldReservation.awaiting}>

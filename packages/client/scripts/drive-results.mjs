@@ -6,7 +6,9 @@ const out = 'shots-results';
 await mkdir(out, { recursive: true });
 const checks = [], errors = [];
 try {
-  for (const [width, height] of [[320,568], [390,844], [719,800], [1024,768], [1100,700], [1280,900], [1920,1080], [2560,1440], [667,375], [844,390]]) {
+  const sizes = process.env.WILDCARD_SIZES ? process.env.WILDCARD_SIZES.split(',').map(s=>s.split('x').map(Number))
+    : [[320,568], [390,844], [719,800], [1024,768], [1100,700], [1280,900], [1920,1080], [2560,1440], [667,375], [844,390]];
+  for (const [width, height] of sizes) {
     for (const [count, twice] of [[2, false], [6, false], [10, false], [2, true], [10, true]]) {
       const page = await browser.newPage({ viewport: { width, height } });
       page.on('pageerror', e => errors.push(e.message));

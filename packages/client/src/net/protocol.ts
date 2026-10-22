@@ -249,6 +249,7 @@ export function parseHostMessage(raw: unknown): HostMessage | null {
         }
       })) return null;
       if (runtime['handStartedAt'] !== null && !isFiniteNumber(runtime['handStartedAt'])) return null;
+      if (runtime['runoutAt'] != null && !isFiniteNumber(runtime['runoutAt'])) return null;
       const clock = runtime['clock'];
       if (clock !== null) {
         if (!isRecord(clock) || !isFiniteNumber(clock['id']) || !isString(clock['playerId'], SESSION_ID_MAX_LEN) ||

@@ -19,6 +19,7 @@
     "drive:audio": "node scripts/drive-audio.mjs",
     "drive:feedback": "node scripts/drive-feedback.mjs",
     "drive:results": "node scripts/drive-results.mjs",
+    "drive:review": "node scripts/drive-review.mjs",
     "drive:viewport": "node scripts/drive-viewport.mjs"
   },
   "dependencies": {

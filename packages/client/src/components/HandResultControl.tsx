@@ -36,7 +36,7 @@ export function HandResultControl({ state, onNextHand, blockedReason, children, 
       </div>
       {blockedReason && <p className="result-blocked">{blockedReason}</p>}
       {open && (
-        <GameDialog title="ハンドの結果" onClose={() => setOpen(false)}>
+        <GameDialog title="ハンドの結果" className="result-dialog" onClose={() => setOpen(false)}>
           <HandSummaryPanel state={state} onNextHand={() => {}} canStartNextHand={false} blockedReason={null} showNextHand={false} />
           {children}
         </GameDialog>

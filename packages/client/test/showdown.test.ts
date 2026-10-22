@@ -1,8 +1,24 @@
 import { describe, expect, it } from 'vitest';
-import { createGame, project, reduce, legalActions } from '@wildcard/engine';
+import { createGame, project, reduce, legalActions, OMAHA } from '@wildcard/engine';
+import { showdownSelections, usesCard } from '../src/showdownSelection.js';
 import { showdownWinners } from '../src/components/ShowdownResult.js';
 
 describe('勝者と役名', () => {
+  it('オマハの強調は手札2枚・場3枚を守る', () => {
+    let state = createGame({ seatCount: 3, variant: OMAHA });
+    for (let seat=0;seat<3;seat++) state=reduce(state,{type:'sit',playerId:`p${seat}`,name:`P${seat}`,seat,chips:1000});
+    state=reduce(state,{type:'startHand',seed:11});
+    while(state.phase!=='showdown') {
+      const playerId=state.turnPlayerId!;
+      state=reduce(state,{type:legalActions(state,playerId)!.canCheck?'check':'call',playerId});
+    }
+    for(const selected of showdownSelections(project(state,null))) {
+      expect(selected.usedCards).toHaveLength(5);
+      const hand=state.summary!.revealed.find(h=>h.playerId===selected.playerId)!;
+      expect(hand.holeCards.filter(c=>usesCard(selected.usedCards,c))).toHaveLength(2);
+      expect(state.communityCards.filter(c=>usesCard(selected.usedCards,c))).toHaveLength(3);
+    }
+  });
   it('未コール分の返却を獲得額から除き、非公開の手の役は推測しない', () => {
     let state = createGame({ seatCount: 2, smallBlind: 10, bigBlind: 20 });
     for (let seat = 0; seat < 2; seat++) state = reduce(state, { type: 'sit', playerId: `p${seat}`, name: `P${seat}`, seat, chips: 1000 });

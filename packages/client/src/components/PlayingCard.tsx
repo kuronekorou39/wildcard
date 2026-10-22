@@ -25,6 +25,7 @@ interface PlayingCardProps {
   readonly size?: CardSize;
   /** 役に使われたカードを強調する。 */
   readonly highlighted?: boolean;
+  readonly dimmed?: boolean;
   readonly faceStyle?: FaceStyle;
   readonly backStyle?: BackStyle;
   readonly revealAt?: number | null;
@@ -32,7 +33,7 @@ interface PlayingCardProps {
   readonly revealKind?: 'deal' | 'board';
 }
 
-export function PlayingCard({ card, size = 'md', highlighted = false, faceStyle, backStyle, revealAt, revealDelay = 0, revealKind = 'deal' }: PlayingCardProps) {
+export function PlayingCard({ card, size = 'md', highlighted = false, dimmed = false, faceStyle, backStyle, revealAt, revealDelay = 0, revealKind = 'deal' }: PlayingCardProps) {
   const { appearance } = useCardAppearance();
   const motion = useMemo<CSSProperties | undefined>(() => {
     if (revealAt == null || Date.now() - revealAt > revealDelay + T.card) return undefined;
@@ -52,6 +53,7 @@ export function PlayingCard({ card, size = 'md', highlighted = false, faceStyle,
     }
   }
   if (highlighted) classes.push('card-highlighted');
+  if (dimmed) classes.push('card-unused');
 
   if (!card) {
     return (
