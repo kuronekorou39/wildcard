@@ -18,7 +18,10 @@ try {
         const blockers = [...document.querySelectorAll('.seat,.game-corner,.table-position-chip')];
         const overlap = [...document.querySelectorAll('.showdown-result,.community-cards .card')].flatMap(n => blockers.filter(b => hit(r(n), r(b))).map(b => b.className));
         const footerOverlap = [...document.querySelectorAll('.seat,.showdown-result')].filter(n => hit(r(n), r(document.querySelector('.summary-compact')))).map(n => n.className);
+        const incorrectDepletion = [...document.querySelectorAll('.seat')].filter(seat =>
+          seat.classList.contains('seat-depleted') !== (seat.querySelector('.seat-chips')?.textContent === '0')).length;
         return { scroll: document.documentElement.scrollHeight > innerHeight, overlap, footerOverlap,
+          incorrectDepletion,
           winners: document.querySelectorAll('.seat-winner').length, ranking: document.querySelector('.winner-ranking').textContent };
       });
       checks.push({ width, height, count, twice, ...result });
@@ -33,7 +36,7 @@ try {
       await page.close();
     }
   }
-  const failures = checks.filter(c => c.scroll || c.overlap.length || c.footerOverlap.length || !c.winners || !c.ranking);
+  const failures = checks.filter(c => c.scroll || c.overlap.length || c.footerOverlap.length || c.incorrectDepletion || !c.winners || !c.ranking);
   await writeFile(`${out}/qa.json`, JSON.stringify({ checks, errors, failures }, null, 2));
   console.log(JSON.stringify({ count: checks.length, errors, failures }, null, 2));
   assert.equal(errors.length + failures.length, 0);

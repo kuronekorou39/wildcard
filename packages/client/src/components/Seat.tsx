@@ -27,6 +27,7 @@ export function Seat({ slot, seatCount, player, isTurn, isViewer, clock, dealtAt
   if (isTurn) classes.push('seat-turn');
   if (isViewer) classes.push('seat-viewer');
   if (player?.folded) classes.push('seat-folded');
+  if (player?.chips === 0) classes.push('seat-depleted');
   if (player?.away) classes.push('seat-away');
   if (winner) classes.push('seat-winner');
 

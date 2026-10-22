@@ -20,6 +20,7 @@ it('blinds and raises stay in front, then collect before the next board without 
   const t = table(); t.dispatch({ type: 'startHand', seed: 5 }); settle(t);
   const view = (now = Date.now()) => presentedChips(t.snapshot().runtime!, now);
   expect(view().pot).toEqual([]);
+  expect(view().pending).toBe(30);
   expect(view().bets.map(b => chipsTotal(b.chips))).toEqual([10,20]);
   t.dispatch({ type: 'raise', playerId: 'p0', to: 100 });
   expect(view().bets.find(b => b.playerId === 'p0')!.chips).toEqual([]);
@@ -31,12 +32,36 @@ it('blinds and raises stay in front, then collect before the next board without 
   expect(view(collect.at - 1).bets.reduce((sum,b) => sum + chipsTotal(b.chips),0)).toBe(300);
   expect(view(collect.at).bets).toEqual([]);
   expect(view(collect.at + T.collect - 1).pot).toEqual([]);
+  expect(view(collect.at + T.collect - 1).pending).toBe(300);
   expect(view(collect.at + T.collect).pot).toEqual([{ value: 100, count: 1 }, { value: 10, count: 20 }]);
+  expect(view(collect.at + T.collect).pending).toBe(0);
   expect(runtime.events.find(e => e.kind === 'burn')!.at).toBeGreaterThanOrEqual(collect.at + T.collect);
   settle(t);
   t.dispatch({ type: 'raise', playerId: 'p1', to: 20 }); settle(t);
   expect(chipsTotal(view().pot)).toBe(300);
+  expect(view().pending).toBe(20);
   expect(chipsTotal(view().bets[0]!.chips)).toBe(20);
+});
+
+it('SB calls and BB raises add only the difference to their existing front stacks', () => {
+  const t = table(); t.dispatch({ type: 'startHand', seed: 5 }); settle(t);
+  const view = () => presentedChips(t.snapshot().runtime!, Date.now());
+  const bet = (id: string) => view().bets.find(b => b.playerId === id)!.chips;
+  call(t); settle(t);
+  expect(view().pending).toBe(50);
+  call(t);
+  expect(bet('p1')).toEqual([{ value: 10, count: 1 }]);
+  expect(view().pending).toBe(60);
+  expect(view().pot).toEqual([]);
+  settle(t);
+  expect(bet('p1')).toEqual([{ value: 10, count: 2 }]);
+  t.dispatch({ type: 'raise', playerId: 'p2', to: 100 });
+  expect(bet('p2')).toEqual([{ value: 10, count: 2 }]);
+  expect(view().pending).toBe(140);
+  settle(t);
+  expect(bet('p2')).toEqual([{ value: 10, count: 10 }]);
+  expect(view().pot).toEqual([]);
+  expect(view().pending).toBe(140);
 });
 
 it('folded bets remain until collection; all-in runouts and refunds collect before payouts', () => {

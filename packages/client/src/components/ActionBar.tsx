@@ -103,9 +103,9 @@ export function ActionBar({ state, playerId, onAction, turnId, locked = false }:
 
           <div className="raise-quick">
             {quick.map(({ label, value }) => (
-              <button key={label} type="button" className="btn btn-quick" aria-label={label} title={`${value.toLocaleString()} チップ`}
+              <button key={label} type="button" className={`btn btn-quick${label === 'オールイン' ? ' btn-quick-allin' : ''}`} aria-label={label} title={`${value.toLocaleString()} チップ`}
                 aria-pressed={valid && amount === value} onClick={() => choose(value)}>
-                <span>{label}</span><strong>{value.toLocaleString()}</strong>
+                <span>{label === 'オールイン' ? 'ALL IN' : label}</span><strong>{value.toLocaleString()}</strong>
               </button>
             ))}
           </div>
@@ -114,7 +114,7 @@ export function ActionBar({ state, playerId, onAction, turnId, locked = false }:
         <div className="action-row action-row-confirm">
           <button
             type="button"
-            className="btn btn-raise"
+            className={`btn btn-raise${isAllIn ? ' btn-raise-allin' : ''}`}
             aria-label={isAllIn ? 'オールイン' : `${amount.toLocaleString()} にレイズ`}
             disabled={locked || !latch.enabled || !valid}
             onClick={() => send({ type: 'raise', playerId, to: amount })}

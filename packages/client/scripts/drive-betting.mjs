@@ -58,7 +58,7 @@ if (await sitDown('リミットホールデム')) {
 // ---- ポットリミット ----
 console.log('=== オマハ（ポットリミット） ===');
 if (await sitDown('オマハ（ポットリミット）')) {
-  const pot = (await page.locator('.table-pot').innerText()).replace(/[^0-9]/g, '');
+  const pot = await page.locator('.table-pot').evaluate(e => Number(e.dataset.collected) + Number(e.dataset.pending));
   await page.getByRole('button', { name: 'レイズ', exact: true }).click();
   await page.waitForTimeout(200);
 
@@ -67,7 +67,7 @@ if (await sitDown('オマハ（ポットリミット）')) {
   const quick = await page.locator('.raise-quick .btn').allInnerTexts();
   console.log(`  ポット ${pot} / レイズ上限 ${max}`);
   console.log(`  クイック: ${quick.join(' / ')}`);
-  console.log(`  「オールイン」が出ない: ${quick.some((q) => q.includes('オールイン')) ? 'いいえ' : 'はい'}`);
+  console.log(`  「オールイン」が出ない: ${(await page.locator('.btn-quick-allin').count()) ? 'いいえ' : 'はい'}`);
   await page.screenshot({ path: `${SHOTS}/31-pot-limit.png`, fullPage: true });
 }
 
@@ -96,7 +96,7 @@ if (await sitDown('ストラドルあり')) {
     await next.click();
     await page.waitForTimeout(700);
 
-    const pot = Number((await page.locator('.table-pot').innerText()).replace(/[^0-9]/g, ''));
+    const pot = await page.locator('.table-pot').evaluate(e => Number(e.dataset.collected) + Number(e.dataset.pending));
     const mine = Number(
       ((await page.locator('.table-bet-anchor[data-viewer="true"] .bet-amount').innerText().catch(() => '0')) || '0').replace(
         /[^0-9]/g,

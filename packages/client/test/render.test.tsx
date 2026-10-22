@@ -32,7 +32,8 @@ describe('描画', () => {
     // 全員の名前が席に出ている
     for (const name of settings.names) expect(html).toContain(name);
     // まだ開始前なのでポットは0
-    expect(html).toContain('ポット 0');
+    expect(html).toContain('data-collected="0" data-pending="0"');
+    expect(html).toContain('<span class="pot-value">0</span>');
     expect(html).toContain('ゲーム開始');
   });
 

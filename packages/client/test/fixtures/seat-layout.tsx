@@ -9,7 +9,7 @@ import '../../src/cards.css';
 import '../../src/game.css';
 
 function Harness() {
-  const [options, setOptions] = useState({ seats: 10, cards: 2, chips: 1000, folded: false, exposed: false, dealt: true });
+  const [options, setOptions] = useState({ seats: 10, cards: 2, chips: 1000, folded: false, exposed: false, dealt: true, depleted: false });
   Object.assign(window, { seatFixture: { set: (next: Partial<typeof options>) => setOptions(old => ({ ...old, ...next })) } });
   const base = createGame();
   let game = createGame({ seatCount: options.seats, smallBlind: 10, bigBlind: 20,
@@ -19,6 +19,7 @@ function Harness() {
   if (options.dealt) game = reduce(game, { type: 'startHand', seed: 55 });
   const visible = project(game, 'p0');
   const state = { ...visible, players: visible.players.map(player => ({ ...player, folded: options.folded,
+    ...(options.depleted ? { chips: 0, allIn: true } : {}),
     exposedHoleCards: options.exposed ? [0] : [],
     holeCards: options.exposed ? game.players.find(p => p.id === player.id)!.holeCards.map((card, i) => i === 0 || player.id === 'p0' ? card : null) : player.holeCards,
   })) };

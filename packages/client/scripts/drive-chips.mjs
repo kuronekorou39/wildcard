@@ -27,11 +27,15 @@ try {
       const ink=[...document.querySelectorAll('.bet-amount,.posted-chips .chip-stack')];
       const overlaps=ink.flatMap(n=>blockers.filter(b=>hit(n.classList.contains('bet-amount')?textRect(n):rect(n),rect(b))).map(b=>`${n.closest('.table-bet-anchor').dataset.playerId}: ${b.className}`));
       const clipped=ink.filter(n=>{const r=rect(n);return r.left<0||r.right>innerWidth||r.top<0||r.bottom>innerHeight}).length;
-      return {overlaps,clipped,posted:[...document.querySelectorAll('.table-bet')].reduce((sum,n)=>sum+Number(n.dataset.amount),0),pot:document.querySelector('.table-pot').textContent};
+      const pot = document.querySelector('.table-pot');
+      return {overlaps,clipped,posted:[...document.querySelectorAll('.table-bet')].reduce((sum,n)=>sum+Number(n.dataset.amount),0),pot:pot.textContent,collected:Number(pot.dataset.collected),pending:Number(pot.dataset.pending)};
     });
     assert.equal(result.posted,count*20,'Every live bet remains in front');
-    assert.equal(result.pot,`ポット ${count*20}`);
-    assert.equal(await page.locator('.table-pot .chip-stack').count(),0,'Total pot includes live bets, but central stacks are empty');
+    assert.equal(result.pot,`0（+${count*20}）`);
+    assert.equal(result.collected,0);
+    assert.equal(result.pending,count*20);
+    assert.equal(await page.locator('.table-pot .chip-stack').count(),0,'Live bets have not reached the central pot');
+    assert.equal(await page.locator('.stock-pile small').count(),0,'Stock piles have no visible labels');
     assert.equal(await page.locator('.chip-stack small,.seat-bet').count(),0);
     for(const [selector,expected] of [['.seat-name','text'],['.seat-chips','text'],['.card','none'],['button','none']])
       assert.equal(await page.locator(selector).first().evaluate(e=>getComputedStyle(e).userSelect),expected);
@@ -42,9 +46,12 @@ try {
       await page.waitForTimeout(500);
       assert.ok(await page.locator('.motion-piece[data-kind="collect"]').count()>0);
       assert.equal(await page.locator('.table-pot .chip-stack').count(),0);
+      assert.equal(await page.locator('.table-pot').getAttribute('data-pending'),String(count*20));
       await page.screenshot({path:`${out}/collecting.png`});
       await page.waitForFunction(()=>document.querySelectorAll('.table-pot .chip-stack').length>0);
       assert.equal(await page.locator('.bet-amount').count(),0);
+      assert.equal(await page.locator('.table-pot').innerText(),String(count*20));
+      assert.equal(await page.locator('.table-pot').getAttribute('data-pending'),'0');
       await page.waitForTimeout(2000);
       await page.screenshot({path:`${out}/collected.png`});
     }

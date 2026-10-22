@@ -44,12 +44,12 @@ export function PokerTable({ state, viewerId, shape = 'racetrack', runtime = nul
   const potCleared = state.phase === 'showdown' && now >= payoutAt + T.win;
   const winners = state.phase === 'showdown' && now >= payoutAt ? showdownWinners(state) : [];
   const fallbackBets = state.players.map(player => ({ playerId: player.id, chips: contributedChips(player.bet) }));
+  const fallbackPending = state.players.reduce((sum, player) => sum + player.bet, 0);
   const chips = runtime ? presentedChips(runtime, now) : {
-    bets: fallbackBets, pot: contributedChips(Math.max(0, state.pot - state.players.reduce((sum, p) => sum + p.bet, 0))),
+    bets: fallbackBets, pot: contributedChips(Math.max(0, state.pot - fallbackPending)), pending: fallbackPending,
   };
   const potChips = potCleared ? [] : chips.pot;
-  // Total pot still includes live wagers; the central stacks contain only collected chips.
-  const pot = state.phase === 'showdown' ? chipsTotal(runtime?.potChips ?? potChips) : state.pot;
+  const pot = chipsTotal(potChips);
   const revealShowdown = now >= payoutAt - T.showdownPause;
   const pendingBurns = events.reduce((sum, event) => sum +
     (event.kind === 'burn' && now < event.at + T.card ? event.count : 0), 0);
@@ -119,7 +119,11 @@ export function PokerTable({ state, viewerId, shape = 'racetrack', runtime = nul
           ))}
 
           {potCleared ? !resultInHandArea && <ShowdownResult key={runtime?.handId ?? state.dealerSeat} state={state} />
-            : <div className="table-pot"><PotChips stacks={potChips} /><span>ポット {pot.toLocaleString()}</span></div>}
+            : <div className="table-pot" data-collected={pot} data-pending={chips.pending}
+                aria-label={`回収済み ${pot.toLocaleString()}、未回収 ${chips.pending.toLocaleString()}`}>
+                <PotChips stacks={potChips} /><span className="pot-value">{pot.toLocaleString()}</span>
+                {chips.pending > 0 && <span className="pot-pending">（+{chips.pending.toLocaleString()}）</span>}
+              </div>}
         </div>
 
         {Array.from({ length: state.seatCount }, (_, slot) =>

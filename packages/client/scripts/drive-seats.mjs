@@ -31,6 +31,7 @@ try {
           const chips = seat.querySelector('.seat-chips');
           if (chips.scrollWidth > chips.clientWidth + 1) problems.push('chip overflow');
           const text = document.createRange(); text.selectNodeContents(chips);
+          if (overlaps(r(seat.querySelector('.seat-avatar')), text.getBoundingClientRect())) problems.push('avatar covers chip count');
           for (const card of seat.querySelectorAll('.card')) {
             if (overlaps(r(card), text.getBoundingClientRect())) problems.push('hand covers chip count');
             for (const other of seats.filter(s => s !== seat))
@@ -55,6 +56,13 @@ try {
       const waiting = await positions();
       await set({ dealt: true });
       assert.deepEqual((await positions()).filter(p => p.class !== 'seat-cards'), waiting.filter(p => p.class !== 'seat-cards'), 'Dealing keeps every profile in place');
+      await set({ depleted: true });
+      assert.equal(await page.locator('.seat-depleted').count(), seats);
+      assert.equal(await page.locator('.seat-viewer .card').count(), cards, 'An all-in player retains their hand');
+      assert.equal(await page.locator('.seat-folded').count(), 0, 'Zero chips do not fold a player');
+      assert.ok(await page.locator('.seat-depleted').first().evaluate(e => Number(getComputedStyle(e).opacity) < 1));
+      await set({ depleted: false });
+      assert.equal(await page.locator('.seat-depleted').count(), 0, 'A replenished stack restores the profile');
     }
     await page.close();
   }
