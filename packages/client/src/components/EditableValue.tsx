@@ -40,6 +40,7 @@ function EditableValue({ label, value, onChange, min, max, maxLength, suffix, pl
       value={draft} ref={element => { if (element && document.activeElement !== element) { element.focus(); element.select(); } }}
       onChange={event => setDraft(event.target.value)} onBlur={commit}
       onKeyDown={event => {
+        if (event.nativeEvent.isComposing || event.keyCode === 229) return;
         if (event.key === 'Escape') { event.preventDefault(); cancelled.current = true; restoreFocus.current = true; setEditing(false); }
         if (event.key === 'Enter') { event.preventDefault(); restoreFocus.current = true; commit(); }
       }} /> : <button type="button" className="editable-value" aria-label={`${label}を編集`} aria-describedby={valueId}

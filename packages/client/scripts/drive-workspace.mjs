@@ -100,6 +100,8 @@ try {
   assert.equal(await page.locator('.banner-editor img').getAttribute('src'), source);
   await page.getByRole('button', { name: '名前を編集', exact: true }).click();
   await page.getByRole('textbox', { name: '名前', exact: true }).fill('バナー確認');
+  await page.getByRole('textbox', { name: '名前', exact: true }).dispatchEvent('keydown', { key: 'Enter', isComposing: true });
+  assert.equal(await page.getByRole('textbox', { name: '名前', exact: true }).isVisible(), true, 'IME confirmation must keep editing');
   await page.keyboard.press('Enter');
   await page.getByRole('button', { name: '保存して卓に戻る' }).click();
   assert.equal(await page.locator('.rule-select-trigger img').getAttribute('src'), source);
