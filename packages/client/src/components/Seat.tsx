@@ -73,7 +73,6 @@ export function Seat({ slot, seatCount, player, isTurn, isViewer, clock, dealtAt
         )}
       </div>
 
-      {player.bet > 0 && <div className="seat-bet" aria-label={`ベット ${player.bet.toLocaleString()}`}>{player.bet.toLocaleString()}</div>}
       {player.allIn && <div className="seat-tag seat-tag-allin">オールイン</div>}
       {player.waiting && <div className="seat-tag">次から参加</div>}
       {player.away && !player.folded && <div className="seat-tag">離席中</div>}

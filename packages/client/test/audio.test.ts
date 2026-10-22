@@ -15,7 +15,7 @@ describe('サウンド', () => {
     for (let seat = 0; seat < 2; seat++) state = reduce(state, { type: 'sit', playerId: `p${seat}`, name: 'P', seat, chips: 1000 });
     state = reduce(state, { type: 'startHand', seed: 2 });
     const snapshot: TableSnapshot = { state: project(state, 'p0'), viewerId: 'p0', status: 'local', note: null,
-      runtime: { handId: 1, handStartedAt: 1000, readyAt: 5000, nextHandAt: null, clock: null, potChips: [], events: [
+      runtime: { handId: 1, handStartedAt: 1000, readyAt: 5000, nextHandAt: null, clock: null, potChips: [], bets: [], events: [
         { kind: 'deal', id: 1, at: 1000 }, { kind: 'burn', id: 2, count: 1, at: 2000 },
         { kind: 'board', id: 3, at: 3000, run: 0, from: 0, count: 3 },
         { kind: 'bet', id: 4, at: 4000, playerId: 'p0', amount: 10 },
@@ -60,7 +60,7 @@ describe('サウンド', () => {
   it('自分の手番開始と最後の5秒だけを予約し、目隠し・観戦・切断中には鳴らさない', () => {
     const state = { ...project(createGame({ seatCount: 2 }), 'p0'), turnPlayerId: 'p0' };
     const snapshot: TableSnapshot = { state, viewerId: 'p0', status: 'local', note: null, runtime: {
-      handId: 1, handStartedAt: 0, readyAt: 1000, nextHandAt: null, events: [], potChips: [],
+      handId: 1, handStartedAt: 0, readyAt: 1000, nextHandAt: null, events: [], potChips: [], bets: [],
       clock: { id: 2, playerId: 'p0', durationMs: 30000, startedAt: 1000, deadline: 31000 },
     } };
     expect(turnSoundCues(snapshot).map(c => [c.at, c.sound])).toEqual([

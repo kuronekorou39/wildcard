@@ -19,6 +19,7 @@ export function soundCues(snapshot: TableSnapshot): SoundCue[] {
     else if (event.kind === 'fold') add('fold', 0, .4);
     else if (event.kind === 'check') add('check', 0, .7);
     else if (event.kind === 'bet') add(event.raised ? 'raise' : 'bet');
+    else if (event.kind === 'collect') add('bet', 0, .4);
     else if (event.kind === 'win') add('win', T.win * .7, .75);
   }
   return cues;

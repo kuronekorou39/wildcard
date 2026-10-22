@@ -13,7 +13,7 @@ import type { TableRuntimeSnapshot } from '../transport/tableRuntime.js';
  */
 
 /** スキーマを変えたら上げる。版が違う相手とは繋がない。 */
-export const PROTO_VERSION = 6;
+export const PROTO_VERSION = 7;
 
 export const MSG = {
   // guest → host
@@ -229,13 +229,17 @@ export function parseHostMessage(raw: unknown): HostMessage | null {
       const runtime = raw['runtime'];
       if (!isRecord(runtime) || !isFiniteNumber(runtime['handId']) || !Array.isArray(runtime['events'])) return null;
       if (!isFiniteNumber(runtime['readyAt']) || (runtime['nextHandAt'] !== null && !isFiniteNumber(runtime['nextHandAt']))) return null;
-      if (!Array.isArray(runtime['potChips']) || runtime['potChips'].length > 4 || !runtime['potChips'].every(stack =>
+      const validChips = (value: unknown) => Array.isArray(value) && value.length <= 4 && value.every(stack =>
         isRecord(stack) && [1, 10, 100, 1000].includes(stack['value'] as number) &&
-        isFiniteNumber(stack['count']) && Number.isSafeInteger(stack['count']) && stack['count'] >= 0)) return null;
+        isFiniteNumber(stack['count']) && Number.isSafeInteger(stack['count']) && stack['count'] >= 0);
+      const validBets = (value: unknown) => Array.isArray(value) && value.length <= 10 && value.every(bet =>
+        isRecord(bet) && isString(bet['playerId'], SESSION_ID_MAX_LEN) && validChips(bet['chips']));
+      if (!validChips(runtime['potChips']) || !validBets(runtime['bets'])) return null;
       if (runtime['events'].length > 80 || !runtime['events'].every(event => {
         if (!isRecord(event) || !isFiniteNumber(event['id']) || !isFiniteNumber(event['at'])) return false;
         switch (event['kind']) {
           case 'deal': return true;
+          case 'collect': return validBets(event['bets']);
           case 'fold': case 'check': return isString(event['playerId'], SESSION_ID_MAX_LEN);
           case 'bet': case 'win': return isString(event['playerId'], SESSION_ID_MAX_LEN) && isFiniteNumber(event['amount']) && event['amount'] >= 0
             && (event['raised'] === undefined || typeof event['raised'] === 'boolean');

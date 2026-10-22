@@ -1,5 +1,7 @@
 /* A viewport-sized game: table and hand take the space left by the action dock. */
 .screen-game {
+  -webkit-user-select: none;
+  user-select: none;
   --seat-w: clamp(82px, 27cqw, 108px);
   --seat-h: clamp(42px, calc((100cqh - 150px) / 4.4), 86px);
   height: 100vh;
@@ -33,7 +35,6 @@
 .table-pot { position: relative; }
 .pot-chips { position: absolute; top: calc(100% + 3px); left: 50%; transform: translateX(-50%); height: 18px; display: flex; gap: 6px; align-items: end; pointer-events: none; }
 .chip-stack { position: relative; width: 11px; height: 18px; --chip-color: #cfb996; }
-.chip-stack small { position: absolute; top: 100%; left: 50%; transform: translateX(-50%); font: 9px/1.2 Arial, sans-serif; color: var(--text-dim); }
 .chip-stack[data-value="10"] { --chip-color: #aa5b60; }
 .chip-stack[data-value="100"] { --chip-color: #82a496; }
 .chip-stack[data-value="1000"] { --chip-color: #aa97c0; }
@@ -73,7 +74,7 @@
 .table-area[data-seats="2"] .community-cards .card { --card-width: clamp(30px, 8cqw, 48px); }
 
 /* Opponents stay in two quiet columns in portrait; the hand is separate below. */
-.seat, .table-seat-markers {
+.seat, .table-seat-markers, .table-bet-anchor {
   --x: var(--portrait-x);
   --y: var(--portrait-y);
   left: clamp(calc(var(--seat-w) / 2), var(--x), calc(100% - var(--seat-w) / 2));
@@ -97,7 +98,6 @@
 .seat-winner .seat-profile { background: linear-gradient(135deg, #5c4737, #382b30); box-shadow: 0 0 0 2px #d8b27d, 0 0 24px #d8b27d30; }
 .seat-win-badge { position: absolute; right: 5px; top: -9px; border-radius: 8px; padding: 2px 6px; color: #34262a; background: #e2c08e; font: 700 9px/1.3 Arial, sans-serif; letter-spacing: .03em; }
 .seat-folded, .seat-away { opacity: .55; }
-.seat-bet { position: absolute; right: -2px; top: calc(var(--profile-h) - 2px); bottom: auto; padding: 1px 5px; border-radius: 7px; border: 1px solid #6b574e; background: #332c2d; color: var(--gold); font-size: .56rem; line-height: 1.4; }
 .seat-tag { position: absolute; left: 50%; top: -10px; transform: translateX(-50%); white-space: nowrap; padding: 1px 4px; border-radius: 4px; background: var(--bg-dark); font-size: .52rem; line-height: 1.3; }
 .seat-empty { height: 36px; border: 0; background: none; justify-content: center; }
 .table-player { display: flex; justify-content: center; padding: 32px 12px 16px; min-width: 0; }
@@ -107,7 +107,6 @@
 .seat-viewer .seat-cards { top: calc(var(--profile-h) - 2px); }
 .seat-viewer .seat-name { font-size: .78rem; }
 .seat-viewer .seat-chips { font-size: min(.84rem, calc((var(--profile-w) - 12px) / var(--chip-length) / .66)); }
-.seat-viewer .seat-bet { right: calc(50% - var(--profile-w) / 2 - 8px); bottom: auto; top: 28px; }
 .turn-ring { position: absolute; inset: -1px; width: calc(100% + 2px); height: calc(100% + 2px); overflow: visible; pointer-events: none; color: var(--gold); }
 .turn-ring rect { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; transition: stroke-dashoffset .1s linear; }
 .turn-ring[data-urgent="true"], .turn-seconds[data-urgent="true"] { color: #e9a090; }
@@ -126,6 +125,29 @@
 .table-seat-markers[data-portrait-side="bottom"] .position-chips { top: calc(var(--seat-h) / -2 - 15px); }
 .table-seat-markers[data-viewer="true"] { top: calc(100% - 20px); left: 50%; }
 .table-seat-markers[data-viewer="true"] .position-chips { top: 0; left: 0; }
+
+.table-bet-anchor { position: absolute; width: 0; height: 0; z-index: 2; pointer-events: none; --bet-w: 34px; --bet-gap: 18px; --bet-y: 30px; }
+.table-bet { position: absolute; width: var(--bet-w); height: 34px; display: flex; flex-direction: column; align-items: center; gap: 3px; transform: translate(-50%, -50%); }
+.posted-chips { display: flex; gap: 2px; height: 16px; align-items: end; }
+.posted-chips .chip-stack { width: 7px; height: 16px; }
+.posted-chips .chip-stack i { width: 7px; height: 3px; bottom: calc(var(--level) * 1.3px); }
+.bet-amount { width: 100%; text-align: center; color: #f6d9b5; font-size: min(.8rem, calc(var(--bet-w) / var(--digits) / .65)); line-height: 1; font-weight: 650; font-variant-numeric: tabular-nums; text-shadow: 0 1px 3px #000; }
+.table-bet-anchor[data-portrait-side="left"] .table-bet { left: calc(var(--seat-w) / 2 + var(--bet-gap)); top: var(--bet-y); }
+.table-bet-anchor[data-portrait-side="right"] .table-bet { left: calc(var(--seat-w) / -2 - var(--bet-gap)); top: var(--bet-y); }
+.table-bet-anchor[data-portrait-side="top"] .table-bet { left: calc(var(--seat-w) / 2 + 18px); top: -12px; }
+.table-bet-anchor[data-portrait-side="bottom"] .table-bet { top: calc(var(--seat-h) / -2 - 20px); }
+.table-bet-anchor[data-viewer="true"] { left: 50%; top: calc(100% + 12px); }
+.table-bet-anchor[data-viewer="true"] .table-bet { left: 0; top: 0; }
+.screen-game :is(.seat-name, .seat-chips, .winner-name, .winner-ranking, .winner-amount, .result-line, .summary-hands, .summary-run-hands, .summary-payouts, .game-dialog input, .game-dialog textarea, .raise-amount, .room-code) { -webkit-user-select: text; user-select: text; }
+.screen-game :is(.card, button, button *, .summary-hand-cards) { -webkit-user-select: none; user-select: none; }
+@container (min-aspect-ratio: 1.2 / 1) {
+  .table-bet-anchor .table-bet { left: 0; top: 0; }
+  .table-bet-anchor[data-landscape-side="left"] .table-bet { left: calc(var(--seat-w) / 2 + var(--bet-gap)); top: var(--bet-y); }
+  .table-bet-anchor[data-landscape-side="right"] .table-bet { left: calc(var(--seat-w) / -2 - var(--bet-gap)); top: var(--bet-y); }
+  .table-bet-anchor[data-landscape-side="top"] .table-bet { left: calc(var(--seat-w) / 2 + 40px); top: -6px; }
+  .table-bet-anchor[data-landscape-side="bottom"] .table-bet { top: calc(var(--seat-h) / -2 - 20px); }
+  .table-bet-anchor[data-viewer="true"] .table-bet { left: 0; top: 0; }
+}
 
 /* A quiet, transparent dock. The left circle never turns into a fold action. */
 .screen-game .bottombar { position: relative; z-index: 4; margin: 0 auto; width: 100%; max-width: 760px; height: calc(90px + env(safe-area-inset-bottom)); min-height: 0; padding: 8px 12px calc(12px + env(safe-area-inset-bottom)); background: none; border: 0; border-radius: 0; display: flex; align-items: end; justify-content: center; }
@@ -149,11 +171,8 @@
 .fold-reservation small { display: block; font-size: .55rem; }
 .reservation-check { position: absolute; right: -2px; top: 0; display: grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; background: var(--gold); color: #30272a; font-size: 12px; }
 .reservation-pending { position: absolute; left: 16px; bottom: 32px; font-size: .65rem; color: var(--text-dim); }
-.raise-controls { position: absolute; right: 12px; bottom: calc(100% + 8px); width: 178px; height: 190px; padding: 10px; display: grid; grid-template-columns: minmax(0, 1fr) 28px; grid-template-rows: 52px minmax(0, 1fr); gap: 10px 8px; background: linear-gradient(145deg, #393033f5, #252125f5); border: 1px solid #b49b8244; border-radius: 20px; box-shadow: 0 8px 24px #0003; }
-.raise-controls .raise-header { grid-column: 1 / -1; display: grid; grid-template-columns: auto 1fr; grid-template-rows: 12px 36px; gap: 4px; }
-.raise-label { font-size: .6rem; color: var(--text-dim); }
-.raise-limits { color: #c9b7a8; font-size: .55rem; text-align: right; white-space: nowrap; }
-.raise-limits[data-invalid="true"] { color: #ffb1a2; }
+.raise-controls { position: absolute; right: 12px; bottom: calc(100% + 8px); width: 178px; height: 200px; padding: 10px; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: 36px 24px minmax(0, 1fr); gap: 8px; background: linear-gradient(145deg, #393033f5, #252125f5); border: 1px solid #b49b8244; border-radius: 20px; box-shadow: 0 8px 24px #0003; }
+.raise-controls .raise-header { grid-column: 1 / -1; display: block; }
 .raise-amount-editor { grid-column: 1 / -1; display: grid; grid-template-columns: 30px minmax(0, 1fr) 30px; gap: 3px; height: 36px; align-items: stretch; }
 .raise-amount-editor .raise-step { padding: 0; min-height: 0; border: 1px solid #c6a98466; border-radius: 10px; background: #59433e; color: #fff0de; font-size: 1.15rem; line-height: 1; }
 .raise-amount-editor .raise-step:disabled { opacity: .35; }
@@ -161,10 +180,9 @@
 .raise-amount[aria-invalid="true"] { border-color: #e69182; }
 .raise-amount:focus-visible, .raise-step:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
 .raise-controls .raise-allin-tag { position: absolute; top: -10px; right: 14px; font-size: .58rem; }
-.raise-track { grid-column: 2; grid-row: 2; position: relative; min-height: 0; }
-.raise-controls .raise-slider { writing-mode: vertical-lr; direction: rtl; appearance: auto; width: 28px; height: 100%; min-height: 0; margin: 0; accent-color: #d9af8c; cursor: ns-resize; touch-action: none; }
-.raise-midpoint { position: absolute; top: 50%; right: -5px; transform: translateY(-50%); z-index: 1; pointer-events: none; padding: 2px; border-radius: 4px; background: #292328e8; color: #e1c5a2; font: 8px/1.2 Arial, sans-serif; }
-.raise-controls .raise-quick { grid-column: 1; grid-row: 2; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+.raise-track { grid-column: 1; grid-row: 2; position: relative; min-height: 0; }
+.raise-controls .raise-slider { writing-mode: horizontal-tb; direction: ltr; appearance: auto; width: 100%; height: 24px; min-height: 0; margin: 0; accent-color: #d9af8c; cursor: ew-resize; touch-action: none; }
+.raise-controls .raise-quick { grid-column: 1; grid-row: 3; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
 .raise-controls .btn-quick { min-height: 44px; min-width: 0; padding: 4px 1px; font-size: .58rem; white-space: nowrap; border: 1px solid #a18d8055; border-radius: 10px; background: #44383d; color: #e6d9cd; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; }
 .raise-controls .btn-quick strong { font-size: .8rem; line-height: 1.15; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
 .raise-controls .btn-quick[aria-pressed="true"] { background: #745346; border-color: #c9ad8a; color: #fff0dc; }
@@ -252,7 +270,7 @@
 /* Follow the available table space, including a phone rotated into landscape. */
 @container (min-aspect-ratio: 1.2 / 1) {
   .table-area { --seat-w: 132px; --seat-h: 84px; }
-  .seat, .table-seat-markers { --x: var(--landscape-x); --y: var(--landscape-y); }
+  .seat, .table-seat-markers, .table-bet-anchor { --x: var(--landscape-x); --y: var(--landscape-y); }
   .table-felt { inset: 20px 32px 4px; width: calc(100% - 64px); height: calc(100% - 24px); }
   .table-center { width: calc(100% - 340px); gap: 9px; top: 53%; }
   .table-watermark .brand { font-size: 1.1rem; }
@@ -331,9 +349,9 @@
   .table-info-panel .appearance-option-name { font-size: .64rem; }
   .table-info-panel .appearance-option-description { font-size: .58rem; }
 }
-/* The hand and vertical raise rail occupy separate columns, even while the rail is closed. */
+/* The hand and raise pad occupy separate columns, even while the rail is closed. */
 .table-player { display: grid; grid-template-columns: minmax(0, 1fr) 178px; column-gap: 12px; align-items: center; justify-items: center; width: 100%; max-width: 744px; margin: 0 auto; height: 208px; padding: 28px 4px 16px; }
-.table-player .seat-viewer { width: 100%; --profile-w: min(156px, calc(100cqw - 198px)); }
+.table-player .seat-viewer { width: 100%; --profile-w: min(156px, calc(100cqw - 198px)); --hand-card-w: 56px; height: 136px; }
 .table-player>.showdown-result { width: 146px; }
 .seat-viewer .seat-profile { width: min(156px, 100%); }
 .seat-viewer .seat-chips { font-size: min(.84rem, calc((min(156px, 100cqw - 198px) - 12px) / var(--chip-length) / .66)); }
@@ -357,6 +375,13 @@
   .winner-amount { font-size: .8rem; }
 }
 @media (max-height: 500px) and (orientation: landscape) {
+  .table-bet-anchor { --bet-gap: 50px; --bet-y: -2px; }
+  .table-bet-anchor[data-viewer="true"] { left: calc(50% + 100px); }
+  .table-area:not([data-seats="2"]) .table-seat-markers[data-landscape-side="top"] .position-chips { left: calc(var(--seat-w) / 2 + 4px); top: calc(var(--seat-h) / 3 + 5px); }
+  .table-bet-anchor[data-landscape-side="top"] .table-bet { top: -24px; width: 64px; height: 20px; flex-direction: row; justify-content: center; gap: 4px; }
+  .table-bet-anchor[data-landscape-side="top"] .posted-chips { flex-shrink: 0; }
+  .table-bet-anchor[data-landscape-side="top"] .bet-amount { width: auto; font-size: min(.8rem, calc(26px / var(--digits) / .65)); }
+  .table-stock { position: absolute; left: calc(50% + 50cqw); top: 0; transform: none; gap: 16px; }
   .screen-game { padding-right: 150px; }
   .table-wrap { padding-top: 12px; padding-left: 44px; padding-right: 12px; }
   .game-corner { width: 34px; height: 34px; padding: 5px; top: 6px; }
@@ -365,14 +390,14 @@
   .screen-game .bottombar { height: calc(76px + env(safe-area-inset-bottom)); padding-top: 4px; padding-bottom: calc(6px + env(safe-area-inset-bottom)); }
   .screen-game .action-bar, .waiting-turn, .screen-game .action-bar .action-row, .screen-game .action-bar .action-row>.btn { height: 64px; }
   .fold-reservation { bottom: calc(6px + env(safe-area-inset-bottom)); width: 64px; height: 64px; }
-  .raise-controls { right: -138px; bottom: calc(12px + env(safe-area-inset-bottom)); height: min(240px, calc(100dvh - 72px)); }
-  .raise-controls { width: 146px; padding: 9px; grid-template-columns: minmax(0, 1fr) 22px; gap: 8px 4px; }
-  .raise-controls .raise-slider { width: 22px; }
+  .raise-controls { right: -138px; bottom: calc(12px + env(safe-area-inset-bottom)); height: min(256px, calc(100dvh - 72px)); }
+  .raise-controls { width: 146px; padding: 9px; grid-template-columns: minmax(0, 1fr); gap: 8px; }
+
   .raise-controls .raise-quick { grid-template-columns: 1fr; gap: 4px; }
   .raise-controls .btn-quick { min-height: 32px; padding: 4px; flex-direction: row; justify-content: space-between; font-size: .6rem; }
   .raise-controls .btn-quick strong { font-size: .7rem; }
   .table-player { display: flex; height: 100px; padding: 14px 8px 6px; }
-  .table-player .seat-viewer { width: min(100%, 300px); --profile-w: 156px; }
+  .table-player .seat-viewer { width: min(100%, 300px); --profile-w: 156px; --hand-card-w: 36px; height: 90px; }
   .seat-viewer .seat-chips { font-size: min(.76rem, calc((156px - 12px) / var(--chip-length) / .66)); }
   .summary-compact .action-row .table-command { height: 36px; }
   .table-start.btn { height: 60px; }
@@ -396,6 +421,16 @@
   .community-cards { gap: 9px; }
   .community-cards .card, .table-area[data-seats="2"] .community-cards .card { --card-width: clamp(60px, 4.5vw, 90px); }
   .table-pot { font-size: clamp(1.6rem, 1.8vw, 2.3rem); }
+  .table-bet-anchor { --bet-w: 60px; --bet-gap: 36px; --bet-y: 40px; }
+  .table-bet-anchor:is([data-landscape-side="top"], [data-portrait-side="top"]) .table-bet { left: 0; top: calc(var(--seat-h) / 2 + 44px); }
+  .table-bet-anchor[data-viewer="true"] { left: calc(45% - clamp(140px, 12.5vw, 210px)); top: calc(100% - 25px); }
+  .table-bet-anchor[data-viewer="true"] .table-bet { left: 0; top: 0; }
+  .table-bet { height: 46px; gap: 6px; }
+  .posted-chips, .posted-chips .chip-stack { height: 24px; }
+  .posted-chips { gap: 4px; }
+  .posted-chips .chip-stack { width: 12px; }
+  .posted-chips .chip-stack i { width: 12px; height: 4px; bottom: calc(var(--level) * 2px); }
+  .bet-amount { font-size: min(1.1rem, calc(var(--bet-w) / var(--digits) / .65)); }
   .pot-chips { transform: translateX(-50%) scale(1.4); transform-origin: top center; }
   .seat:not(.seat-viewer) { --hand-card-w: clamp(40px, 3vw, 58px); --profile-h: clamp(72px, 7.8vh, 90px); }
   .seat-profile { padding: 5px 10px 10px; border-radius: 16px; grid-template-rows: minmax(0, 1fr) 26px; }
@@ -403,37 +438,34 @@
   .seat-avatar { width: 36px; height: 36px; font-size: 1.05rem; }
   .seat-name { font-size: clamp(1rem, 1.15vw, 1.35rem); font-weight: 600; color: #f5ede5; }
   .seat-chips { font-size: min(1.2rem, calc((var(--profile-w) - 20px) / var(--chip-length) / .66)); color: #e0cebd; }
-  .seat-bet { font-size: .9rem; padding: 3px 8px; }
   .seat-tag { font-size: .8rem; }
   .seat-win-badge { font-size: 13px; top: -13px; padding: 3px 10px; }
   .table-position-chip { width: 32px; height: 32px; font-size: 12px; }
   .position-d { width: 37px; height: 37px; font-size: 17px; }
-  .table-player { height: var(--desktop-hand-h); max-width: none; grid-template-columns: minmax(0, 27%) minmax(0, 1fr); gap: 20px; padding: 18px 0 4px; align-items: end; }
-  .table-player .seat-viewer { --profile-w: clamp(200px, 16vw, 280px); --profile-h: 76px; --hand-card-w: clamp(62px, 4.6vw, 82px); height: calc(var(--profile-h) + var(--hand-card-w) * 1.5); width: 100%; }
+  .table-player { height: var(--desktop-hand-h); max-width: none; grid-template-columns: minmax(0, 45%) minmax(0, 1fr); gap: 20px; padding: 18px 0 4px; align-items: end; }
+  .table-player .seat-viewer { --profile-w: clamp(200px, 16vw, 280px); --profile-h: 76px; --hand-card-w: clamp(76px, 5.4vw, 100px); height: calc(var(--profile-h) + var(--hand-card-w) * 1.5); width: clamp(280px, 25vw, 420px); justify-self: end; }
   .seat-viewer .seat-profile { width: var(--profile-w); }
   .seat-viewer .seat-avatar { width: 36px; height: 36px; font-size: 1.05rem; }
   .seat-viewer .seat-name { font-size: 1.2rem; }
   .seat-viewer .seat-chips { font-size: min(1.2rem, calc((var(--profile-w) - 20px) / var(--chip-length) / .66)); }
-  .screen-game .bottombar { position: absolute; right: max(40px, calc((100% - 1800px) / 2)); bottom: 0; width: min(calc(73% - 80px), 1294px); max-width: none; height: calc(var(--desktop-action-h) + 24px); padding: 0 0 24px; }
+  .screen-game .bottombar { position: absolute; right: max(40px, calc((100% - 1800px) / 2)); bottom: 0; width: min(calc(55% - 64px), 970px); max-width: none; height: calc(var(--desktop-action-h) + 24px); padding: 0 0 24px; }
   .screen-game .action-bar, .waiting-turn, .screen-game .action-bar .action-row, .screen-game .action-bar .action-row>.btn { height: var(--desktop-action-h); }
   .screen-game .action-bar .action-row { gap: 14px; padding-left: 100px; }
   .screen-game .action-bar .action-row>.btn { border-radius: 24px; font-size: 1.15rem; flex-direction: row; gap: 8px; }
   .screen-game .action-bar .action-row strong { font-size: 1.65rem; }
   .screen-game .action-bar .action-icon { width: 27px; height: 27px; }
-  .screen-game .action-bar-raising .action-row { padding-right: calc(var(--desktop-rail-w) + 18px); grid-template-columns: 1.6fr 1fr; }
+  .screen-game .action-bar-raising .action-row { padding-right: calc(var(--desktop-rail-w) + 18px); padding-left: 0; grid-template-columns: 1.6fr 1fr; }
   .fold-reservation { width: 82px; height: 82px; bottom: 24px; left: 0; }
   .fold-reservation>span:not(.reservation-check), .fold-reservation small { font-size: .78rem; }
-  .raise-controls { right: 0; bottom: 24px; width: var(--desktop-rail-w); height: calc(var(--desktop-hand-h) - 26px); padding: 14px; grid-template-columns: minmax(0, 1fr) 38px; grid-template-rows: 72px minmax(0, 1fr); gap: 12px; border-radius: 24px; }
-  .raise-controls .raise-header { grid-template-rows: 18px 48px; gap: 6px; }
-  .raise-controls .raise-label { font-size: .95rem; }
-  .raise-limits { font-size: .8rem; }
+  .raise-controls { right: 0; bottom: 24px; width: var(--desktop-rail-w); height: calc(var(--desktop-hand-h) - 26px); padding: 12px; grid-template-columns: minmax(0, 1fr); grid-template-rows: 48px 24px minmax(0, 1fr); gap: 6px; border-radius: 24px; }
+
   .raise-amount-editor { grid-template-columns: 48px minmax(0, 1fr) 48px; height: 48px; gap: 6px; }
   .raise-amount-editor .raise-step { border-radius: 13px; font-size: 1.7rem; }
   .raise-controls .raise-amount { font-size: 1.6rem; border-radius: 12px; }
-  .raise-controls .raise-slider { width: 38px; }
-  .raise-midpoint { font-size: 11px; }
+  .raise-controls .raise-slider { height: 28px; }
   .raise-controls .btn-quick { font-size: .85rem; min-height: 44px; border-radius: 12px; padding: 5px 2px; gap: 3px; }
   .raise-controls .btn-quick strong { font-size: 1.1rem; }
+  .raise-controls .btn-quick span { line-height: 1.1; }
   .raise-controls .raise-quick { gap: 8px; }
   .raise-controls .raise-allin-tag { font-size: .8rem; }
   .table-start.btn { height: var(--desktop-action-h); min-width: 320px; border-radius: 24px; font-size: 1.25rem; }
@@ -459,6 +491,9 @@
 }
 @media (min-width: 1100px) and (min-height: 700px) and (max-height: 820px) {
   .screen-game { --desktop-hand-h: 250px; }
+  .table-bet-anchor { --bet-gap: 46px; --bet-y: 6px; }
+  .table-bet-anchor:is([data-landscape-side="top"], [data-portrait-side="top"]) .table-bet { left: calc(var(--seat-w) / 2 + 64px); top: 0; }
+  .table-bet-anchor[data-viewer="true"] .table-bet { left: 0; top: 0; }
   .table-area { --seat-w: clamp(130px, 11vw, 180px); --seat-h: 102px; }
   .seat:not(.seat-viewer) { --profile-h: 62px; --hand-card-w: 30px; }
   .seat-avatar { width: 28px; height: 28px; font-size: .9rem; }
@@ -467,7 +502,7 @@
   .seat-chips { font-size: min(1rem, calc((var(--profile-w) - 14px) / var(--chip-length) / .66)); }
   .table-center { top: 55%; }
   .table-watermark { display: none; }
-  .table-player .seat-viewer { --profile-h: 70px; --hand-card-w: 58px; }
+  .table-player .seat-viewer { --profile-h: 70px; --hand-card-w: 76px; }
   .table-stock { top: -40px; left: calc(50% - 150px); }
   .table-area[data-settled="true"] .table-center { top: 58%; }
   .showdown-result { max-width: 320px; padding: 7px 14px; gap: 3px; }
@@ -477,4 +512,16 @@
   .winner-ranking { font-size: .9rem; }
   .winner-amount { font-size: 1.2rem; }
   .table-area[data-result-rail="true"] .community-cards .card { --card-width: 48px; }
+}
+@media (min-width: 1100px) and (max-width: 1399px) and (min-height: 700px) {
+  .screen-game .action-bar .action-row>.btn { font-size: .95rem; gap: 5px; }
+  .screen-game .action-bar .action-row strong { font-size: 1.2rem; }
+  .screen-game .action-bar .action-icon { width: 20px; height: 20px; }
+}
+@media (max-width: 360px) and (min-height: 501px) {
+  .table-bet-anchor { --bet-y: 26px; }
+  .table-bet { height: 30px; }
+  .bet-amount { font-size: min(.7rem, calc(var(--bet-w) / var(--digits) / .65)); }
+  .posted-chips, .posted-chips .chip-stack { height: 12px; }
+  .posted-chips .chip-stack i { height: 2px; bottom: calc(var(--level) * .9px); }
 }

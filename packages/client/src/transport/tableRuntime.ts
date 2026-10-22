@@ -1,5 +1,5 @@
 import { validate, type Action, type GameState } from '@wildcard/engine';
-import { addChips, contributedChips, TABLE_TIMING as T, type ChipStack } from './presentation.js';
+import { addChips, contributedChips, TABLE_TIMING as T, type ChipStack, type PostedBet } from './presentation.js';
 
 export const TURN_TIME_MS = 30_000;
 export interface TurnClock {
@@ -15,6 +15,7 @@ export type TableEvent = { readonly id: number; readonly at: number } & (
   | { readonly kind: 'board'; readonly run: number; readonly from: number; readonly count: number }
   | { readonly kind: 'bet' | 'win'; readonly playerId: string; readonly amount: number; readonly raised?: boolean }
   | { readonly kind: 'fold' | 'check'; readonly playerId: string }
+  | { readonly kind: 'collect'; readonly bets: readonly PostedBet[] }
 );
 export interface TableRuntimeSnapshot {
   readonly handId: number;
@@ -23,7 +24,9 @@ export interface TableRuntimeSnapshot {
   readonly events: readonly TableEvent[];
   readonly readyAt: number;
   readonly nextHandAt: number | null;
+  /** All contributed chips, including the bets still in front of each player. */
   readonly potChips: readonly ChipStack[];
+  readonly bets: readonly PostedBet[];
 }
 
 export const isDecision = (action: Action) =>
@@ -31,7 +34,7 @@ export const isDecision = (action: Action) =>
 
 /** Host/local authority for real deadlines. The pure poker engine remains independent of time. */
 export class TableRuntime {
-  private value: TableRuntimeSnapshot = { handId: 0, handStartedAt: null, clock: null, events: [], readyAt: 0, nextHandAt: null, potChips: [] };
+  private value: TableRuntimeSnapshot = { handId: 0, handStartedAt: null, clock: null, events: [], readyAt: 0, nextHandAt: null, potChips: [], bets: [] };
   private timer: ReturnType<typeof setTimeout> | null = null;
   private nextTimer: ReturnType<typeof setTimeout> | null = null;
   private nextFired = false;
@@ -50,9 +53,11 @@ export class TableRuntime {
     const handStartedAt = action.type === 'startHand' ? now : this.value.handStartedAt;
     const events = action.type === 'startHand' ? [] : this.value.events.filter(e => now - e.at < T.history);
     let potChips = action.type === 'startHand' ? [] : this.value.potChips;
+    let bets: readonly PostedBet[] = action.type === 'startHand' ? [] : this.value.bets;
     const append = (event: Omit<Extract<TableEvent, { kind: 'deal' }>, 'id' | 'at'> |
       Omit<Extract<TableEvent, { kind: 'burn' }>, 'id' | 'at'> |
       Omit<Extract<TableEvent, { kind: 'board' }>, 'id' | 'at'> |
+      Omit<Extract<TableEvent, { kind: 'collect' }>, 'id' | 'at'> |
       Omit<Extract<TableEvent, { kind: 'bet' | 'win' }>, 'id' | 'at'> |
       Omit<Extract<TableEvent, { kind: 'fold' | 'check' }>, 'id' | 'at'>, at = now) => {
       events.push({ ...event, id: ++this.eventSequence, at } as TableEvent);
@@ -72,14 +77,29 @@ export class TableRuntime {
         ? (previous?.chips ?? 0) + (after.summary?.payouts.find(p => p.playerId === player.id)?.amount ?? 0) - player.chips
         : player.committed - (action.type === 'startHand' ? 0 : previous?.committed ?? 0);
       if (paid > 0) {
-        append({ kind: 'bet', playerId: player.id, amount: paid, ...(action.type === 'raise' ? { raised: true } : {}) });
-        potChips = addChips(potChips, contributedChips(paid));
-        readyAt = Math.max(readyAt, now + T.bet);
+        // Antes go straight to the pot; live blinds and voluntary bets stay in front.
+        const posted = action.type === 'startHand' && after.phase === 'betting' ? player.bet : paid;
+        const chips = contributedChips(posted);
+        potChips = addChips(potChips, addChips(chips, contributedChips(paid - posted)));
+        if (posted > 0) {
+          append({ kind: 'bet', playerId: player.id, amount: posted, ...(action.type === 'raise' ? { raised: true } : {}) });
+          const previousBet = bets.find(bet => bet.playerId === player.id);
+          bets = [...bets.filter(bet => bet.playerId !== player.id), { playerId: player.id, chips: addChips(previousBet?.chips ?? [], chips) }];
+          readyAt = Math.max(readyAt, now + T.bet);
+        }
       }
       if (player.folded && previous && !previous.folded) {
         append({ kind: 'fold', playerId: player.id });
         readyAt = Math.max(readyAt, now + T.card);
       }
+    }
+    const roundEnded = before.streetIndex !== after.streetIndex ||
+      (before.phase === 'betting' && after.phase !== 'betting') || (action.type === 'startHand' && after.phase !== 'betting');
+    if (roundEnded && bets.length) {
+      readyAt += T.collectPause;
+      append({ kind: 'collect', bets }, readyAt);
+      bets = [];
+      readyAt += T.collect;
     }
     let burned = Math.max(0, after.burned.length - before.burned.length);
     const previousBoards = [before.communityCards, ...before.extraBoards];
@@ -132,7 +152,7 @@ export class TableRuntime {
     } else if (nextHandAt !== null && validate(after, { type: 'startHand', seed: 0 }) !== null) {
       nextHandAt = null; this.clearNextTimer();
     }
-    this.value = { handId, handStartedAt, clock, events: events.slice(-80), readyAt, nextHandAt, potChips };
+    this.value = { handId, handStartedAt, clock, events: events.slice(-80), readyAt, nextHandAt, potChips, bets };
     this.schedule();
   }
 

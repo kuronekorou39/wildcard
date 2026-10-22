@@ -18,11 +18,10 @@ export function TableStock({ burnedCount }: { readonly burnedCount: number }) {
   </div>;
 }
 
-export function PotChips({ stacks }: { readonly stacks: readonly ChipStack[] }) {
-  return <span className="pot-chips" aria-hidden="true">
+export function PotChips({ stacks, className = 'pot-chips' }: { readonly stacks: readonly ChipStack[]; readonly className?: string }) {
+  return <span className={className} aria-hidden="true">
     {stacks.map(({ value, count }) => <span key={value} className="chip-stack" data-value={value} data-count={count}>
       {Array.from({ length: Math.min(count, 10) }, (_, index) => <i key={index} style={{ '--level': index } as CSSProperties} />)}
-      {count > 10 && <small>×{count}</small>}
     </span>)}
   </span>;
 }
@@ -51,16 +50,18 @@ export function TableMotion({ state, runtime }: { readonly state: VisibleState; 
     const burn = center(table.querySelector('.stock-burn'));
     const pot = center(table.querySelector('.table-pot'));
     const seatOf = (id: string) => [...table.querySelectorAll<HTMLElement>('.seat')].find(seat => seat.dataset.playerId === id) ?? null;
+    const betOf = (id: string) => [...table.querySelectorAll<HTMLElement>('.table-bet-anchor')].find(bet => bet.dataset.playerId === id)?.querySelector('.table-bet') ?? null;
     const fly = (from: ReturnType<typeof center>, to: ReturnType<typeof center>, kind: string, at: number, delay = 0, value = 10) => {
-      const duration = kind === 'win' ? T.win : kind === 'bet' ? T.bet : T.card;
+      const duration = kind === 'win' ? T.win : kind === 'bet' ? T.bet : kind === 'collect' ? T.collect : T.card;
       const elapsed = Date.now() - at - delay;
       if (!from || !to || reduced || elapsed >= duration) return;
       const piece = document.createElement('span');
-      piece.className = `motion-piece ${kind === 'bet' || kind === 'win' ? 'motion-chips' : 'motion-card'}`;
+      const chip = kind === 'bet' || kind === 'win' || kind === 'collect';
+      piece.className = `motion-piece ${chip ? 'motion-chips' : 'motion-card'}`;
       piece.dataset.kind = kind;
       piece.dataset.value = String(value);
       piece.dataset.back = appearance.back;
-      if (kind !== 'bet' && kind !== 'win') {
+      if (!chip) {
         const emblem = table.querySelector('.stock-deck .motion-card-mark');
         if (emblem) piece.append(emblem.cloneNode(true));
       }
@@ -97,8 +98,11 @@ export function TableMotion({ state, runtime }: { readonly state: VisibleState; 
       } else if (event.kind === 'bet' || event.kind === 'win') {
         const seat = center(seatOf(event.playerId));
         const chips = event.kind === 'bet' ? contributedChips(event.amount) : runtime.potChips;
-        chips.forEach((chip, index) => fly(event.kind === 'win' ? pot : seat, event.kind === 'win' ? seat : pot,
-          event.kind, event.at, index * 35, chip.value));
+        chips.forEach(chip => fly(event.kind === 'win' ? pot : seat, event.kind === 'win' ? seat : center(betOf(event.playerId)),
+          event.kind, event.at, 0, chip.value));
+      } else if (event.kind === 'collect') {
+        for (const bet of event.bets) for (const chip of bet.chips)
+          fly(center(betOf(bet.playerId)), pot, 'collect', event.at, 0, chip.value);
       }
     }
     // IDs are monotonic, but do not retain every event over a long session.

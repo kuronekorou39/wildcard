@@ -98,7 +98,7 @@ if (await sitDown('ストラドルあり')) {
 
     const pot = Number((await page.locator('.table-pot').innerText()).replace(/[^0-9]/g, ''));
     const mine = Number(
-      ((await page.locator('.seat-viewer .seat-bet').innerText().catch(() => '0')) || '0').replace(
+      ((await page.locator('.table-bet-anchor[data-viewer="true"] .bet-amount').innerText().catch(() => '0')) || '0').replace(
         /[^0-9]/g,
         '',
       ),

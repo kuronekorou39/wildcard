@@ -51,9 +51,9 @@ const inspect = async (page, name) => {
     const coveredByRaise = controls ? [...document.querySelectorAll('.seat, .table-area .card')]
       .filter(el => intersects(rect(controls), rect(el))).map(el => el.className) : [];
     const footer = rect(document.querySelector('.bottombar'));
-    const raiseNotVertical = controls && (getComputedStyle(document.querySelector('.raise-slider')).writingMode !== 'vertical-lr');
+    const raiseNotHorizontal = controls && (getComputedStyle(document.querySelector('.raise-slider')).writingMode !== 'horizontal-tb');
     return { w, h, pageHeight: document.documentElement.scrollHeight, pageWidth: document.documentElement.scrollWidth,
-      footer, overlaps, coveredCards, stockCovered, clipped, cornerCovered, blockedActions, handWrapped, coveredByRaise, raiseNotVertical };
+      footer, overlaps, coveredCards, stockCovered, clipped, cornerCovered, blockedActions, handWrapped, coveredByRaise, raiseNotHorizontal };
   });
   checks.push({ name, ...result });
   await page.screenshot({ path: `${out}/${name}.png` });
@@ -116,7 +116,7 @@ try {
   await inspect(solo,'solo-nine-cpus');
   await solo.close();
   const failures=checks.filter(c=>c.pageHeight>c.h+1||c.pageWidth>c.w+1||Math.abs(c.footer.bottom-c.h)>1||
-    c.overlaps.length||c.coveredCards.length||c.stockCovered.length||c.clipped.length||c.cornerCovered.length||c.blockedActions.length||c.handWrapped||c.coveredByRaise.length||c.raiseNotVertical);
+    c.overlaps.length||c.coveredCards.length||c.stockCovered.length||c.clipped.length||c.cornerCovered.length||c.blockedActions.length||c.handWrapped||c.coveredByRaise.length||c.raiseNotHorizontal);
   await writeFile(`${out}/qa.json`,JSON.stringify({errors,checks,failures},null,2));
   console.log(JSON.stringify({count:checks.length,errors,failures},null,2));
   assert.equal(errors.length+failures.length,0);

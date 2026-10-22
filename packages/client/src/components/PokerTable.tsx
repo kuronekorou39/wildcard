@@ -12,6 +12,8 @@ import { PotChips, TableMotion, TableStock } from './TableMotion.js';
 import { chipsTotal, contributedChips, TABLE_TIMING as T } from '../transport/presentation.js';
 import { usePresentationTime } from '../hooks/usePresentationTime.js';
 import { ShowdownResult, showdownWinners } from './ShowdownResult.js';
+import { presentedChips } from '../chipPresentation.js';
+import { TableBets } from './TableBets.js';
 
 /**
  * 今どの段階かの表示。
@@ -41,8 +43,13 @@ export function PokerTable({ state, viewerId, shape = 'racetrack', runtime = nul
   const payoutAt = winEvents.length ? Math.min(...winEvents.map(event => event.at)) : 0;
   const potCleared = state.phase === 'showdown' && now >= payoutAt + T.win;
   const winners = state.phase === 'showdown' && now >= payoutAt ? showdownWinners(state) : [];
-  const potChips = potCleared ? [] : runtime?.potChips ?? contributedChips(state.pot);
-  const pot = state.phase === 'showdown' ? chipsTotal(potChips) : state.pot;
+  const fallbackBets = state.players.map(player => ({ playerId: player.id, chips: contributedChips(player.bet) }));
+  const chips = runtime ? presentedChips(runtime, now) : {
+    bets: fallbackBets, pot: contributedChips(Math.max(0, state.pot - state.players.reduce((sum, p) => sum + p.bet, 0))),
+  };
+  const potChips = potCleared ? [] : chips.pot;
+  // Total pot still includes live wagers; the central stacks contain only collected chips.
+  const pot = state.phase === 'showdown' ? chipsTotal(runtime?.potChips ?? potChips) : state.pot;
   const revealShowdown = now >= payoutAt - T.showdownPause;
   const pendingBurns = events.reduce((sum, event) => sum +
     (event.kind === 'burn' && now < event.at + T.card ? event.count : 0), 0);
@@ -119,6 +126,7 @@ export function PokerTable({ state, viewerId, shape = 'racetrack', runtime = nul
           viewer && slot === 0 ? null : renderSeat(slot),
         )}
         <TablePositionMarkers state={state} viewerSeat={viewerSeat} />
+        {!potCleared && <TableBets state={state} viewerSeat={viewerSeat} bets={chips.bets} />}
       </div>
       {viewer && <div className="table-player">{renderSeat(0)}
         {resultInHandArea && <ShowdownResult key={runtime?.handId ?? state.dealerSeat} state={state} />}

@@ -13,8 +13,9 @@ import '../../src/game.css';
 let emitCurrent = () => {};
 let runtime = new TableRuntime(playerId => { apply({ type: 'timeout', playerId }); emitCurrent(); });
 function deal(seed = 11) {
-  let game = createGame({ seatCount: 6, smallBlind: 10, bigBlind: 20 });
-  for (let seat = 0; seat < 6; seat++)
+  const seatCount = Number(new URLSearchParams(location.search).get('seats')) || 6;
+  let game = createGame({ seatCount, smallBlind: 10, bigBlind: 20 });
+  for (let seat = 0; seat < seatCount; seat++)
     game = reduce(game, { type: 'sit', playerId: `p${seat}`, name: `Player ${seat}`, seat, chips: 1000 });
   const action = { type: 'startHand', seed } as const;
   const next = reduce(game, action);

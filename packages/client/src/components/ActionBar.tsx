@@ -61,9 +61,6 @@ export function ActionBar({ state, playerId, onAction, turnId, locked = false }:
       <div className="action-bar action-bar-raising">
         <div className="raise-controls" role="group" aria-label="レイズ額の調整">
           <div className="raise-header">
-            <span className="raise-label">レイズ先</span><span className="raise-limits" data-invalid={!valid}>
-              {legal.minRaiseTo.toLocaleString()}–{legal.maxRaiseTo.toLocaleString()}
-            </span>
             <div className="raise-amount-editor">
               <button type="button" className="btn raise-step" aria-label="1チップ減らす" disabled={valid && amount <= legal.minRaiseTo} onClick={() => choose(amount - 1)}>−</button>
               <input className="raise-amount" type="text" inputMode="numeric" pattern="[0-9]*" aria-label="レイズ先の金額"
@@ -82,7 +79,6 @@ export function ActionBar({ state, playerId, onAction, turnId, locked = false }:
           </div>
 
           <div className="raise-track">
-          <span className="raise-midpoint" aria-hidden="true">{scale.middle.toLocaleString()}</span>
           <input
             className="raise-slider"
             type="range"
@@ -101,7 +97,7 @@ export function ActionBar({ state, playerId, onAction, turnId, locked = false }:
             aria-valuemax={legal.maxRaiseTo}
             aria-valuenow={amount}
             aria-valuetext={`${amount.toLocaleString()} チップ`}
-            aria-orientation="vertical"
+            aria-orientation="horizontal"
           />
           </div>
 
