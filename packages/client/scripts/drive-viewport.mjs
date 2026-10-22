@@ -52,8 +52,12 @@ const inspect = async (page, name) => {
       .filter(el => intersects(rect(controls), rect(el))).map(el => el.className) : [];
     const footer = rect(document.querySelector('.bottombar'));
     const raiseNotHorizontal = controls && (getComputedStyle(document.querySelector('.raise-slider')).writingMode !== 'horizontal-tb');
+    const ownSeat = document.querySelector('.seat-viewer'), reservation = document.querySelector('.fold-reservation');
+    const desktop = w >= 1100 && h >= 700;
+    const handOffCenter = desktop && ownSeat && Math.abs(rect(ownSeat).left + rect(ownSeat).width/2 - w/2) > 1;
+    const reservationOffLeft = desktop && reservation && rect(reservation).left > w*.15;
     return { w, h, pageHeight: document.documentElement.scrollHeight, pageWidth: document.documentElement.scrollWidth,
-      footer, overlaps, coveredCards, stockCovered, clipped, cornerCovered, blockedActions, handWrapped, coveredByRaise, raiseNotHorizontal };
+      footer, overlaps, coveredCards, stockCovered, clipped, cornerCovered, blockedActions, handWrapped, coveredByRaise, raiseNotHorizontal, handOffCenter, reservationOffLeft };
   });
   checks.push({ name, ...result });
   await page.screenshot({ path: `${out}/${name}.png` });
@@ -116,7 +120,7 @@ try {
   await inspect(solo,'solo-nine-cpus');
   await solo.close();
   const failures=checks.filter(c=>c.pageHeight>c.h+1||c.pageWidth>c.w+1||Math.abs(c.footer.bottom-c.h)>1||
-    c.overlaps.length||c.coveredCards.length||c.stockCovered.length||c.clipped.length||c.cornerCovered.length||c.blockedActions.length||c.handWrapped||c.coveredByRaise.length||c.raiseNotHorizontal);
+    c.overlaps.length||c.coveredCards.length||c.stockCovered.length||c.clipped.length||c.cornerCovered.length||c.blockedActions.length||c.handWrapped||c.coveredByRaise.length||c.raiseNotHorizontal||c.handOffCenter||c.reservationOffLeft);
   await writeFile(`${out}/qa.json`,JSON.stringify({errors,checks,failures},null,2));
   console.log(JSON.stringify({count:checks.length,errors,failures},null,2));
   assert.equal(errors.length+failures.length,0);

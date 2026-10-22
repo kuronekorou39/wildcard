@@ -7,6 +7,27 @@ const url = process.env.WILDCARD_URL ?? 'http://127.0.0.1:5173';
 const out = 'shots-raise';
 await mkdir(out, { recursive: true });
 const errors = [];
+async function inspectPresets(page, width) {
+  const presets = await page.locator('.btn-quick').evaluateAll(buttons => buttons.map(button => ({
+    amount: Number(button.querySelector('strong').textContent.replaceAll(',', '')),
+    right: button.getBoundingClientRect().right,
+  })));
+  assert.deepEqual(presets.map(p => p.amount), presets.map(p => p.amount).sort((a,b) => a-b), 'Presets increase in reading order');
+  assert.ok(Math.abs(presets.at(-1).right - Math.max(...presets.map(p => p.right))) < 1, 'The maximum stays at the right edge');
+  const clipped = await page.locator('.raise-controls .btn').evaluateAll(buttons => buttons.flatMap(button => {
+    const b = button.getBoundingClientRect(), problems = [];
+    if (b.height < 35 || b.width < 29) problems.push('small target');
+    const hit = document.elementFromPoint(b.x + b.width / 2, b.y + b.height / 2);
+    if (!button.contains(hit)) problems.push('blocked target');
+    for (const text of button.querySelectorAll('span,strong')) {
+      const range = document.createRange(); range.selectNodeContents(text);
+      const r = range.getBoundingClientRect();
+      if (r.top < b.top || r.bottom > b.bottom || r.left < b.left || r.right > b.right) problems.push('clipped label');
+    }
+    return problems;
+  }));
+  assert.deepEqual(clipped, [], `${width}: every preset and increment button is readable and clickable`);
+}
 try {
   const sizes = process.env.WILDCARD_SIZES ? process.env.WILDCARD_SIZES.split(',').map(s => s.split('x').map(Number))
     : [[320,568], [390,844], [667,375], [1100,700], [1920,1080], [2560,1440]];
@@ -52,23 +73,20 @@ try {
       assert.equal(Number(await input.inputValue()), expected);
       assert.equal(await button.getAttribute('aria-pressed'), 'true');
     }
-    const clipped = await page.locator('.raise-controls .btn').evaluateAll(buttons => buttons.flatMap(button => {
-      const b = button.getBoundingClientRect(), problems = [];
-      if (b.height < 35 || b.width < 29) problems.push('small target');
-      const hit = document.elementFromPoint(b.x + b.width / 2, b.y + b.height / 2);
-      if (!button.contains(hit)) problems.push('blocked target');
-      for (const text of button.querySelectorAll('span,strong')) {
-        const range = document.createRange(); range.selectNodeContents(text);
-        const r = range.getBoundingClientRect();
-        if (r.top < b.top || r.bottom > b.bottom || r.left < b.left || r.right > b.right) problems.push('clipped label');
-      }
-      return problems;
-    }));
-    assert.deepEqual(clipped, [], `${width}: every preset and increment button is readable and clickable`);
+    await inspectPresets(page, width);
     await input.fill('125'); await input.blur();
     await page.screenshot({ path: `${out}/${width}x${height}.png` });
     await confirm.click();
     assert.deepEqual(await sent(), [{ type: 'raise', playerId: 'p3', to: 125 }]);
+    await page.evaluate(() => {
+      window.tableFixture.acknowledge();
+      for (let i=0;i<5;i++) window.tableFixture.advance();
+      window.tableFixture.view('p1');
+    });
+    await page.getByRole('button', { name: 'レイズ', exact: true }).click();
+    assert.equal(await page.locator('.btn-quick').count(), 6, 'All six distinct sizes fit after the flop');
+    await inspectPresets(page, width);
+    await page.screenshot({path: `${out}/${width}x${height}-six-presets.png`});
     console.log(`${width}x${height}: ±1, direct entry, invalid input, nonlinear slider, keyboard, presets, exact bet: passed`);
     await page.close();
   }

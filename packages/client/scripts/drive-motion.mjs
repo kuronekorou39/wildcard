@@ -34,7 +34,8 @@ try {
     await page.mouse.click(...point);
     assert.deepEqual(await sent(), [], 'Repeated taps at the opening position never confirm a raise');
     if (await raise.count()) await raise.click();
-    const confirm = page.getByRole('button', { name: /にレイズ$/ });
+    // A repeated tap may select the maximum preset; its confirmation is named オールイン.
+    const confirm = page.locator('.action-row-confirm .btn-raise');
     await confirm.click({ trial: true });
     const confirmPoint = await center(confirm);
     await page.mouse.click(...confirmPoint);

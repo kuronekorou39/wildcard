@@ -28,6 +28,24 @@ describe('レイズ額のショートカット', () => {
     }
   });
 
+  it('ポットの分数を含む6候補を金額の小さい順に並べる', () => {
+    const result = quickAmounts({ min: 20, max: 1000, pot: 120, ownBet: 0, currentBet: 0, allIn: 1000 });
+    expect(result).toEqual([
+      { label: '最小', value: 20 },
+      { label: '1/3 ポット', value: 40 },
+      { label: '1/2 ポット', value: 60 },
+      { label: '3/4 ポット', value: 90 },
+      { label: 'ポット', value: 120 },
+      { label: 'オールイン', value: 1000 },
+    ]);
+  });
+
+  it('ポット額と上限が一致しても、最後の候補は上限とわかる', () => {
+    const result = quickAmounts({ min: 40, max: 70, pot: 30, ownBet: 0, currentBet: 20, allIn: 1000 });
+    expect(result.at(-1)).toEqual({ label: '上限', value: 70 });
+    expect(new Set(result.map(q => q.value)).size).toBe(result.length);
+  });
+
   it('上限が手持ち全部でなければ「オールイン」と書かない', () => {
     // ポットリミットや「オールイン禁止」では、上限はオールインではない。
     // ここで嘘のラベルを出すと、押した人が全部入れたつもりになる。

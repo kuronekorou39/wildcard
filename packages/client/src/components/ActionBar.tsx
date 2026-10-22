@@ -102,7 +102,7 @@ export function ActionBar({ state, playerId, onAction, turnId, locked = false }:
           </div>
 
           <div className="raise-quick">
-            {quick.slice().reverse().map(({ label, value }) => (
+            {quick.map(({ label, value }) => (
               <button key={label} type="button" className="btn btn-quick" aria-label={label} title={`${value.toLocaleString()} チップ`}
                 aria-pressed={valid && amount === value} onClick={() => choose(value)}>
                 <span>{label}</span><strong>{value.toLocaleString()}</strong>
@@ -225,17 +225,22 @@ export function quickAmounts({
   const toCall = Math.max(0, currentBet - ownBet);
   const potAfterCall = pot + toCall;
 
+  const fractions: QuickAmount[] = [
+    { label: '1/3 ポット', value: currentBet + Math.round(potAfterCall / 3) },
+    { label: '1/2 ポット', value: currentBet + Math.round(potAfterCall / 2) },
+    { label: '3/4 ポット', value: currentBet + Math.round(potAfterCall * 3 / 4) },
+    { label: 'ポット', value: currentBet + potAfterCall },
+  ];
   const candidates: QuickAmount[] = [
     { label: '最小', value: min },
-    { label: '1/2 ポット', value: currentBet + Math.round(potAfterCall / 2) },
-    { label: 'ポット', value: currentBet + potAfterCall },
+    ...fractions.filter(candidate => candidate.value > min && candidate.value < max),
     // 上限が手持ち全部とは限らない。違うなら「オールイン」とは書かない。
     { label: max >= allIn ? 'オールイン' : '上限', value: max },
   ];
 
   const seen = new Set<number>();
   return candidates
-    .map((c) => ({ ...c, value: Math.min(Math.max(c.value, min), max) }))
+    .sort((a, b) => a.value - b.value)
     .filter((c) => {
       if (seen.has(c.value)) return false;
       seen.add(c.value);
