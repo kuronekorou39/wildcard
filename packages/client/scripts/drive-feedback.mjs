@@ -17,7 +17,10 @@ try {
   });
   await page.goto(`${url}/test/fixtures/table-pacing.html?turnMs=8000`);
   await page.evaluate(async () => {
-    const { tableAudio } = await import('/src/audio.ts');
+    // Vite may add an HMR timestamp. Observe the instance already used by the table.
+    const moduleUrl = performance.getEntriesByType('resource').map(entry => entry.name)
+      .find(url => new URL(url).pathname === '/src/audio.ts');
+    const { tableAudio } = await import(moduleUrl ?? '/src/audio.ts');
     const play = tableAudio.play.bind(tableAudio);
     window.cues = [];
     tableAudio.play = (...args) => { window.cues.push({ sound: args[0], at: Date.now() }); return play(...args); };

@@ -18,7 +18,7 @@ try {
   };
   const sent = () => page.evaluate(() => window.tableFixture.sent());
   const center = async locator => { const b = await locator.boundingBox(); return [b.x + b.width / 2, b.y + b.height / 2]; };
-  for (const viewport of [{ width: 390, height: 844 }, { width: 844, height: 390 }]) {
+  for (const viewport of [{ width: 390, height: 844 }, { width: 844, height: 390 }, { width: 1100, height: 700 }, { width: 1920, height: 1080 }]) {
     await page.setViewportSize(viewport);
     await call('reset'); await call('view', 'p3');
     const raise = page.getByRole('button', { name: 'レイズ', exact: true });

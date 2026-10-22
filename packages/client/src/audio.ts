@@ -24,7 +24,7 @@ export function setSoundSettings(change: Partial<SoundSettings>) {
 export function useSoundSettings() {
   return useSyncExternalStore(listener => { listeners.add(listener); return () => listeners.delete(listener); }, () => settings, () => DEFAULTS);
 }
-const asset = (name: string) => `${import.meta.env.BASE_URL}audio/${name}.mp3`;
+const asset = (name: string) => `${import.meta.env.BASE_URL}audio/${name}.mp3${name === 'check' ? '?v=knocks' : ''}`;
 
 /** One audio graph per browser tab. Playback never controls the poker state. */
 class TableAudio {

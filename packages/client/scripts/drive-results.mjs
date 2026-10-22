@@ -17,7 +17,7 @@ try {
         const hit = (a, b) => Math.min(a.right, b.right) - Math.max(a.left, b.left) > 2 && Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top) > 2;
         const blockers = [...document.querySelectorAll('.seat,.game-corner,.table-position-chip')];
         const overlap = [...document.querySelectorAll('.showdown-result,.community-cards .card')].flatMap(n => blockers.filter(b => hit(r(n), r(b))).map(b => b.className));
-        const footerOverlap = [...document.querySelectorAll('.seat')].filter(n => hit(r(n), r(document.querySelector('.summary-compact')))).map(n => n.className);
+        const footerOverlap = [...document.querySelectorAll('.seat,.showdown-result')].filter(n => hit(r(n), r(document.querySelector('.summary-compact')))).map(n => n.className);
         return { scroll: document.documentElement.scrollHeight > innerHeight, overlap, footerOverlap,
           winners: document.querySelectorAll('.seat-winner').length, ranking: document.querySelector('.winner-ranking').textContent };
       });

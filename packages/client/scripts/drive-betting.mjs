@@ -63,7 +63,7 @@ if (await sitDown('オマハ（ポットリミット）')) {
   await page.waitForTimeout(200);
 
   const slider = page.locator('.raise-slider');
-  const max = await slider.getAttribute('max');
+  const max = await slider.getAttribute('aria-valuemax');
   const quick = await page.locator('.raise-quick .btn').allInnerTexts();
   console.log(`  ポット ${pot} / レイズ上限 ${max}`);
   console.log(`  クイック: ${quick.join(' / ')}`);
@@ -120,7 +120,7 @@ console.log('=== プリフロップはオールイン禁止 ===');
 if (await sitDown('プリフロップはオールイン禁止')) {
   await page.getByRole('button', { name: 'レイズ', exact: true }).click();
   await page.waitForTimeout(200);
-  const max = await page.locator('.raise-slider').getAttribute('max');
+  const max = await page.locator('.raise-slider').getAttribute('aria-valuemax');
   const quick = await page.locator('.raise-quick .btn').allInnerTexts();
   console.log(`  レイズ上限 ${max}（手持ち1000 ＋ 出した額 のはず）`);
   console.log(`  クイック: ${quick.join(' / ')}`);

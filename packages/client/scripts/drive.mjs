@@ -197,7 +197,7 @@ if (await raise.count()) {
   await raise.click();
   await page.waitForTimeout(60);
   say(`--- レイズUI ---`);
-  say(`額: ${await page.locator('.raise-amount').innerText()}`);
+  say(`額: ${await page.locator('.raise-amount').inputValue()}`);
   say(`クイック: ${(await page.locator('.btn-quick').allInnerTexts()).join(' / ')}`);
   await snap('raise-ui');
 } else {
