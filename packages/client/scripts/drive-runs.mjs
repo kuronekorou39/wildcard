@@ -1,3 +1,4 @@
+import { chooseRule } from './setup-helpers.mjs';
 /**
  * ランイットトゥワイスを実際に触る。
  *
@@ -28,12 +29,11 @@ const labels = async (selector) =>
 
 await page.goto(URL);
 await page.getByRole('tab', { name: 'ソロ' }).click();
-await page.locator('.field', { hasText: 'ルール' }).locator('select').selectOption(RULE);
+await chooseRule(page, RULE);
 console.log(`ルール: ${RULE}`);
 
 // CPU 1人（ヘッズアップ）にして、オールインまでの手数を減らす。
-const opponents = page.locator('.field', { hasText: 'CPU' }).locator('input[type=range]');
-if (await opponents.count()) await opponents.first().fill('1');
+await page.getByRole('group', { name: 'CPU の人数', exact: true }).getByRole('button', { name: '1', exact: true }).click();
 
 await page.getByRole('button', { name: 'はじめる' }).click();
 await page.getByRole('button', { name: 'ゲーム開始' }).click();

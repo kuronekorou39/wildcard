@@ -1,3 +1,4 @@
+import { chooseRule } from './setup-helpers.mjs';
 /**
  * 賭け方の制度を実際に触る。
  *
@@ -22,7 +23,7 @@ page.on('pageerror', (e) => console.log('[page error]', e.message));
 async function sitDown(rule) {
   await page.goto(URL);
   await page.getByRole('tab', { name: 'ソロ' }).click();
-  await page.locator('.field', { hasText: 'ルール' }).locator('select').selectOption(rule);
+  await chooseRule(page, rule);
   await page.getByRole('button', { name: 'はじめる' }).click();
   await page.getByRole('button', { name: 'ゲーム開始' }).click();
 

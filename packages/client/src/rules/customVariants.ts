@@ -81,17 +81,17 @@ function read(): Variant[] {
   return out;
 }
 
-function write(variants: readonly Variant[]): void {
+function write(variants: readonly Variant[]): boolean {
   const store = storage();
-  if (!store) return;
+  if (!store) return false;
   try {
     store.setItem(KEY, JSON.stringify({ version: 1, variants }));
   } catch (error) {
-    // 容量超過など。保存できなかったことは呼び出し側に伝わらないが、
-    // 握りつぶして編集中の内容まで失うよりはよい。
     console.warn('ルールを保存できなかった:', error);
+    return false;
   }
   notify();
+  return true;
 }
 
 export function customVariants(): readonly Variant[] {
@@ -109,14 +109,14 @@ export function allVariants(): readonly Variant[] {
 export const resolveVariant = (id: string): Variant | undefined =>
   allVariants().find((variant) => variant.id === id);
 
-export function saveCustomVariant(variant: Variant): void {
+export function saveCustomVariant(variant: Variant): boolean {
   const list = customVariants();
   const at = list.findIndex((v) => v.id === variant.id);
-  write(at >= 0 ? list.map((v, i) => (i === at ? variant : v)) : [...list, variant]);
+  return write(at >= 0 ? list.map((v, i) => (i === at ? variant : v)) : [...list, variant]);
 }
 
-export function deleteCustomVariant(id: string): void {
-  write(customVariants().filter((variant) => variant.id !== id));
+export function deleteCustomVariant(id: string): boolean {
+  return write(customVariants().filter((variant) => variant.id !== id));
 }
 
 /**
@@ -165,7 +165,7 @@ export function importVariant(
   }
 
   const variant: Variant = { ...parsed.variant, id: newCustomId() };
-  saveCustomVariant(variant);
+  if (!saveCustomVariant(variant)) return { ok: false, problems: ['ルールを保存できませんでした。ブラウザの保存容量・設定を確認してください。'] };
   return { ok: true, variant };
 }
 

@@ -1,7 +1,8 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import {
   activeRankings,
   boardSize,
+  deckSize,
   buildDeck,
   describePattern,
   describeWilds,
@@ -12,6 +13,9 @@ import {
 import type { Card, Variant } from '@wildcard/engine';
 import { PlayingCard, cardLabel } from './PlayingCard.js';
 import { isCustomVariant, useVariants } from '../rules/customVariants.js';
+import { GameDialog } from './GameDialog.js';
+import { BannerEditor, RuleBanner } from './RuleBanner.js';
+import { ruleBanner, saveRuleBanner, type RuleBannerStyle } from '../rules/ruleBanners.js';
 
 interface RulePickerProps {
   readonly value: string;
@@ -30,39 +34,63 @@ interface RulePickerProps {
 export function RulePicker({ value, onChange, onEdit }: RulePickerProps) {
   const variants = useVariants();
   const selected = variants.find((v) => v.id === value) ?? variants[0]!;
-  const custom = variants.filter((v) => isCustomVariant(v.id));
-  const presets = variants.filter((v) => !isCustomVariant(v.id));
+  const [open, setOpen] = useState(false);
+  const trigger = useRef<HTMLButtonElement>(null);
+  const [sheet, setSheet] = useState(false);
+  const [query, setQuery] = useState('');
+  const [banner, setBanner] = useState<RuleBannerStyle | null>(null);
+  const [error, setError] = useState('');
+  const [bannerBusy, setBannerBusy] = useState(false);
+  const matches = variants.filter(variant => `${variant.name} ${variant.description ?? ''}`.toLocaleLowerCase().includes(query.toLocaleLowerCase()));
 
   return (
-    <div className="field">
-      <span className="field-label">ルール</span>
-      <select className="input" value={value} onChange={(e) => onChange(e.target.value)}>
-        {presets.map((preset) => (
-          <option key={preset.id} value={preset.id}>
-            {preset.name}
-          </option>
-        ))}
-        {custom.length > 0 && (
-          <optgroup label="自分で作ったルール">
-            {custom.map((variant) => (
-              <option key={variant.id} value={variant.id}>
-                {variant.name}
-              </option>
-            ))}
-          </optgroup>
-        )}
-      </select>
-      {selected.description !== undefined && (
-        <p className="hint rule-description">{selected.description}</p>
-      )}
-      <RuleSheet variant={selected} label="役の順位を見る" />
-      {onEdit !== undefined && (
-        <div className="rule-actions">
-          <button type="button" className="btn btn-ghost" onClick={() => onEdit(selected.id)}>
-            {isCustomVariant(selected.id) ? 'このルールを編集' : 'これを元に作る'}
-          </button>
+    <div className="rule-picker">
+      <div className="section-kicker"><span>01 / ルール</span><span>{isCustomVariant(selected.id) ? 'カスタム' : 'プリセット'}</span></div>
+      <button ref={trigger} type="button" className="rule-select-trigger" aria-label={`ルールを選ぶ：${selected.name}`} aria-haspopup="dialog" aria-expanded={open}
+        onClick={() => { setQuery(''); setOpen(true); }}>
+        <RuleBanner variant={selected} />
+        <span className="selected-rule-title"><strong>{selected.name}</strong><span className="rule-chevron" aria-hidden="true">⌄</span></span>
+      </button>
+      <p className="rule-description">{selected.description}</p>
+      <dl className="rule-facts"><div><dt>デッキ</dt><dd>{deckSize(selected.deck)}<small>枚</small></dd></div><div><dt>手札</dt><dd>{selected.structure.holeCards}<small>枚</small></dd></div><div><dt>ボード</dt><dd>{boardSize(selected.structure)}<small>枚</small></dd></div><div><dt>ベット</dt><dd className="rule-limit">{selected.betting.limit === 'no-limit' ? 'NL' : selected.betting.limit === 'pot-limit' ? 'PL' : 'FL'}</dd></div></dl>
+      <div className="rule-actions">
+        <button type="button" className="btn btn-ghost" onClick={() => setSheet(true)}>ルール詳細</button>
+        <button type="button" className="btn btn-ghost" onClick={() => { setBanner(ruleBanner(selected.id)); setError(''); }}>バナー</button>
+        {onEdit && <button type="button" className="btn rule-edit-button" onClick={() => onEdit(selected.id)}>{isCustomVariant(selected.id) ? 'このルールを編集' : 'これを元に作る'} <span aria-hidden="true">↗</span></button>}
+      </div>
+      {open && <GameDialog title="ルールを選ぶ" className="rule-select-dialog" anchor={trigger.current} initialFocus=".rule-search" onClose={() => setOpen(false)}>
+        <input type="search" className="input rule-search" aria-label="ルールを検索" placeholder="ルールを検索" value={query} onChange={event => setQuery(event.target.value)} onKeyDown={event => {
+          if (event.key === 'ArrowDown') { event.preventDefault(); event.currentTarget.parentElement?.querySelector<HTMLButtonElement>('[role=option]')?.focus(); }
+        }} />
+        <div className="rule-options" role="listbox" aria-label="ルール" onKeyDown={event => {
+          const options = Array.from(event.currentTarget.querySelectorAll<HTMLButtonElement>('[role=option]'));
+          const current = options.indexOf(document.activeElement as HTMLButtonElement);
+          let next: number;
+          if (event.key === 'ArrowDown') next = Math.min(options.length - 1, current + 1);
+          else if (event.key === 'ArrowUp') next = Math.max(0, current - 1);
+          else if (event.key === 'Home') next = 0;
+          else if (event.key === 'End') next = options.length - 1;
+          else return;
+          event.preventDefault(); options[next]?.focus();
+        }}>
+          {matches.map(variant => <button type="button" role="option" aria-selected={variant.id === selected.id} data-variant={variant.id} key={variant.id}
+            className="rule-option" onClick={() => { onChange(variant.id); setOpen(false); }}>
+            <RuleBanner variant={variant} compact />
+            <span><strong>{variant.name}</strong><small>{isCustomVariant(variant.id) ? 'カスタム · ' : ''}{deckSize(variant.deck)}枚 · 手札{variant.structure.holeCards}枚</small></span>
+            <span className="rule-option-check" aria-hidden="true">{variant.id === selected.id ? '✓' : ''}</span>
+          </button>)}
+          {matches.length === 0 && <p className="hint">該当するルールはありません。</p>}
         </div>
-      )}
+      </GameDialog>}
+      {sheet && <GameDialog title={selected.name} className="setup-rule-dialog" onClose={() => setSheet(false)}><RuleSheet variant={selected} defaultOpen label="役の順位と例" /></GameDialog>}
+      {banner && <GameDialog title="ルールのバナー" className="banner-dialog" onClose={() => setBanner(null)}>
+        <BannerEditor variant={selected} value={banner} onChange={setBanner} onBusyChange={setBannerBusy} />
+        {error && <p className="hint hint-warn" role="alert">{error}</p>}
+        <button type="button" className="btn btn-primary btn-block" disabled={bannerBusy} onClick={() => {
+          if (saveRuleBanner(selected.id, banner)) setBanner(null);
+          else setError('保存できませんでした。ブラウザの保存容量・設定を確認してください。');
+        }}>バナーを保存</button>
+      </GameDialog>}
     </div>
   );
 }

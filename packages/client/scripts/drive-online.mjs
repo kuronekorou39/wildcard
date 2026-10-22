@@ -93,6 +93,7 @@ async function assertNoDuplicateCards(page, label) {
 
 // ---- host 側: 部屋を作る ----
 await host.goto(URL, { waitUntil: 'networkidle' });
+await host.getByRole('tab', { name: /^オンライン/ }).click();
 await host.getByRole('button', { name: '部屋を作る', exact: true }).first().click();
 await host.locator('.field', { hasText: 'あなたの名前' }).locator('input').fill('あかり');
 await snap(host, 'host-setup');
@@ -107,11 +108,12 @@ await host.keyboard.press('Escape');
 
 // ---- guest 側: 参加する ----
 await guest.goto(URL, { waitUntil: 'networkidle' });
+await guest.getByRole('tab', { name: /^オンライン/ }).click();
 await guest.getByRole('button', { name: '参加する', exact: true }).first().click();
 await guest.locator('.field', { hasText: 'あなたの名前' }).locator('input').fill('ばしょう');
 await guest.locator('.input-code').fill(roomCode);
 await snap(guest, 'guest-setup');
-await guest.getByRole('button', { name: '参加する', exact: true }).last().click();
+await guest.getByRole('button', { name: '接続する', exact: true }).click();
 
 // ---- 接続を待つ ----
 say('P2P の確立を待っています（公開トラッカー経由のシグナリング）…');

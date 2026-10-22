@@ -7,6 +7,7 @@
  */
 import { chromium } from 'playwright';
 import { mkdir } from 'node:fs/promises';
+import { chooseRule } from './setup-helpers.mjs';
 
 const URL = process.env.WILDCARD_URL ?? 'http://localhost:5173/';
 const SHOTS = process.env.WILDCARD_SHOTS ?? 'shots';
@@ -23,8 +24,8 @@ page.on('pageerror', (e) => console.log('[page error]', e.message));
 await page.goto(URL);
 
 for (const name of VARIANTS) {
-  const select = page.locator('select.input').first();
-  await select.selectOption({ label: name });
+  await chooseRule(page, name);
+  await page.getByRole('button', { name: 'ルール詳細', exact: true }).click();
 
   const sheet = page.locator('details.rule-sheet');
   if (!(await sheet.evaluate((el) => el.open))) {
@@ -51,8 +52,9 @@ for (const name of VARIANTS) {
   }
 
   const file = `${SHOTS}/rules-${VARIANTS.indexOf(name)}.png`;
-  await page.locator('.rule-sheet-body').screenshot({ path: file });
+  await page.getByRole('dialog').screenshot({ path: file });
   console.log(`  → ${file}`);
+  await page.getByRole('button', { name: '閉じる', exact: true }).click();
 }
 
 await browser.close();

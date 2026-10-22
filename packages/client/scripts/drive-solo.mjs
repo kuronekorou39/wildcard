@@ -1,3 +1,4 @@
+import { chooseRule } from './setup-helpers.mjs';
 /**
  * CPU を相手に実ブラウザで1ハンド遊ぶ検証スクリプト。
  *
@@ -106,9 +107,9 @@ async function readShowdown(page) {
 
 await page.goto(URL, { waitUntil: 'networkidle' });
 await page.getByRole('tab', { name: 'ソロ' }).click();
-await page.locator('.field', { hasText: 'ルール' }).locator('select').selectOption(RULE);
+await chooseRule(page, RULE);
 if (process.env.WILDCARD_CPUS) {
-  await page.locator('.field', { hasText: 'CPU の人数' }).locator('input').fill(process.env.WILDCARD_CPUS);
+  await page.getByRole('group', { name: 'CPU の人数', exact: true }).getByRole('button', { name: process.env.WILDCARD_CPUS, exact: true }).click();
 }
 say(`ルール: ${await page.locator('.rule-description').innerText()}`);
 await snap('setup');

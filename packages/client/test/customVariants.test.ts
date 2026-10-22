@@ -141,10 +141,19 @@ describe('壊れた保存でも遊べなくならない', () => {
     vi.spyOn(console, 'warn').mockImplementation(() => {});
     store.throwOnWrite = true;
     expect(() => saveCustomVariant(custom())).not.toThrow();
+    expect(saveCustomVariant(custom())).toBe(false);
+    expect(customVariants()).toEqual([]);
   });
 });
 
 describe('受け渡し', () => {
+  it('保存できなければ取り込み成功と報告しない', () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    store.throwOnWrite = true;
+    const result = importVariant(exportVariant(STANDARD_VARIANT));
+    expect(result.ok).toBe(false);
+    expect(customVariants()).toEqual([]);
+  });
   it('書き出して取り込める', () => {
     const result = importVariant(exportVariant(STANDARD_VARIANT));
     expect(result.ok, result.ok ? '' : result.problems.join(' / ')).toBe(true);

@@ -20,14 +20,17 @@ export function App() {
   const [variantId, setVariantId] = useState('standard');
   // どのモードを見ていたかも保つ。ソロで試そうとして編集に入り、
   // 戻ったらオンラインの画面だった、では流れが切れる。
-  const [mode, setMode] = useState<SetupMode>('online');
+  const [mode, setMode] = useState<SetupMode>('solo');
   const toSetup = () => setScreen({ kind: 'setup' });
   // 設定の下までスクロールした位置を、新しい卓や編集画面に持ち越さない。
   useEffect(() => { window.scrollTo(0, 0); }, [screen.kind]);
 
   switch (screen.kind) {
     case 'setup':
+    case 'editor':
       return (
+        <>
+        <div hidden={screen.kind === 'editor'}>
         <SetupScreen
           mode={mode}
           onModeChange={setMode}
@@ -38,9 +41,8 @@ export function App() {
           onStartOnline={(settings) => setScreen({ kind: 'online', settings })}
           onStartSolo={(settings) => setScreen({ kind: 'solo', settings })}
         />
-      );
-    case 'editor':
-      return (
+        </div>
+        {screen.kind === 'editor' &&
         <RuleEditor
           source={resolveVariant(screen.sourceId) ?? VARIANT_PRESETS[0]!}
           onClose={toSetup}
@@ -49,6 +51,8 @@ export function App() {
             toSetup();
           }}
         />
+        }
+        </>
       );
     case 'hotseat':
       return <HotSeatTable settings={screen.settings} onExit={toSetup} />;

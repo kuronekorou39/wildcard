@@ -1,3 +1,5 @@
+import { EditableNumber } from '../EditableValue.js';
+import { useState } from 'react';
 import { MAX_DECK_SIZE, deckSize, type DeckRules, type Rank, type Suit } from '@wildcard/engine';
 
 const SUIT_LABEL: Record<Suit, string> = {
@@ -26,6 +28,7 @@ interface DeckEditorProps {
  */
 export function DeckEditor({ deck, allRanks, allSuits, onChange }: DeckEditorProps) {
   const size = deckSize(deck);
+  const [editingOrder, setEditingOrder] = useState(false);
 
   const toggleSuit = (suit: Suit) => {
     const next = deck.suits.includes(suit)
@@ -92,6 +95,7 @@ export function DeckEditor({ deck, allRanks, allSuits, onChange }: DeckEditorPro
 
       <div className="field">
         <span className="field-label">強さの順（左が弱い）</span>
+        {!editingOrder ? <button type="button" className="rank-order-preview" aria-label="ランクの強さを編集" onClick={() => setEditingOrder(true)}>{deck.ranks.map(rank => <span key={rank}>{rank}</span>)}<small>編集 ↗</small></button> : <>
         <div className="rank-order">
           {deck.ranks.map((rank, i) => (
             <div key={rank} className="rank-order-item">
@@ -117,35 +121,17 @@ export function DeckEditor({ deck, allRanks, allSuits, onChange }: DeckEditorPro
             </div>
           ))}
         </div>
-        <p className="hint">
+        <button type="button" className="btn btn-ghost" onClick={() => setEditingOrder(false)}>並べ替えを完了</button>
+        </>}
+        <details className="editor-note"><summary>強さとストレートの関係</summary><p className="hint">
           並びがそのまま強さです。10 を A の上に動かせば「TT が AA より強い」になりますが、
           9-10-J-Q-K は連続でなくなります（ストレートの意味も変わります）。
-        </p>
+        </p></details>
       </div>
 
       <div className="field-row">
-        <label className="field">
-          <span className="field-label">各カードの枚数</span>
-          <input
-            className="input"
-            type="number"
-            min={0}
-            max={99}
-            value={deck.copies ?? 1}
-            onChange={(e) => onChange({ ...deck, copies: clamp(e.target.value, 0, 99) })}
-          />
-        </label>
-        <label className="field">
-          <span className="field-label">ジョーカー</span>
-          <input
-            className="input"
-            type="number"
-            min={0}
-            max={99}
-            value={deck.jokers ?? 0}
-            onChange={(e) => onChange({ ...deck, jokers: clamp(e.target.value, 0, 99) })}
-          />
-        </label>
+        <EditableNumber label="各カードの枚数" value={deck.copies ?? 1} min={0} max={99} onChange={copies => onChange({ ...deck, copies })} />
+        <EditableNumber label="ジョーカー" value={deck.jokers ?? 0} min={0} max={99} onChange={jokers => onChange({ ...deck, jokers })} />
       </div>
 
       <label className="checkline">
@@ -201,12 +187,6 @@ export function DeckEditor({ deck, allRanks, allSuits, onChange }: DeckEditorPro
   );
 }
 
-/** 入力欄の値を数にする。空欄や文字は下限として扱う。 */
-function clamp(value: string, min: number, max: number): number {
-  const n = Math.floor(Number(value));
-  if (!Number.isFinite(n)) return min;
-  return Math.min(max, Math.max(min, n));
-}
 
 function omit<T extends object, K extends keyof T>(value: T, key: K): Omit<T, K> {
   const { [key]: _removed, ...rest } = value;

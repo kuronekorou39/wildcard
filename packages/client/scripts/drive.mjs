@@ -17,6 +17,7 @@ import { chromium } from 'playwright';
 import { existsSync, mkdirSync, readdirSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
+import { chooseRule, editValue } from './setup-helpers.mjs';
 
 const URL = process.env.WILDCARD_URL ?? 'http://localhost:5173/';
 const OUT = process.env.WILDCARD_SHOTS ?? 'shots';
@@ -91,27 +92,29 @@ async function assertNoDuplicateCards(page, label) {
 
 await page.goto(URL, { waitUntil: 'networkidle' });
 say(`title: ${await page.title()}`);
-say(`H1: ${await page.locator('.hero-title').innerText()}`);
+say(`H1: ${await page.locator('.setup-heading h1').innerText()}`);
 await snap('setup');
 
 // 3人目を追加（ホットシートのタブに切り替えてから）
 await page.getByRole('tab', { name: 'ホットシート' }).click();
-await page.getByRole('button', { name: '＋ 追加' }).click();
-const nameInputs = page.locator('.player-row .input');
-say(`players: ${await nameInputs.count()}`);
-await nameInputs.nth(0).fill('あかり');
-await nameInputs.nth(1).fill('ばしょう');
-await nameInputs.nth(2).fill('ちとせ');
+await page.getByRole('button', { name: 'プレイヤーを増やす' }).click();
+await page.getByRole('button', { name: '名前を編集' }).click();
+say(`players: ${await page.locator('.player-row').count()}`);
+await editValue(page, 'プレイヤー1の名前', 'あかり');
+await editValue(page, 'プレイヤー2の名前', 'ばしょう');
+await editValue(page, 'プレイヤー3の名前', 'ちとせ');
+await page.getByRole('button', { name: '閉じる', exact: true }).click();
 
 // ホットシートのタブへ
 await page.getByRole('tab', { name: 'ホットシート' }).click();
 
 const ruleId = process.env.WILDCARD_RULE ?? 'standard';
-await page.locator('.field', { hasText: 'ルール' }).locator('select').selectOption(ruleId);
+await chooseRule(page, ruleId);
 say(`ルール: ${await page.locator('.rule-description').innerText()}`);
-await page.locator('.rule-sheet-summary').click();
+await page.getByRole('button', { name: 'ルール詳細', exact: true }).click();
 say(`役の数: ${await page.locator('.rule-sheet-list li').count()}`);
 say(`デッキ: ${await page.locator('.rule-sheet-deck').innerText()}`);
+await page.getByRole('button', { name: '閉じる', exact: true }).click();
 
 await page.getByRole('button', { name: '卓につく' }).click();
 await page.waitForSelector('.table-area');

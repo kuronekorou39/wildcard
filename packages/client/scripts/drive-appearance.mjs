@@ -1,3 +1,4 @@
+import { chooseRule } from './setup-helpers.mjs';
 /** Card choices, persistence, privacy and table layout in a real browser. */
 import { chromium } from 'playwright';
 import assert from 'node:assert/strict';
@@ -13,8 +14,8 @@ const backs = ['dragon', 'diamond', 'monogram'];
 const start = async (page, count = 6, rule = 'standard') => {
   await page.goto(url);
   await page.getByRole('tab', { name: 'ホットシート' }).click();
-  for (let i = 2; i < count; i++) await page.getByRole('button', { name: '＋ 追加' }).click();
-  await page.locator('select.input').selectOption(rule);
+  for (let i = 2; i < count; i++) await page.getByRole('button', { name: 'プレイヤーを増やす' }).click();
+  await chooseRule(page, rule);
   await page.getByRole('button', { name: '卓につく', exact: true }).click();
   await page.getByRole('button', { name: 'ゲーム開始', exact: true }).click();
   assert.equal(await page.locator('.card').count(), 0, 'No cards in the handoff gate');
