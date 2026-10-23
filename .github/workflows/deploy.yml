@@ -1,7 +1,6 @@
 name: Deploy to GitHub Pages
 
-# 段階0の成果物（サーバー不要で遊べる静的クライアント）を Pages に出す。
-# 対戦はサーバーが必要なので Pages には乗らない。詳細は docs/concept.md。
+# Pages のプレビューを配信する。クラブ用サーバーの公開は別の手順で行う。
 on:
   push:
     branches: [main]
@@ -25,7 +24,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
 
       - run: npm ci
@@ -38,6 +37,14 @@ jobs:
 
       - name: ビルド
         run: npm run build
+        env:
+          VITE_TABLE_SERVER_URL: ${{ vars.WILDCARD_TABLE_SERVER_URL }}
+
+      - name: サーバーのビルド確認
+        run: npm run build:server
+
+      - name: サーバーの通信・復旧確認
+        run: npm run verify:server
 
       # enablement: true で Pages 自体をワークフローから有効化する。
       # リポジトリ設定で Source を GitHub Actions にし忘れていても、

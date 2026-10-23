@@ -1,0 +1,19 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "wildcard-table-preview",
+  "main": "src/worker.ts",
+  "compatibility_date": "2026-07-30",
+  "durable_objects": {
+    "bindings": [
+      { "name": "TABLES", "class_name": "PokerTable" },
+      { "name": "DIRECTORY", "class_name": "TableDirectory" }
+    ]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["PokerTable", "TableDirectory"] }],
+  "vars": {
+    "ALLOWED_ORIGINS": "https://kuronekorou39.github.io,http://localhost:5173,http://127.0.0.1:5173",
+    "MAX_TABLES": "5",
+    "TABLE_TTL_HOURS": "168"
+  },
+  "observability": { "enabled": true, "head_sampling_rate": 0.1 }
+}

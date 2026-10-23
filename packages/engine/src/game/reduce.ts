@@ -12,8 +12,8 @@ import {
   type Variant,
   PREFLOP,
 } from '../types.js';
-import { buildDeck, shuffle } from '../deck.js';
-import { createRng } from '../rng.js';
+import { buildDeck, shuffle, shuffleByIndex } from '../deck.js';
+import { createRng, entropySource } from '../rng.js';
 import { type HandResult, evaluateHand } from '../rules/evaluate.js';
 import { STANDARD_VARIANT } from '../rules/presets.js';
 import {
@@ -207,6 +207,11 @@ export function validate(state: GameState, action: Action): RejectedAction | nul
 
     case 'startHand': {
       if (state.phase === 'betting') return { reason: 'ハンドの進行中' };
+      if (action.entropy !== undefined && (!Array.isArray(action.entropy) || action.entropy.length > 16384 ||
+          action.entropy.length < (buildDeck(state.variant.deck).length + 4) * 6 ||
+          action.entropy.some(word => !Number.isInteger(word) || word < 0 || word > 0xffffffff))) {
+        return { reason: '配牌用の乱数が不足または不正です' };
+      }
       const players = eligibleForNextHand(state).length;
       if (players < 2) return { reason: '参加者が2人未満' };
 
@@ -309,7 +314,7 @@ function reduceAction(state: GameState, action: Action, automaticFolds: Automati
     case 'setAway':
       return applySetAway(state, action.playerId, action.away, automaticFolds);
     case 'startHand':
-      return startHand(state, action.seed, automaticFolds);
+      return startHand(state, action.seed, automaticFolds, action.entropy);
     case 'fold':
       return actThenAdvance(state, action.playerId, (p) => ({ ...p, folded: true, hasActed: true }), automaticFolds);
     case 'check':
@@ -416,7 +421,7 @@ function eligibleForNextHand(state: GameState): Player[] {
   return state.players.filter((p) => !p.leaving && !p.away && p.chips > 0);
 }
 
-function startHand(state: GameState, seed: number, automaticFolds: AutomaticFold[]): GameState {
+function startHand(state: GameState, seed: number, automaticFolds: AutomaticFold[], entropy?: readonly number[]): GameState {
   const remaining = state.players.filter((p) => !p.leaving);
   const participants = remaining.filter((p) => !p.away && p.chips > 0);
   const seats = participants.map((p) => p.seat);
@@ -449,7 +454,7 @@ function startHand(state: GameState, seed: number, automaticFolds: AutomaticFold
   // 配牌は SB から時計回りに1枚ずつ、手札の枚数ぶん周回する。実際の配り方と
   // 同じ順序にしておくと、seed からハンドを再現したときに現実の進行と一致する。
   const dealOrder = orderClockwise(seats, blinds.smallBlindSeat, state.seatCount);
-  const dealt = dealHand(fresh, dealOrder, state.variant, seed);
+  const dealt = dealHand(fresh, dealOrder, state.variant, seed, entropy);
 
   let players = dealt.players.map<Player>((p) => {
     if (p.seat === blinds.smallBlindSeat) return postBlind(p, state.smallBlind);
@@ -559,13 +564,15 @@ function dealHand(
   dealOrder: readonly number[],
   variant: Variant,
   seed: number,
+  entropy?: readonly number[],
 ): DealResult {
   const misdealChance = misdealChanceOf(variant);
   const exposedChance = exposedCardChanceOf(variant);
   let attemptSeed = seed;
+  const supplied = entropy === undefined ? null : entropySource(entropy);
 
   for (let misdeals = 0; ; misdeals++) {
-    const deck = shuffle(buildDeck(variant.deck), attemptSeed);
+    const deck = supplied ? shuffleByIndex(buildDeck(variant.deck), supplied.index) : shuffle(buildDeck(variant.deck), attemptSeed);
     const hole = new Map<number, Card[]>(dealOrder.map((seat) => [seat, []]));
     let cursor = 0;
     for (let round = 0; round < variant.structure.holeCards; round++) {
@@ -575,7 +582,7 @@ function dealHand(
       }
     }
 
-    const rng = createRng((attemptSeed ^ 0x7f4a7c15) >>> 0);
+    const rng = supplied?.next ?? createRng((attemptSeed ^ 0x7f4a7c15) >>> 0);
 
     // 2枚以上表にしてしまった＝ミスディール。最初から配り直す。
     if (misdeals < MAX_MISDEALS && rng() < misdealChance) {
@@ -593,8 +600,8 @@ function dealHand(
       const dealtTo = players.filter((p) => p.inHand && p.holeCards.length > 0);
       const replacement = deck[cursor];
       if (dealtTo.length > 0 && replacement !== undefined) {
-        const victim = dealtTo[Math.floor(rng() * dealtTo.length)]!;
-        const index = Math.floor(rng() * victim.holeCards.length);
+        const victim = dealtTo[supplied ? supplied.index(dealtTo.length) : Math.floor(rng() * dealtTo.length)]!;
+        const index = supplied ? supplied.index(victim.holeCards.length) : Math.floor(rng() * victim.holeCards.length);
         exposedCards.push(victim.holeCards[index]!);
         cursor++;
 

@@ -8,6 +8,9 @@
   ],
   "scripts": {
     "dev": "npm run dev --workspace @wildcard/client",
+    "dev:server": "npm run dev --workspace @wildcard/server",
+    "verify:server": "npm run verify --workspace @wildcard/server",
+    "build:server": "npm run build --workspace @wildcard/server",
     "build": "npm run build --workspace @wildcard/client",
     "preview": "npm run preview --workspace @wildcard/client",
     "test": "npm run test --workspaces --if-present",

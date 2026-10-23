@@ -17,3 +17,28 @@ export function createRng(seed: number): () => number {
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
 }
+
+/**
+ * Reads externally supplied random uint32 words without generating randomness in the engine.
+ * Servers supply Web Crypto words; tests can replay the same tape. Never transmitted to players.
+ */
+export function entropySource(words: readonly number[]) {
+  let cursor = 0;
+  const word = () => {
+    const value = words[cursor++];
+    if (value === undefined || !Number.isInteger(value) || value < 0 || value > 0xffffffff) {
+      throw new Error('配牌用の乱数が不足または不正です');
+    }
+    return value;
+  };
+  return {
+    next: () => word() / 0x100000000,
+    index: (bound: number) => {
+      if (!Number.isInteger(bound) || bound < 1 || bound > 0x100000000) throw new Error('乱数の範囲が不正です');
+      const limit = Math.floor(0x100000000 / bound) * bound;
+      let value: number;
+      do { value = word(); } while (value >= limit);
+      return value % bound;
+    },
+  };
+}

@@ -14,6 +14,8 @@ export type ConnectionStatus =
   | 'closed';
 
 export interface TableSnapshot {
+  readonly pending?: boolean;
+  readonly actionRevision?: number;
   readonly runtime?: TableRuntimeSnapshot;
   /** この視点から見える状態。見えないカードはエンジン側で伏せられている。 */
   readonly state: VisibleState;
@@ -27,14 +29,13 @@ export interface TableSnapshot {
 /**
  * UI とエンジンの間の唯一の接点（docs/architecture.md の原則3）。
  *
- * UI はエンジンを直接叩かず、必ずこの interface を通す。実装は2つある。
+ * UI はエンジンを直接叩かず、必ずこの interface を通す。
  *
  * - LocalTransport  … 同じタブの中でエンジンを回す。サーバー不要（段階0）
- * - RemoteTransport … WebSocket でサーバーのエンジンを叩く（段階1以降）
+ * - HostTransport / GuestTransport … 一時的な P2P 卓
+ * - ServerTransport … WebSocket で保存されるサーバー側の卓に接続する
  *
- * UI から見てこの2つは区別できない。だからオンライン対応は差し替えで済み、
- * 書き直しにならない。旧3プロジェクトがこれをやらなかったために、
- * 片方のUIと片方のエンジンを組み替えることができなかった。
+ * 同じ卓UIを再利用し、認証・保存・復旧は通信とサーバー側で扱う。
  */
 export interface Transport {
   snapshot(): TableSnapshot;

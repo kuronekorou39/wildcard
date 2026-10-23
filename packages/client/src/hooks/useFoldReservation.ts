@@ -10,7 +10,7 @@ export function useFoldReservation(snapshot: TableSnapshot, controllablePlayerId
     && !!player && player.inHand && !player.folded && !player.allIn && !player.away;
   // 配牌・視点が変わった予約を次のハンドや別の人へ持ち越さない。
   const handKey = JSON.stringify([snapshot.runtime?.handId, viewerId, state.dealerSeat, player?.holeCards]);
-  const turnKey = JSON.stringify([handKey, snapshot.runtime?.clock?.id, state.turnPlayerId, state.streetIndex, state.currentBet]);
+  const turnKey = JSON.stringify([handKey, snapshot.runtime?.clock?.id, snapshot.actionRevision, state.turnPlayerId, state.streetIndex, state.currentBet]);
   const pending = useRef<string | null>(null);
   const [submitted, setSubmitted] = useState<string | null>(null);
   const [selected, setSelected] = useState<string | null>(null);

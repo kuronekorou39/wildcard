@@ -92,9 +92,14 @@ export function buildDeck(rules: DeckRules): Card[] {
  */
 export function shuffle<T>(cards: readonly T[], seed: number): T[] {
   const rng = createRng(seed);
+  return shuffleByIndex(cards, bound => Math.floor(rng() * bound));
+}
+
+/** Fisher-Yates with an externally supplied, bounded index source. */
+export function shuffleByIndex<T>(cards: readonly T[], nextIndex: (bound: number) => number): T[] {
   const out = cards.slice();
   for (let i = out.length - 1; i > 0; i--) {
-    const j = Math.floor(rng() * (i + 1));
+    const j = nextIndex(i + 1);
     // noUncheckedIndexedAccess のため非nullを明示
     const a = out[i]!;
     const b = out[j]!;

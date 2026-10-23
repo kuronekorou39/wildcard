@@ -533,7 +533,7 @@ export type Action =
     }
   | { readonly type: 'leave'; readonly playerId: string }
   | { readonly type: 'setAway'; readonly playerId: string; readonly away: boolean }
-  | { readonly type: 'startHand'; readonly seed: number }
+  | { readonly type: 'startHand'; readonly seed: number; readonly entropy?: readonly number[] }
   | { readonly type: 'fold'; readonly playerId: string }
   | { readonly type: 'check'; readonly playerId: string }
   | { readonly type: 'call'; readonly playerId: string }

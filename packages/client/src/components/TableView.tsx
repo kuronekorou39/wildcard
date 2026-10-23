@@ -78,7 +78,7 @@ export function TableView({
       <button type="button" className="btn game-corner game-info" onClick={() => setInfoOpen(true)}
         aria-label="卓の情報" aria-haspopup="dialog" aria-expanded={infoOpen}>
         <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 11v6M12 7v1" /></svg>
-        {(connectionProblem || dealNotice) && <span className="info-alert-dot" />}
+        {(connectionProblem || dealNotice || snapshot.note) && <span className="info-alert-dot" />}
       </button>
       {infoOpen && (
         <TableInfoPanel state={state} title={title} subtitle={subtitle} shape={shape} onShapeChange={updateShape}
@@ -92,9 +92,9 @@ export function TableView({
       </main>
 
       <footer className="bottombar" data-active={canAct && !foldReservation.awaiting}>
-        {(connectionProblem || dealNotice) && (
+        {(connectionProblem || dealNotice || snapshot.note) && (
           <button className="table-notice-link" type="button" onClick={() => setInfoOpen(true)}>
-            {connectionProblem ? snapshot.note ?? '接続状況を確認' : '配牌のお知らせ・露出札を確認'}
+            {snapshot.note ?? (connectionProblem ? '接続状況を確認' : '配牌のお知らせ・露出札を確認')}
           </button>
         )}
         {state.phase === 'waiting' && onStartHand !== null && (
@@ -111,8 +111,8 @@ export function TableView({
           </div>
         )}
 
-        {state.phase === 'waiting' && onStartHand === null && (
-          <p className="hint centered-actions">host がハンドを開始するのを待っています。</p>
+        {state.phase === 'waiting' && onStartHand === null && !snapshot.note && (
+          <p className="hint centered-actions">ハンドの開始を待っています。</p>
         )}
 
         {state.phase === 'showdown' && !presenting && (
@@ -134,9 +134,9 @@ export function TableView({
           <>
             {foldReservation.awaiting ? <span className="reservation-pending" role="status">送信中…</span> : canAct ? (
               state.phase === 'runChoice' ? (
-                <RunChoiceBar state={state} playerId={turnPlayer.id} locked={presenting} turnId={snapshot.runtime?.clock?.id ?? 0} onAction={onAction} />
+                <RunChoiceBar key={snapshot.actionRevision ?? 0} state={state} playerId={turnPlayer.id} locked={presenting} turnId={snapshot.runtime?.clock?.id ?? 0} onAction={onAction} />
               ) : (
-                <ActionBar state={state} playerId={turnPlayer.id} locked={presenting} turnId={snapshot.runtime?.clock?.id ?? 0} onAction={action => {
+                <ActionBar key={snapshot.actionRevision ?? 0} state={state} playerId={turnPlayer.id} locked={presenting} turnId={snapshot.runtime?.clock?.id ?? 0} onAction={action => {
                   foldReservation.cancel();
                   onAction(action);
                 }} />

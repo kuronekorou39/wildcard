@@ -11,6 +11,7 @@
     "test": "vitest run",
     "drive": "node scripts/drive.mjs",
     "drive:online": "node scripts/drive-online.mjs",
+    "drive:server": "node scripts/drive-server.mjs",
     "drive:solo": "node scripts/drive-solo.mjs",
     "drive:controls": "node scripts/drive-reservation.mjs",
     "drive:motion": "node scripts/drive-motion.mjs",
@@ -25,6 +26,7 @@
   },
   "dependencies": {
     "@wildcard/engine": "*",
+    "@wildcard/table": "*",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },

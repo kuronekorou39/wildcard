@@ -8,6 +8,8 @@ import { Brand } from './Brand.js';
 import { EditableText, TableStakes } from './EditableValue.js';
 import { GameDialog } from './GameDialog.js';
 import { ROOM_CODE_LENGTH, createRoomCode, invalidRoomCodeChars, isValidRoomCode, normalizeRoomCode } from '../room.js';
+import { ServerPanel } from './ServerPanel.js';
+import { invitedTable, type ServerSettings } from '../serverConnection.js';
 
 export type SetupMode = 'online' | 'solo' | 'hotseat';
 interface SetupScreenProps {
@@ -18,18 +20,20 @@ interface SetupScreenProps {
   readonly onModeChange: (mode: SetupMode) => void;
   readonly onStartHotSeat: (settings: HotSeatSettings) => void;
   readonly onStartOnline: (settings: OnlineSettings) => void;
+  readonly onStartServer: (settings: ServerSettings) => void;
   readonly onStartSolo: (settings: SoloSettings) => void;
 }
 
-export function SetupScreen({ mode, onModeChange, variantId, onVariantChange, onEditRules, onStartHotSeat, onStartOnline, onStartSolo }: SetupScreenProps) {
-  const [onlineRole, setOnlineRole] = useState<'host' | 'guest'>('host');
+export function SetupScreen({ mode, onModeChange, variantId, onVariantChange, onEditRules, onStartHotSeat, onStartOnline, onStartServer, onStartSolo }: SetupScreenProps) {
+  const [onlineRole, setOnlineRole] = useState<'host' | 'guest'>(() => invitedTable() ? 'guest' : 'host');
+  const [connection, setConnection] = useState<'server' | 'p2p'>(() => invitedTable() ? 'server' : 'p2p');
   const [about, setAbout] = useState(false);
   return <div className="screen screen-setup setup-shell">
     <header className="setup-header"><Brand /><button type="button" className="preview-badge" onClick={() => setAbout(true)}>PREVIEW <span aria-hidden="true">ⓘ</span></button></header>
     <div className="setup-heading"><h1>テーブルの準備</h1><p>ルールと進行を確かめる。</p></div>
     <main className="setup-desk">
       <section className="setup-rule-pane" aria-label="ルールの設定">
-        {mode === 'online' && onlineRole === 'guest' ? <div className="join-context"><span className="section-kicker">01 / 接続先のルール</span><span aria-hidden="true">↗</span><h2>ルームコードで接続</h2><p>ルールとチップの設定は、接続先の卓から読み込みます。</p></div> :
+        {mode === 'online' && onlineRole === 'guest' ? <div className="join-context"><span className="section-kicker">01 / 接続先のルール</span><span aria-hidden="true">↗</span><h2>{connection === 'server' ? '招待リンクで参加' : 'ルームコードで接続'}</h2><p>ルールとチップの設定は、接続先の卓から読み込みます。</p></div> :
           <RulePicker value={variantId} onChange={onVariantChange} onEdit={onEditRules} />}
       </section>
       <section className="setup-session-pane" aria-label="卓の設定">
@@ -40,11 +44,14 @@ export function SetupScreen({ mode, onModeChange, variantId, onVariantChange, on
         </nav>
         <div hidden={mode !== 'solo'} role="tabpanel" id="panel-solo" aria-labelledby="mode-solo"><SoloPanel onStart={onStartSolo} variantId={variantId} /></div>
         <div hidden={mode !== 'hotseat'} role="tabpanel" id="panel-hotseat" aria-labelledby="mode-hotseat"><HotSeatPanel onStart={onStartHotSeat} variantId={variantId} /></div>
-        <div hidden={mode !== 'online'} role="tabpanel" id="panel-online" aria-labelledby="mode-online"><OnlinePanel onStart={onStartOnline} variantId={variantId} role={onlineRole} onRoleChange={setOnlineRole} /></div>
+        <div hidden={mode !== 'online'} role="tabpanel" id="panel-online" aria-labelledby="mode-online"><div className="online-options">
+          <div className="online-connection-switch" aria-label="オンラインの接続方法"><button type="button" aria-pressed={connection === 'p2p'} onClick={() => setConnection('p2p')}>P2P</button><button type="button" aria-pressed={connection === 'server'} onClick={() => setConnection('server')}>サーバー</button></div>
+          {connection === 'server' ? <ServerPanel onStart={onStartServer} variantId={variantId} role={onlineRole} onRoleChange={setOnlineRole} /> : <OnlinePanel onStart={onStartOnline} variantId={variantId} role={onlineRole} onRoleChange={setOnlineRole} />}
+        </div></div>
       </section>
     </main>
     <footer className="setup-footer"><span>ルール・挙動の確認用</span><span>カスタムルールはこのブラウザに保存</span></footer>
-    {about && <GameDialog title="このプレビューについて" onClose={() => setAbout(false)}><p>ルールの編集と、テーブルの表示・進行を確認するためのプレビューです。</p><p>オンラインは接続中だけの一時的な卓です。アカウント、クラブ、対戦履歴の保存はありません。</p><p>作成したルールとバナーは、このブラウザに保存されます。ルールは編集画面の「受け渡し」から書き出せます。</p></GameDialog>}
+    {about && <GameDialog title="このプレビューについて" onClose={() => setAbout(false)}><p>ルールの編集と、テーブルの表示・進行を確認するためのプレビューです。</p><p>P2P は部屋を作った端末が進行する一時的な卓です。サーバー接続では再接続とハンドの保存を検証できます。アカウント・クラブはまだありません。</p><p>作成したルールとバナーは、このブラウザに保存されます。ルールは編集画面の「受け渡し」から書き出せます。</p></GameDialog>}
   </div>;
 }
 
