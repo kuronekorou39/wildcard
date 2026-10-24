@@ -605,15 +605,20 @@
   .screen-game:not(:has(.raise-controls)) .table-player:not(:has(>.showdown-result)) .seat-viewer { width: 186px; --profile-w: 156px; }
   .seat:not(.seat-viewer) { --hand-card-w: clamp(16px, calc(var(--seat-h) * .3), 24px); }
   .table-bet-anchor { --bet-gap: 10px; }
-  .table-bet-anchor[data-portrait-side="top"] .table-bet { left: calc(var(--seat-w) / 2 + 12px); top: calc(var(--seat-h) / 2 + 8px); }
+  .table-bet-anchor[data-portrait-side="top"] .table-bet { left: calc(var(--seat-w) / 2 + 12px); top: calc(var(--seat-h) / 2 + 16px); }
   .table-bet-anchor[data-viewer="true"] { left: 50%; top: calc(100% - 28px); }
   .table-bet-anchor[data-viewer="true"] .table-bet { left: 0; top: 0; }
-  .table-area .table-seat-markers[data-viewer="true"] { left: calc(50% - 62px); top: calc(100% - 25px); }
+  .table-area .table-seat-markers[data-viewer="true"] { left: calc(50% - 32px); top: calc(100% - 25px); }
+  .table-area .table-seat-markers[data-viewer="true"]:has(.position-d):has(.position-sb) { left: calc(50% - 58px); }
   @container (max-aspect-ratio: 1.2 / 1) {
     .table-felt { inset: 16px 20px 4px; width: calc(100% - 40px); height: calc(100% - 20px); }
     .table-center { top: 56%; }
     .table-stock { position: static; transform: none; }
-    .table-bet-anchor:is([data-portrait-side="left"], [data-portrait-side="right"]) { top: clamp(calc(var(--seat-h) / 2), var(--y), calc(100% - 56px)); }
+    .table-bet-anchor { --bet-y: 23px; }
+    .table-bet { height: 24px; gap: 2px; }
+    .posted-chips, .posted-chips .chip-stack { height: 10px; }
+    .posted-chips .chip-stack i { height: 2px; bottom: calc(var(--level) * .8px); }
+    .bet-amount { font-size: min(.75rem, calc(var(--bet-w) / var(--digits) / .65)); }
     .table-watermark { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); opacity: .12; z-index: -1; }
     .screen-game:has(.raise-controls) .table-phase { display: none; }
     .screen-game:has(.raise-controls) .table-center { gap: 4px; }
@@ -626,4 +631,9 @@
   .table-player { padding-top: 8px; padding-bottom: 6px; }
   .table-player .seat-viewer { --hand-card-w: 48px; height: 128px; }
   .screen-game:has(.raise-controls) .table-bet-anchor[data-viewer="true"] { top: calc(100% - 10px); }
+  .table-bet-anchor { --bet-y: 20px; }
+  .raise-controls { height: 198px; }
+  .table-bet { height: 20px; gap: 1px; }
+  .posted-chips, .posted-chips .chip-stack { height: 8px; }
+  .bet-amount { font-size: min(.65rem, calc(var(--bet-w) / var(--digits) / .65)); }
 }
