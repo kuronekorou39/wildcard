@@ -29,6 +29,8 @@ export interface TableRuntimeSnapshot {
   readonly bets: readonly PostedBet[];
   /** Public showdown hands may open here, before the remaining board animations. */
   readonly runoutAt?: number | null;
+  /** Open hands only after the final collection/board has had a quiet beat. */
+  readonly showdownAt?: number | null;
 }
 
 export const isDecision = (action: Action) =>
@@ -107,17 +109,19 @@ export class TableRuntime {
         readyAt = Math.max(readyAt, now + T.card);
       }
     }
-    const roundEnded = before.streetIndex !== after.streetIndex ||
-      (before.phase === 'betting' && after.phase !== 'betting') || (action.type === 'startHand' && after.phase !== 'betting');
+    // Resetting the street for a NEW hand must not sweep its live blinds.
+    const roundEnded = action.type === 'startHand' ? after.phase !== 'betting'
+      : before.streetIndex !== after.streetIndex || (before.phase === 'betting' && after.phase !== 'betting');
     if (roundEnded && bets.length) {
       readyAt += T.collectPause;
       append({ kind: 'collect', bets }, readyAt);
       bets = [];
       readyAt += T.collect;
     }
-    const runoutAt = after.phase === 'showdown' && before.phase !== 'showdown' && (after.summary?.revealed.length ?? 0) > 1 &&
-      (after.communityCards.length > before.communityCards.length || after.extraBoards.length > before.extraBoards.length)
-      ? readyAt : action.type === 'startHand' ? null : this.value.runoutAt ?? null;
+    const startingRunout = after.phase === 'showdown' && before.phase !== 'showdown' && (after.summary?.revealed.length ?? 0) > 1 &&
+      (after.communityCards.length > before.communityCards.length || after.extraBoards.length > before.extraBoards.length);
+    const runoutAt = startingRunout ? readyAt + T.showdownPause : action.type === 'startHand' ? null : this.value.runoutAt ?? null;
+    if (startingRunout) readyAt = runoutAt! + T.showdownReveal;
     let burned = Math.max(0, after.burned.length - before.burned.length);
     const previousBoards = [before.communityCards, ...before.extraBoards];
     [after.communityCards, ...after.extraBoards].forEach((board, run) => {
@@ -142,8 +146,11 @@ export class TableRuntime {
       }
     });
     const ended = after.phase === 'showdown' && before.phase !== 'showdown';
+    let showdownAt = action.type === 'startHand' ? null : this.value.showdownAt ?? null;
     if (ended) {
       readyAt += T.showdownPause;
+      showdownAt = readyAt;
+      if ((after.summary?.revealed.length ?? 0) > 1) readyAt += T.showdownReveal;
       for (const payout of after.summary?.payouts ?? []) append({ kind: 'win', ...payout }, readyAt);
       readyAt += T.win;
     }
@@ -169,7 +176,7 @@ export class TableRuntime {
     } else if (nextHandAt !== null && validate(after, { type: 'startHand', seed: 0 }) !== null) {
       nextHandAt = null; this.clearNextTimer();
     }
-    this.value = { handId, handStartedAt, clock, events: events.slice(-80), readyAt, nextHandAt, potChips, bets, runoutAt };
+    this.value = { handId, handStartedAt, clock, events: events.slice(-80), readyAt, nextHandAt, potChips, bets, runoutAt, showdownAt };
     this.schedule();
   }
 
@@ -218,6 +225,7 @@ export function receiveRuntime(value: TableRuntimeSnapshot, serverNow: number): 
   const offset = Date.now() - serverNow;
   return { ...value,
     runoutAt: value.runoutAt == null ? null : value.runoutAt + offset,
+    showdownAt: value.showdownAt == null ? null : value.showdownAt + offset,
     readyAt: value.readyAt + offset,
     nextHandAt: value.nextHandAt === null ? null : value.nextHandAt + offset,
     handStartedAt: value.handStartedAt === null ? null : value.handStartedAt + offset,

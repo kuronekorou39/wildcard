@@ -15,8 +15,9 @@ const pacing = { paced: false };
 let runtime = new TableRuntime(playerId => { apply({ type: 'timeout', playerId }); emitCurrent(); }, 30000, false, pacing);
 function deal(seed = 11) {
   const seatCount = Number(new URLSearchParams(location.search).get('seats')) || 6;
+  const players = Number(new URLSearchParams(location.search).get('players')) || seatCount;
   let game = createGame({ seatCount, smallBlind: 10, bigBlind: 20 });
-  for (let seat = 0; seat < seatCount; seat++)
+  for (const seat of Array.from({ length: players }, (_, i) => Math.floor(i * seatCount / players)))
     game = reduce(game, { type: 'sit', playerId: `p${seat}`, name: `Player ${seat}`, seat, chips: 1000 });
   const action = { type: 'startHand', seed } as const;
   const next = reduce(game, action);
@@ -33,6 +34,7 @@ function apply(action: Action) {
 let viewerId: string | null = 'p0';
 let status: ConnectionStatus = 'local';
 const sent: Action[] = [];
+let exits = 0;
 const snapshot = (): TableSnapshot => ({ state: project(game, viewerId), viewerId, status, note: null, runtime: runtime.snapshot() });
 
 function Harness() {
@@ -71,10 +73,11 @@ function Harness() {
     view: (value: string | null) => { viewerId = value; emit(); },
     refresh: emit,
     sent: () => [...sent],
+    exits: () => exits,
     acknowledge: () => { for (const action of sent) apply(action); emit(); },
   };
   Object.assign(window, { tableFixture: api });
-  return <TableView snapshot={current} title="操作確認" subtitle="" onExit={() => {}}
+  return <TableView snapshot={current} title="操作確認" subtitle="" onExit={() => { exits++; }}
     // Deliberately leave the old snapshot until acknowledge(), like a slow network.
     onAction={action => { sent.push(action); }}
     controllablePlayerId={current.state.turnPlayerId === current.viewerId ? current.viewerId : null}

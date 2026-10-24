@@ -29,6 +29,7 @@ export function ServerTable({ settings, onExit }: { readonly settings: ServerSet
       <button className="btn btn-small" type="button" onClick={() => { void copy(); }}>{copied ? 'コピーしました' : '招待リンクをコピー'}</button>
       <input className="input" readOnly aria-label="招待リンク" value={inviteLink(settings.tableId)} onFocus={event => event.target.select()} />
     </div>} onExit={onExit} onAction={action => transport.dispatch(action)} controllablePlayerId={myTurn}
+      exitDescription="席とチップは保持されます。同じブラウザで招待リンクを開くと戻れます。進行中のハンドは続き、不在時の手番は時間切れで処理されます。"
       onStartHand={remote?.owner && !remote.closed ? () => transport.send({ type: 'start' }) : null}
       onCancelNextHand={remote?.owner && !remote.closed ? () => transport.send({ type: 'pause' }) : null}
       startRejection={!canControl ? remote?.closed ? 'この卓は終了しました' : '接続・送信を待っています' : remote?.startRejection ?? null}

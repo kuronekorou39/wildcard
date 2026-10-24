@@ -22,7 +22,8 @@
     "drive:results": "node scripts/drive-results.mjs",
     "drive:review": "node scripts/drive-review.mjs",
     "drive:workspace": "node scripts/drive-workspace.mjs",
-    "drive:viewport": "node scripts/drive-viewport.mjs"
+    "drive:viewport": "node scripts/drive-viewport.mjs",
+    "drive:mobile-review": "node scripts/drive-mobile-review.mjs"
   },
   "dependencies": {
     "@wildcard/engine": "*",

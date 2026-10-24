@@ -65,6 +65,7 @@ export function TableInfoPanel({ state, title, subtitle, notices, controls, shap
         {tab === 'rules' && <RuleSheet variant={state.variant} label="役の順位・デッキ" defaultOpen />}
         {tab === 'sound' && <SoundSettings />}
         {tab === 'appearance' && <>
+          <p className="hint">この端末の表示設定</p>
           <label className="checkline runout-setting"><input type="checkbox" checked={revealRunout} onChange={e => onRunoutChange(e.target.checked)} />
             <span>オールイン勝負は手札を開いてランアウト</span></label>
           {runoutSaveFailed && <p className="hint">表示を変更しました。このブラウザへの保存はできませんでした。</p>}

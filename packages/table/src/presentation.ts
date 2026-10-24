@@ -2,7 +2,7 @@
 export const TABLE_TIMING = {
   card: 680, dealGap: 44, dealReveal: 360, boardGap: 180,
   bet: 900, collect: 1000, collectPause: 350, win: 1300, streetPause: 650, showdownPause: 1000,
-  think: 1400, nextHand: 8000, history: 60000,
+  showdownReveal: 900, think: 1400, nextHand: 8000, history: 60000,
 } as const;
 
 export interface ChipStack { readonly value: number; readonly count: number }

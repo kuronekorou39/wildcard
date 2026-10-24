@@ -28,6 +28,21 @@ function fixture(count = 3) {
 }
 
 describe('永続する卓の進行', () => {
+  it('新規着席は空いている間隔を優先し、再接続しても席を動かさない', () => {
+    const session = TableSession.create('room', options, 'host', 100_000, 3_600_000);
+    for (let i = 1; i < 10; i++) {
+      const before = session.data.game.players.map(player => player.seat);
+      const distance = (seat: number) => Math.min(...before.map(other => Math.min(Math.abs(seat - other), 10 - Math.abs(seat - other))));
+      const best = Math.max(...Array.from({ length: 10 }, (_, seat) => distance(seat)));
+      const member = session.join(`join${i}`, `P${i}`, true);
+      const seat = session.data.game.players.find(player => player.id === member.playerId)!.seat;
+      expect(distance(seat)).toBe(best);
+      expect(session.join(`join${i}`, `P${i}`, true)).toBe(member);
+      expect(session.data.game.players.find(player => player.id === member.playerId)!.seat).toBe(seat);
+    }
+    expect(new Set(session.data.game.players.map(player => player.seat)).size).toBe(10);
+    expect(() => session.join('full', '満席', true)).toThrow('満席');
+  });
   it('期限後は最後のハンドだけを精算し、削除猶予中も新規参加と次の配牌を拒否する', () => {
     const t = fixture(); t.act({ type: 'start' });
     const expiry = t.data.runtime.clock!.deadline!;

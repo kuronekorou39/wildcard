@@ -16,6 +16,31 @@ const settle = (t: LocalTransport) => vi.advanceTimersByTime(Math.max(0, t.snaps
 const call = (t: LocalTransport) => { const playerId = t.rawState().turnPlayerId!;
   t.dispatch({ type: legalActions(t.rawState(), playerId)!.canCheck ? 'check' : 'call', playerId }); };
 
+it('starting after a river showdown resets the street without collecting the new blinds', () => {
+  const t = table(); t.dispatch({ type: 'startHand', seed: 5 }); settle(t);
+  while (t.rawState().phase === 'betting') { call(t); settle(t); }
+  expect(t.rawState().streetIndex).toBe(2);
+  t.dispatch({ type: 'startHand', seed: 8 }); settle(t);
+  const runtime = t.snapshot().runtime!;
+  expect(runtime.events.some(event => event.kind === 'collect')).toBe(false);
+  const view = presentedChips(runtime, Date.now());
+  expect(view.pot).toEqual([]);
+  expect(view.pending).toBe(30);
+  expect(view.bets.map(bet => chipsTotal(bet.chips)).sort((a,b) => a-b)).toEqual([10,20]);
+});
+
+it('pauses before opening showdown hands, then holds the reveal before paying out', () => {
+  const t = table(); t.dispatch({ type: 'startHand', seed: 5 }); settle(t);
+  while (t.rawState().streetIndex < 2) { call(t); settle(t); }
+  const playerId = t.rawState().turnPlayerId!;
+  t.dispatch({ type: 'raise', playerId, to: 40 }); settle(t); call(t); settle(t); call(t);
+  const runtime = t.snapshot().runtime!;
+  const collect = runtime.events.filter(event => event.kind === 'collect').at(-1)!;
+  expect(runtime.showdownAt).toBe(collect.at + T.collect + T.showdownPause);
+  expect(runtime.events.find(event => event.kind === 'win')!.at).toBe(runtime.showdownAt! + T.showdownReveal);
+  expect(receiveRuntime(runtime, Date.now() - 50_000).showdownAt).toBe(runtime.showdownAt! + 50_000);
+});
+
 it('blinds and raises stay in front, then collect before the next board without changing denominations', () => {
   const t = table(); t.dispatch({ type: 'startHand', seed: 5 }); settle(t);
   const view = (now = Date.now()) => presentedChips(t.snapshot().runtime!, now);

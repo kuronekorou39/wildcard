@@ -58,7 +58,7 @@ try {
     await fits(host, `setup ${width}`, true);
     await host.screenshot({ path: `${out}/setup-${width}.png` });
   }
-  await host.setViewportSize({ width: 390, height: 844 });
+  await host.setViewportSize({ width: 390, height: 666 });
   await host.getByRole('textbox', { name: 'あなたの名前' }).fill('はる');
   await host.getByRole('button', { name: /^卓を作る/ }).click();
   await host.locator('.screen-game').waitFor();
@@ -71,6 +71,27 @@ try {
   await guest.getByRole('button', { name: /^参加する/ }).last().click();
   await guest.locator('.screen-game').waitFor();
   await until(() => snapshots.has('guest'));
+  await until(() => snapshots.get('host').online.length === 2);
+  const guestId = snapshots.get('guest').viewerId;
+  const guestSeat = snapshots.get('guest').state.players.find(player => player.id === guestId).seat;
+  const hostSeat = snapshots.get('host').state.players.find(player => player.id === snapshots.get('host').viewerId).seat;
+  assert.equal(Math.abs(guestSeat - hostSeat), 5, 'The first two players sit opposite each other');
+  const invitation = host.url();
+  await guest.getByRole('button', {name: 'もどる', exact: true}).click();
+  await guest.getByRole('button', {name: '卓に残る', exact: true}).click();
+  assert.equal(snapshots.get('host').online.length, 2, 'Cancel keeps the connection');
+  await guest.getByRole('button', {name: 'もどる', exact: true}).click();
+  await guest.getByRole('button', {name: '離れて戻る', exact: true}).click();
+  await until(() => snapshots.get('host').online.length === 1);
+  assert.equal(await host.getByRole('button', {name: 'ゲーム開始', exact: true}).isDisabled(), true);
+  // Open the invitation as a document, rather than a same-document hash change.
+  await guest.goto('about:blank');
+  await guest.goto(invitation);
+  await guest.locator('.screen-game').waitFor();
+  await until(() => snapshots.get('host').online.length === 2);
+  assert.equal(snapshots.get('guest').viewerId, guestId);
+  assert.equal(snapshots.get('guest').state.players.find(player => player.id === guestId).seat, guestSeat);
+  console.log('PASS: spaced seats, exit confirmation, one-player wait, same-seat return');
   for (let i = 2; i < 10; i++) {
     const credential = token();
     await api(server, room, '/join', { method: 'POST', headers: { 'Content-Type': 'application/json' },

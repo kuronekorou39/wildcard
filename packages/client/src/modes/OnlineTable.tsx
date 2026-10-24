@@ -112,6 +112,7 @@ export function OnlineTable({ settings, onExit }: OnlineTableProps) {
       title={isHost ? (settings.hostPlays ? 'オンライン（host）' : 'オンライン（ディーラー）') : 'オンライン'}
       subtitle={<RoomCode code={settings.roomCode} />}
       onExit={onExit}
+      exitDescription={isHost ? 'この端末で開いている卓を終了します。接続中の参加者もプレイを続けられなくなります。' : '卓から離れます。主催者が卓を開いていれば、同じブラウザとルームコードで戻れます。'}
       onAction={act}
       controllablePlayerId={controllablePlayerId}
       onStartHand={isHost ? startHand : null}

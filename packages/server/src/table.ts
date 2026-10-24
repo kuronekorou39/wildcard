@@ -101,8 +101,15 @@ export class TableSession {
     if (this.data.closed) throw new Error('この卓は終了しました');
     if (this.now >= this.data.expiresAt) throw new Error('この検証卓の保存期間が終了しました');
     if (this.data.members.length >= MAX_MEMBERS) throw new Error('この卓の参加人数が上限に達しました');
-    const seat = Array.from({ length: this.data.game.seatCount }, (_, index) => index)
-      .find(index => !this.data.game.players.some(player => player.seat === index));
+    // Spread new arrivals around the table; never move an existing/reconnecting seat.
+    const count = this.data.game.seatCount;
+    const occupied = this.data.game.players.map(player => player.seat);
+    const available = Array.from({ length: count }, (_, index) => index).filter(index => !occupied.includes(index));
+    const distance = (seat: number) => Math.min(count, ...occupied.map(other => Math.min(Math.abs(seat - other), count - Math.abs(seat - other))));
+    const furthest = Math.max(...available.map(distance));
+    const candidates = available.filter(seat => distance(seat) === furthest);
+    const seat = occupied.length === 0 ? available[0] : candidates.length
+      ? candidates[crypto.getRandomValues(new Uint32Array(1))[0]! % candidates.length] : undefined;
     if (play && seat === undefined) throw new Error('満席です。観戦で参加できます');
     const id = crypto.randomUUID();
     const member: Member = { id, playerId: play ? id : null, name, tokenHash, owner, autoAway: false,

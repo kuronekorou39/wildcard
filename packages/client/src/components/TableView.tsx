@@ -9,6 +9,7 @@ import { HandResultControl } from './HandResultControl.js';
 import { PlayingCard } from './PlayingCard.js';
 import { PokerTable } from './PokerTable.js';
 import { TableInfoPanel } from './TableInfoPanel.js';
+import { GameDialog } from './GameDialog.js';
 import { useTableShape, useRunoutReveal } from '../tableAppearance.js';
 import { useFoldReservation } from '../hooks/useFoldReservation.js';
 import { ActionIcon } from './ActionIcon.js';
@@ -19,6 +20,7 @@ interface TableViewProps {
   readonly title: string;
   readonly subtitle: ReactNode;
   readonly onExit: () => void;
+  readonly exitDescription?: string;
   readonly onAction: (action: Action) => void;
   /**
    * この端末が操作してよいプレイヤー。null なら見ているだけ。
@@ -47,6 +49,7 @@ export function TableView({
   title,
   subtitle,
   onExit,
+  exitDescription = 'このゲームを終了して、設定画面に戻ります。',
   onAction,
   controllablePlayerId,
   onStartHand,
@@ -61,6 +64,7 @@ export function TableView({
   const canAct = controllablePlayerId !== null && turnPlayer?.id === controllablePlayerId;
   const foldReservation = useFoldReservation(snapshot, presenting ? null : controllablePlayerId, onAction);
   const [infoOpen, setInfoOpen] = useState(false);
+  const [exitOpen, setExitOpen] = useState(false);
   const { shape, updateShape, saveFailed } = useTableShape();
   const runout = useRunoutReveal();
   const connectionProblem = !['local', 'connected'].includes(snapshot.status);
@@ -72,9 +76,16 @@ export function TableView({
 
   return (
     <div className="screen screen-game" data-phase={state.phase}>
-      <button type="button" className="btn game-corner game-back" onClick={onExit} aria-label="もどる">
+      <button type="button" className="btn game-corner game-back" onClick={() => setExitOpen(true)} aria-label="もどる" aria-haspopup="dialog">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14 6-6 6 6 6M8 12h13" /></svg>
       </button>
+      {exitOpen && <GameDialog title="卓を離れますか？" onClose={() => setExitOpen(false)} initialFocus=".exit-cancel">
+        <p className="exit-description">{exitDescription}</p>
+        <div className="exit-actions">
+          <button type="button" className="btn exit-cancel" onClick={() => setExitOpen(false)}>卓に残る</button>
+          <button type="button" className="btn btn-muted" onClick={onExit}>離れて戻る</button>
+        </div>
+      </GameDialog>}
       <button type="button" className="btn game-corner game-info" onClick={() => setInfoOpen(true)}
         aria-label="卓の情報" aria-haspopup="dialog" aria-expanded={infoOpen}>
         <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 11v6M12 7v1" /></svg>

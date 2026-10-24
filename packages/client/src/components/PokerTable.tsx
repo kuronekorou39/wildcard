@@ -57,7 +57,7 @@ export function PokerTable({ state, viewerId, shape = 'racetrack', runtime = nul
   };
   const potChips = potCleared ? [] : chips.pot;
   const pot = chipsTotal(potChips);
-  const showdownReady = now >= payoutAt - T.showdownPause;
+  const showdownReady = now >= (runtime?.showdownAt ?? payoutAt - T.showdownPause);
   const revealShowdown = showdownReady ||
     (revealRunout && runtime?.runoutAt != null && now >= runtime.runoutAt);
   const pendingBurns = events.reduce((sum, event) => sum +
@@ -111,7 +111,7 @@ export function PokerTable({ state, viewerId, shape = 'racetrack', runtime = nul
           {state.phase !== 'waiting' && !potCleared && <TableStock burnedCount={Math.max(0, state.burnedCount - pendingBurns)} />}
           {!potCleared && <div className="table-watermark"><Brand compact /></div>}
           {!potCleared && <div className="table-phase">{state.phase === 'showdown'
-            ? now >= payoutAt ? '配当' : showdownReady ? 'ショーダウン' : 'ランアウト'
+            ? now >= payoutAt ? '配当' : !showdownReady && runtime?.runoutAt != null ? 'ランアウト' : 'ショーダウン'
             : phaseLabel(state)}</div>}
 
           {/* 2本走ったら、ボードの数だけ並ぶ。1本なら今までどおり1列。 */}
