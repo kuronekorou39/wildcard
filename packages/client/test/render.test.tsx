@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { createGame, project, reduce } from '@wildcard/engine';
 import { HandSummaryPanel } from '../src/components/HandSummaryPanel.js';
 import { App } from '../src/App.js';
-import { HotSeatTable } from '../src/modes/HotSeatTable.js';
+import { SoloTable } from '../src/modes/SoloTable.js';
 
 /**
  * ブラウザを立てずに描画が通ることだけを確かめる煙テスト。
@@ -12,7 +12,9 @@ import { HotSeatTable } from '../src/modes/HotSeatTable.js';
  */
 
 const settings = {
-  names: ['あかり', 'ばしょう', 'ちとせ'],
+  name: 'あかり',
+  opponents: 2,
+  aggression: 0.5,
   chips: 1000,
   smallBlind: 10,
   bigBlind: 20,
@@ -23,14 +25,16 @@ describe('描画', () => {
   it('最初の画面が描画できる', () => {
     const html = renderToStaticMarkup(<App />);
     expect(html).toContain('Wildcard');
-    expect(html).toContain('ホットシート');
+    expect(html).toContain('ソロ');
+    expect(html).toContain('オンライン');
+    expect(html).not.toContain('ホットシート');
   });
 
   it('卓の画面が描画できる', () => {
-    const html = renderToStaticMarkup(<HotSeatTable settings={settings} onExit={() => {}} />);
+    const html = renderToStaticMarkup(<SoloTable settings={settings} onExit={() => {}} />);
 
     // 全員の名前が席に出ている
-    for (const name of settings.names) expect(html).toContain(name);
+    for (const name of [settings.name, 'CPU1', 'CPU2']) expect(html).toContain(name);
     // まだ開始前なのでポットは0
     expect(html).toContain('data-collected="0" data-pending="0"');
     expect(html).toContain('<span class="pot-value">0</span>');
@@ -38,21 +42,21 @@ describe('描画', () => {
   });
 
   it('人数ぶんの席が描画される', () => {
-    const html = renderToStaticMarkup(<HotSeatTable settings={settings} onExit={() => {}} />);
+    const html = renderToStaticMarkup(<SoloTable settings={settings} onExit={() => {}} />);
     // 3人なので seatCount は3、空席は出ない
     expect(html.match(/class="seat[ "]/g) ?? []).toHaveLength(3);
   });
 
-  it('ホットシートでは人数ぶんの席しか作らないので空席が出ない', () => {
+  it('ソロでは人数ぶんの席しか作らないので空席が出ない', () => {
     const html = renderToStaticMarkup(
-      <HotSeatTable settings={{ ...settings, names: ['あかり', 'ばしょう'] }} onExit={() => {}} />,
+      <SoloTable settings={{ ...settings, opponents: 1 }} onExit={() => {}} />,
     );
     expect(html).not.toContain('空席');
     expect(html.match(/class="seat[ "]/g) ?? []).toHaveLength(2);
   });
 
   it('コミュニティカードの枠が5つ出る', () => {
-    const html = renderToStaticMarkup(<HotSeatTable settings={settings} onExit={() => {}} />);
+    const html = renderToStaticMarkup(<SoloTable settings={settings} onExit={() => {}} />);
     expect(html.match(/card-slot/g) ?? []).toHaveLength(5);
   });
 });

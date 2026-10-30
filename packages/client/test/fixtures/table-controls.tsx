@@ -1,14 +1,16 @@
 // Vite-only browser fixture. Not an entry point in the production build.
 import { StrictMode, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { createGame, legalActions, project, reduce, type Action } from '@wildcard/engine';
+import { createGame, legalActions, project, reduce, VARIANT_PRESETS, type Action } from '@wildcard/engine';
 import { TableView } from '../../src/components/TableView.js';
+import { CardAppearanceProvider } from '../../src/cardAppearance.js';
 import type { ConnectionStatus, TableSnapshot } from '../../src/transport/types.js';
 import { TableRuntime } from '../../src/transport/tableRuntime.js';
 import '../../src/styles.css';
 import '../../src/layout.css';
 import '../../src/cards.css';
 import '../../src/game.css';
+import '../../src/workspace.css';
 
 let emitCurrent = () => {};
 const pacing = { paced: false };
@@ -16,9 +18,11 @@ let runtime = new TableRuntime(playerId => { apply({ type: 'timeout', playerId }
 function deal(seed = 11) {
   const seatCount = Number(new URLSearchParams(location.search).get('seats')) || 6;
   const players = Number(new URLSearchParams(location.search).get('players')) || seatCount;
-  let game = createGame({ seatCount, smallBlind: 10, bigBlind: 20 });
+  const variant = VARIANT_PRESETS.find(v => v.id === new URLSearchParams(location.search).get('rule')) ?? VARIANT_PRESETS[0]!;
+  let game = createGame({ seatCount, smallBlind: 10, bigBlind: 20, variant });
   for (const seat of Array.from({ length: players }, (_, i) => Math.floor(i * seatCount / players)))
     game = reduce(game, { type: 'sit', playerId: `p${seat}`, name: `Player ${seat}`, seat, chips: 1000 });
+  if (new URLSearchParams(location.search).get('waiting') === '1') return game;
   const action = { type: 'startHand', seed } as const;
   const next = reduce(game, action);
   runtime.advance(game, next, action);
@@ -84,4 +88,4 @@ function Harness() {
     onStartHand={api.next} startRejection={null} banner={null} />;
 }
 
-createRoot(document.getElementById('root')!).render(<StrictMode><Harness /></StrictMode>);
+createRoot(document.getElementById('root')!).render(<StrictMode><CardAppearanceProvider><Harness /></CardAppearanceProvider></StrictMode>);

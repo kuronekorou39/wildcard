@@ -111,7 +111,7 @@ await chooseRule(page, RULE);
 if (process.env.WILDCARD_CPUS) {
   await page.getByRole('group', { name: 'CPU の人数', exact: true }).getByRole('button', { name: process.env.WILDCARD_CPUS, exact: true }).click();
 }
-say(`ルール: ${await page.locator('.rule-description').innerText()}`);
+say(`ルール: ${await page.locator('.selected-rule-title').innerText()}`);
 await snap('setup');
 
 await page.getByRole('button', { name: 'はじめる' }).click();

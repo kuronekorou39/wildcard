@@ -1,3 +1,4 @@
+import { openTableFixture, settleTable } from './table-fixture-helpers.mjs';
 /** Keep a ten-seat game and every primary control inside the viewport. */
 import { chromium } from 'playwright';
 import assert from 'node:assert/strict';
@@ -70,15 +71,11 @@ try {
   for (const [width,height] of sizes) for (const [count,rule] of cases) {
     const page = await browser.newPage({ viewport: { width, height } });
     page.on('pageerror', e => errors.push(e.message));
-    await page.goto(url);
-    await page.getByRole('tab',{name:'ホットシート'}).click();
-    for(let i=2;i<count;i++) await page.getByRole('button',{name:'＋ 追加'}).click();
-    await page.locator('select.input').selectOption(rule);
-    await page.getByRole('button',{name:'卓につく',exact:true}).click();
+    await openTableFixture(page, url, count, rule, true);
     await inspect(page, `${width}x${height}-${count}-${rule}-waiting`);
     await page.getByRole('button',{name:'ゲーム開始',exact:true}).click();
-    assert.equal(await page.locator('.card').count(),0);
-    await page.getByRole('button',{name:'カードを見る',exact:true}).click();
+    await page.evaluate(() => window.tableFixture.view(window.tableFixture.state().state.turnPlayerId));
+    await settleTable(page);
     await inspect(page, `${width}x${height}-${count}-${rule}-playing`);
     assert.equal(await page.locator('.seat-avatar').count(),count);
     assert.equal(await page.locator('.table-surface .position-d').count(),1);
@@ -113,7 +110,7 @@ try {
   solo.on('pageerror',e=>errors.push(e.message));
   await solo.goto(url);
   await solo.getByRole('tab',{name:'ソロ',exact:false}).click();
-  await solo.locator('.field',{hasText:'CPU の人数'}).locator('input').fill('9');
+  await solo.locator('.seat-count-picker button').nth(8).click();
   await solo.getByRole('button',{name:'はじめる',exact:true}).click();
   assert.equal(await solo.locator('.seat').count(),10);
   await solo.getByRole('button',{name:'ゲーム開始',exact:true}).click();

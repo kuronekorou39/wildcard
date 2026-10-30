@@ -10,10 +10,10 @@ import type { TableSnapshot, Transport } from './types.js';
 import { isDecision, TableRuntime } from './tableRuntime.js';
 
 /**
- * 視点の決め方。ソロとホットシートの違いはここだけに現れる。
+ * 視点の決め方。
  *
  * - fixed      … 常に同じ人の視点。ソロ（CPU相手）
- * - followTurn … 手番の人の視点。ホットシート（1台を回す）
+ * - followTurn … 手番の人の視点。進行・秘匿の内部検証用。
  */
 export type ViewerPolicy =
   | { readonly kind: 'fixed'; readonly playerId: string }

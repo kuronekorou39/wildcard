@@ -35,7 +35,7 @@ project(state, viewerId) -> VisibleState
 「誰に何が見えるか」をUIや通信層の判断に任せない。エンジンが視点ごとに state を伏せて返す。
 自分のホールカードだけが見え、ショーダウンで初めて他人の札が開く。
 
-ソロとホットシートでは、`project` の結果をUIに渡して画面への表示を制御する。
+ソロでは、`project` の結果をUIに渡して画面への表示を制御する。
 P2P では host が guest の視点ごとに投影して配信するが、host 自身の端末には全状態がある。
 `project` は全状態を持つ端末からの秘匿を保証するものではない。
 
@@ -48,7 +48,7 @@ P2P では host が guest の視点ごとに投影して配信するが、host �
 
 | 構成 | 進行役 | 状態 |
 |---|---|---|
-| `LocalTransport` | 同じブラウザ内のエンジン | ソロ・ホットシートで実装済み |
+| `LocalTransport` | 同じブラウザ内のエンジン | ソロで実装済み |
 | `HostTransport` / `GuestTransport` | host のブラウザ内のエンジン。WebRTC で接続 | 一時的な P2P 卓で実装済み |
 | `ServerTransport` | サーバー側のエンジン。WebSocket で接続 | 席の復元・同一操作の再送・保存済み状態の受信を実装済み |
 

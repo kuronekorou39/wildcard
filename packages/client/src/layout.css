@@ -49,7 +49,6 @@ button, a, input, select, summary { -webkit-tap-highlight-color: transparent; }
 .summary-rabbit { flex-wrap: wrap; }
 .summary-rabbit-cards, .summary-run-board { flex-wrap: wrap; }
 .summary-run-head { flex-wrap: wrap; }
-.gate-inner { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 32px 24px; max-width: 380px; }
 
 /* A readable editor, with navigation and live validation in view. */
 .screen-editor { max-width: 1320px; padding: 0 32px 40px; gap: 0; }

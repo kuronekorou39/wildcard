@@ -1,4 +1,4 @@
-import { chooseRule } from './setup-helpers.mjs';
+import { openTableFixture, settleTable } from './table-fixture-helpers.mjs';
 /** Card choices, persistence, privacy and table layout in a real browser. */
 import { chromium } from 'playwright';
 import assert from 'node:assert/strict';
@@ -11,21 +11,14 @@ const browser = await chromium.launch();
 const errors = [], checks = [];
 const faces = ['classic', 'bold', 'four-color'];
 const backs = ['dragon', 'diamond', 'monogram'];
-const start = async (page, count = 6, rule = 'standard') => {
-  await page.goto(url);
-  await page.getByRole('tab', { name: 'ホットシート' }).click();
-  for (let i = 2; i < count; i++) await page.getByRole('button', { name: 'プレイヤーを増やす' }).click();
-  await chooseRule(page, rule);
-  await page.getByRole('button', { name: '卓につく', exact: true }).click();
-  await page.getByRole('button', { name: 'ゲーム開始', exact: true }).click();
-  assert.equal(await page.locator('.card').count(), 0, 'No cards in the handoff gate');
-  await page.getByRole('button', { name: 'カードを見る', exact: true }).click();
-};
+const start = (page, count = 6, rule = 'standard') => openTableFixture(page, url, count, rule);
+
 const inspect = async (page, name) => {
   const result = await page.evaluate(() => {
     const width = document.documentElement.clientWidth;
     const overflowing = [...document.querySelectorAll('body *')].filter(el => {
-      if (!el.getClientRects().length || el.tagName === 'IMG') return false;
+      // The wide felt deliberately extends beyond the clipped play area.
+      if (!el.getClientRects().length || el.tagName === 'IMG' || el.closest('.table-felt')) return false;
       const r = el.getBoundingClientRect();
       return r.width > 0 && (r.left < -2 || r.right > width + 2);
     }).map(el => `${el.tagName}.${el.className}`);
@@ -43,7 +36,8 @@ const inspect = async (page, name) => {
         if (Math.min(a.right,b.right)-Math.max(a.left,b.left)>2 && Math.min(a.bottom,b.bottom)-Math.max(a.top,b.top)>2)
           coveredCards.push(slot);
     }
-    return { overflowing, overlaps, coveredCards, tableWidth: document.querySelector('.table-surface')?.getBoundingClientRect().width,
+    return { overflowing, overlaps, coveredCards, pageOverflow: document.documentElement.scrollWidth > innerWidth + 1,
+      tableWidth: document.querySelector('.table-surface')?.getBoundingClientRect().width,
       brokenImages: [...document.images].filter(im => !im.complete || !im.naturalWidth).length };
   });
   checks.push({ name, ...result });
@@ -80,10 +74,8 @@ try {
   assert.equal(await page.locator('.seat:not(.seat-viewer) .card-back-monogram').count(), 10);
   // See the enlarged board with real face-up cards.
   for (let i = 0; i < 20 && await page.locator('.community-cards .card:not(.card-slot)').count() === 0; i++) {
-    if (await page.locator('.gate').count()) await page.getByRole('button', { name: 'カードを見る', exact: true }).click();
-    else if (await page.getByRole('button', { name: 'チェック', exact: true }).count())
-      await page.getByRole('button', { name: 'チェック', exact: true }).click();
-    else await page.getByRole('button', { name: /^コール/ }).click();
+    await page.evaluate(() => window.tableFixture.advance());
+    await settleTable(page);
   }
   await inspect(page, 'table-desktop-flop');
   // A browser that rejects persistence must still apply the design for this session.
@@ -118,7 +110,7 @@ try {
       await p.close();
     }
   }
-  const failures = checks.filter(c => c.overflowing.length || c.overlaps.length || c.coveredCards.length || c.brokenImages);
+  const failures = checks.filter(c => c.pageOverflow || c.overflowing.length || c.overlaps.length || c.coveredCards.length || c.brokenImages);
   await writeFile(`${out}/qa.json`, JSON.stringify({ errors, checks }, null, 2));
   console.log(JSON.stringify({ combinations: 9, persistence: 'passed', privacy: 'passed', total: checks.length, errors, failures }, null, 2));
   assert.equal(errors.length + failures.length, 0);

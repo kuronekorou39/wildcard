@@ -466,42 +466,6 @@ button {
   flex-wrap: wrap;
 }
 
-/* ---------- 目隠し ---------- */
-
-.gate {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 100vh;
-  min-height: 100dvh;
-  padding: 24px;
-  text-align: center;
-}
-
-.gate-inner {
-  max-width: 320px;
-}
-
-.gate-label {
-  color: var(--text-dim);
-  font-size: 0.8rem;
-  letter-spacing: 0.14em;
-}
-
-.gate-name {
-  color: var(--gold);
-  font-size: 2rem;
-  font-weight: 800;
-  margin: 6px 0 14px;
-  overflow-wrap: anywhere;
-}
-
-.gate-note {
-  color: var(--text-dim);
-  font-size: 0.86rem;
-  margin: 0 0 24px;
-}
-
 /* ---------- 結果 ---------- */
 
 .summary {
@@ -815,11 +779,6 @@ button {
 
 .rule-bar {
   padding: 6px 14px 0;
-}
-
-.rule-description {
-  margin-top: 6px;
-  line-height: 1.6;
 }
 
 .rule-sheet {

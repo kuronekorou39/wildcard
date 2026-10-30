@@ -14,9 +14,9 @@ try {
     page.on('pageerror', error => errors.push(error.message));
     await page.goto(URL);
     await page.locator('.rule-select-trigger').waitFor();
-    for (const mode of ['ソロ', 'ホットシート', 'オンライン']) {
+    for (const mode of ['ソロ', 'オンライン']) {
       await page.getByRole('tab', { name: new RegExp(`^${mode}`) }).click();
-      await page.screenshot({ path: `${OUT}/${width}-${mode === 'ソロ' ? 'solo' : mode === 'オンライン' ? 'online' : 'hotseat'}.png` });
+      await page.screenshot({ path: `${OUT}/${width}-${mode === 'ソロ' ? 'solo' : 'online'}.png` });
       const geometry = await page.evaluate(() => {
         const launch = document.querySelector('[role=tabpanel]:not([hidden]) .session-launch').getBoundingClientRect();
         const fields = document.querySelector('[role=tabpanel]:not([hidden]) .session-fields');

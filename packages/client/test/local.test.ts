@@ -64,7 +64,7 @@ describe('LocalTransport の基本', () => {
   });
 });
 
-describe('ホットシートの秘匿（followTurn）', () => {
+describe('手番視点の秘匿（内部検証用 followTurn）', () => {
   it('視点が手番とともに移る', () => {
     const transport = hotSeat();
     transport.dispatch({ type: 'startHand', seed: 1 });

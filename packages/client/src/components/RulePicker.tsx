@@ -45,18 +45,22 @@ export function RulePicker({ value, onChange, onEdit }: RulePickerProps) {
 
   return (
     <div className="rule-picker">
-      <div className="section-kicker"><span>01 / ルール</span><span>{isCustomVariant(selected.id) ? 'カスタム' : 'プリセット'}</span></div>
       <button ref={trigger} type="button" className="rule-select-trigger" aria-label={`ルールを選ぶ：${selected.name}`} aria-haspopup="dialog" aria-expanded={open}
         onClick={() => { setQuery(''); setOpen(true); }}>
         <RuleBanner variant={selected} />
         <span className="selected-rule-title"><strong>{selected.name}</strong><span className="rule-chevron" aria-hidden="true">⌄</span></span>
       </button>
-      <p className="rule-description">{selected.description}</p>
       <dl className="rule-facts"><div><dt>デッキ</dt><dd>{deckSize(selected.deck)}<small>枚</small></dd></div><div><dt>手札</dt><dd>{selected.structure.holeCards}<small>枚</small></dd></div><div><dt>ボード</dt><dd>{boardSize(selected.structure)}<small>枚</small></dd></div><div><dt>ベット</dt><dd className="rule-limit">{selected.betting.limit === 'no-limit' ? 'NL' : selected.betting.limit === 'pot-limit' ? 'PL' : 'FL'}</dd></div></dl>
       <div className="rule-actions">
-        <button type="button" className="btn btn-ghost" onClick={() => setSheet(true)}>ルール詳細</button>
-        <button type="button" className="btn btn-ghost" onClick={() => { setBanner(ruleBanner(selected.id)); setError(''); }}>バナー</button>
-        {onEdit && <button type="button" className="btn rule-edit-button" onClick={() => onEdit(selected.id)}>{isCustomVariant(selected.id) ? 'このルールを編集' : 'これを元に作る'} <span aria-hidden="true">↗</span></button>}
+        <button type="button" className="rule-tool" aria-label="ルール詳細" title="ルール詳細" onClick={() => setSheet(true)}>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 11v6M12 7v.5" /></svg>
+        </button>
+        <button type="button" className="rule-tool" aria-label="バナー" title="バナーを変更" onClick={() => { setBanner(ruleBanner(selected.id)); setError(''); }}>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3" /><circle cx="8" cy="9" r="1.5" /><path d="m4 17 5-5 4 4 3-3 5 5" /></svg>
+        </button>
+        {onEdit && <button type="button" className="rule-tool rule-edit-button" aria-label={isCustomVariant(selected.id) ? 'このルールを編集' : 'これを元に作る'} title={isCustomVariant(selected.id) ? 'ルールを編集' : 'コピーして編集'} onClick={() => onEdit(selected.id)}>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 4 5 5M4 20l5-1L20 8a2 2 0 0 0-5-5L4 14z" /></svg>
+        </button>}
       </div>
       {open && <GameDialog title="ルールを選ぶ" className="rule-select-dialog" anchor={trigger.current} initialFocus=".rule-search" onClose={() => setOpen(false)}>
         <input type="search" className="input rule-search" aria-label="ルールを検索" placeholder="ルールを検索" value={query} onChange={event => setQuery(event.target.value)} onKeyDown={event => {

@@ -3,7 +3,6 @@ import { SetupScreen, type SetupMode } from './components/SetupScreen.js';
 import { RuleEditor } from './components/editor/RuleEditor.js';
 import { resolveVariant } from './rules/customVariants.js';
 import { VARIANT_PRESETS } from '@wildcard/engine';
-import { HotSeatTable, type HotSeatSettings } from './modes/HotSeatTable.js';
 import { OnlineTable, type OnlineSettings } from './modes/OnlineTable.js';
 import { SoloTable, type SoloSettings } from './modes/SoloTable.js';
 import { ServerTable } from './modes/ServerTable.js';
@@ -12,7 +11,6 @@ import { defaultServerUrl, invitedTable, inviteLink, loadConnection, type Server
 type Screen =
   | { readonly kind: 'setup' }
   | { readonly kind: 'editor'; readonly sourceId: string }
-  | { readonly kind: 'hotseat'; readonly settings: HotSeatSettings }
   | { readonly kind: 'online'; readonly settings: OnlineSettings }
   | { readonly kind: 'server'; readonly settings: ServerSettings }
   | { readonly kind: 'solo'; readonly settings: SoloSettings };
@@ -44,7 +42,6 @@ export function App() {
           variantId={variantId}
           onVariantChange={setVariantId}
           onEditRules={(sourceId) => setScreen({ kind: 'editor', sourceId })}
-          onStartHotSeat={(settings) => setScreen({ kind: 'hotseat', settings })}
           onStartOnline={(settings) => setScreen({ kind: 'online', settings })}
           onStartServer={(settings) => { window.history.replaceState(null, '', inviteLink(settings.tableId)); setScreen({ kind: 'server', settings }); }}
           onStartSolo={(settings) => setScreen({ kind: 'solo', settings })}
@@ -62,8 +59,6 @@ export function App() {
         }
         </>
       );
-    case 'hotseat':
-      return <HotSeatTable settings={screen.settings} onExit={toSetup} />;
     case 'online':
       return <OnlineTable settings={screen.settings} onExit={toSetup} />;
     case 'server':
