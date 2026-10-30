@@ -17,6 +17,7 @@
     "drive:motion": "node scripts/drive-motion.mjs",
     "drive:pacing": "node scripts/drive-pacing.mjs",
     "drive:seats": "node scripts/drive-seats.mjs",
+    "drive:seat-markers": "node scripts/drive-seat-markers.mjs",
     "drive:audio": "node scripts/drive-audio.mjs",
     "drive:feedback": "node scripts/drive-feedback.mjs",
     "drive:results": "node scripts/drive-results.mjs",

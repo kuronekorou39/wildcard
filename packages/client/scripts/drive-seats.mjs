@@ -49,6 +49,10 @@ try {
       assert.deepEqual(await positions(), before, 'Folding must not move any profile or reserved hand slot');
       await set({ exposed: true });
       assert.equal(await page.locator('.seat .card').count(), seats, 'Only explicitly exposed cards remain after folding');
+      assert.ok(await page.locator('.seat:not(.seat-viewer) .card-index:not(.card-index-bottom)').evaluateAll(indices => indices.every(index => {
+        const r = index.getBoundingClientRect();
+        return index.closest('.card').contains(document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2));
+      })), 'Exposed opponent ranks and suits remain visible above their profiles');
       assert.deepEqual(await positions(), before);
       await set({ chips: 1000 });
       assert.deepEqual(await positions(), before, 'Changing the number of chip digits keeps the same slots');

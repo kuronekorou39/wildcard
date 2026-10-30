@@ -29,7 +29,7 @@ async function inspect(page, name) {
     const pot = document.querySelector('.table-pot');
     if (pot) for (const bet of document.querySelectorAll('.table-bet:not([data-amount="0"])'))
       if (overlaps(rect(pot),rect(bet))) problems.push('posted bet covers pot');
-    if (innerWidth < innerHeight) for (const bet of document.querySelectorAll('.table-bet:not([data-amount="0"])'))
+    for (const bet of document.querySelectorAll('.table-bet:not([data-amount="0"])'))
       for (const marker of document.querySelectorAll('.table-position-chip'))
         if (overlaps(rect(marker),rect(bet))) problems.push(`${bet.getAttribute('aria-label')} covers ${marker.getAttribute('aria-label')}`);
     for (const stock of document.querySelectorAll('.stock-pile')) for (const seat of seats)

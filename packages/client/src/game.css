@@ -25,7 +25,7 @@
 .table-surface { position: relative; min-height: 0; width: 100%; height: 100%; }
 .table-felt { position: absolute; inset: 22px 27px 8px; width: calc(100% - 54px); height: calc(100% - 30px); border: 0; border-radius: 0; background: none; box-shadow: none; filter: drop-shadow(0 6px 10px #0003); pointer-events: none; }
 /* Enlarge only the artwork. Seats, bets, stock and board retain their coordinates. */
-.screen-game[data-felt=wide] .table-surface>.table-felt { inset: -12px -6% -20px; width: 112%; height: calc(100% + 32px); }
+.screen-game[data-felt=wide] .table-surface>.table-felt { inset: -28px -12% auto; width: 124%; height: calc(100% + var(--felt-hand-h, var(--desktop-hand-h, var(--hand-rail-h, 252px))) + 70px); }
 .cpu-style-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
 .cpu-style-list span { padding: 4px 8px; border-radius: 8px; background: #ffffff09; font-size: .7rem; }
 .table-center { width: calc(100% - 2 * var(--seat-w) - 52px); max-width: 700px; top: 54%; gap: 7px; }
@@ -437,10 +437,6 @@
 @media (max-height: 500px) and (orientation: landscape) {
   .table-bet-anchor { --bet-gap: 50px; --bet-y: -2px; }
   .table-bet-anchor[data-viewer="true"] { left: calc(50% + 100px); }
-  .table-area:not([data-seats="2"]) .table-seat-markers[data-landscape-side="top"] .position-chips { left: calc(var(--seat-w) / 2 + 4px); top: calc(var(--seat-h) / 3 + 5px); }
-  .table-bet-anchor[data-landscape-side="top"] .table-bet { top: -24px; width: 64px; height: 20px; flex-direction: row; justify-content: center; gap: 4px; }
-  .table-bet-anchor[data-landscape-side="top"] .posted-chips { flex-shrink: 0; }
-  .table-bet-anchor[data-landscape-side="top"] .bet-amount { width: auto; font-size: min(.8rem, calc(26px / var(--digits) / .65)); }
   .table-stock { position: absolute; left: calc(50% + 50cqw); top: 0; transform: none; gap: 16px; }
   .screen-game { padding-right: 150px; }
   .table-wrap { padding-top: 12px; padding-left: 44px; padding-right: 12px; }
@@ -640,4 +636,40 @@
   .table-bet { height: 20px; gap: 1px; }
   .posted-chips, .posted-chips .chip-stack { height: 8px; }
   .bet-amount { font-size: min(.65rem, calc(var(--bet-w) / var(--digits) / .65)); }
+}
+
+/* Compact seats hold their cards behind the profile, leaving the inward edge for bets. */
+@media (max-width: 1099px), (max-height: 699px) {
+  .seat:not(.seat-viewer) { --rear-rise: clamp(8px, calc(var(--seat-h) - var(--profile-h)), 24px); }
+  .seat:not(.seat-viewer) .seat-profile { top: var(--rear-rise); z-index: 1; background: linear-gradient(135deg, #363033df, #272326eb); }
+  .seat:not(.seat-viewer).seat-turn .seat-profile { background: linear-gradient(135deg, #494037ed, #30292ced); }
+  .seat:not(.seat-viewer).seat-winner .seat-profile { background: linear-gradient(135deg, #5c4737ed, #382b30ed); }
+  .seat:not(.seat-viewer) .seat-cards { top: calc(var(--rear-rise) - var(--hand-card-w) * 1.18); right: 5px; z-index: 0; }
+  .seat:not(.seat-viewer) .card-index:not(.card-index-bottom) { position: absolute; top: 12%; left: 50%; transform: translateX(-50%); flex-direction: row; gap: 1px; font-size: .95em; }
+  .seat:not(.seat-viewer) .card-index .card-rank { font-size: 1em; }
+  .seat:not(.seat-viewer) .card-index .card-suit { font-size: .85em; margin: 0; }
+  .seat:not(.seat-viewer) .seat-win-badge { left: 2px; right: auto; top: 2px; z-index: 2; padding: 0; width: 14px; height: 14px; font-size: 0; display: grid; place-items: center; }
+  .seat:not(.seat-viewer) .seat-win-badge::after { content: '★'; font: 10px/1 Arial, sans-serif; }
+  @container (max-aspect-ratio: 1.2 / 1) {
+    .table-surface>:is(.seat, .table-seat-markers, .table-bet-anchor)[data-portrait-side="top"] { top: calc(var(--seat-h) / 2 - 12px); }
+    .table-area .table-bet-anchor { --bet-w: 30px; --bet-gap: 18px; --bet-y: 28px; }
+    .table-area:not([data-seats="2"]) .community-cards:not(.community-cards-wide) .card { --card-width: clamp(20px, calc((100cqw - 2 * var(--seat-w) - 80px) / 3), 40px); }
+    .table-seat-markers[data-portrait-side="top"] .position-chips { left: -22px; top: calc(var(--seat-h) / 2 + 14px); }
+    .table-bet-anchor[data-portrait-side="top"] .table-bet { left: 25px; top: calc(var(--seat-h) / 2 + 14px); }
+  }
+}
+@media (max-width: 1099px) and (min-height: 501px) {
+  .raise-controls { bottom: calc(100% - 4px); }
+}
+@media (max-height: 500px) and (orientation: landscape) {
+  .table-area { --felt-hand-h: 100px; }
+  /* Two columns avoid squeezing the far seat between its two neighbours. */
+  .seat, .table-seat-markers, .table-bet-anchor { --x: var(--portrait-x); --y: calc(var(--portrait-y) * 1.2 - 18%); }
+  .table-area .table-seat-markers[data-portrait-side="left"] .position-chips { left: calc(var(--seat-w) / 2 + 16px); top: 0; }
+  .table-area .table-seat-markers[data-portrait-side="right"] .position-chips { left: calc(var(--seat-w) / -2 - 16px); top: 0; }
+  .table-area .table-seat-markers[data-portrait-side="top"] .position-chips { left: calc(var(--seat-w) / -2 - 20px); top: 8px; }
+  .table-area .table-bet-anchor[data-portrait-side="left"] .table-bet { left: calc(var(--seat-w) / 2 + var(--bet-gap)); top: var(--bet-y); }
+  .table-area .table-bet-anchor[data-portrait-side="right"] .table-bet { left: calc(var(--seat-w) / -2 - var(--bet-gap)); top: var(--bet-y); }
+  .table-area .table-bet-anchor[data-portrait-side="top"] .table-bet { left: calc(var(--seat-w) / 2 + 32px); top: 0; }
+  .table-area .table-seat-markers[data-viewer="true"] { left: calc(50% - 64px); top: calc(100% - 10px); }
 }

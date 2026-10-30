@@ -2,7 +2,7 @@ import type { Card, VisiblePlayer } from '@wildcard/engine';
 import { usesCard } from '../showdownSelection.js';
 import type { CSSProperties } from 'react';
 import { PlayingCard } from './PlayingCard.js';
-import { seatCoordinates } from '../seatLayout.js';
+import { portraitSeatPosition, seatCoordinates, seatSide } from '../seatLayout.js';
 import type { TurnClock } from '../transport/tableRuntime.js';
 import { TurnRing } from './TurnTimer.js';
 import { TABLE_TIMING as T } from '../transport/presentation.js';
@@ -24,6 +24,7 @@ interface SeatProps {
 
 export function Seat({ slot, seatCount, player, isTurn, isViewer, clock, dealtAt, dealOrder = 0, winner = null, usedCards, usedPositions }: SeatProps) {
   const style = { ...seatCoordinates(slot, seatCount), '--hand-count': Math.max(1, player?.holeCards.length ?? 0) } as CSSProperties;
+  const side = seatSide(portraitSeatPosition(slot, seatCount));
 
   const classes = ['seat'];
   if (!player) classes.push('seat-empty');
@@ -36,14 +37,14 @@ export function Seat({ slot, seatCount, player, isTurn, isViewer, clock, dealtAt
 
   if (!player) {
     return (
-      <div className={classes.join(' ')} style={style} data-slot={slot}>
+      <div className={classes.join(' ')} style={style} data-slot={slot} data-portrait-side={side}>
         <span className="seat-empty-label">空席</span>
       </div>
     );
   }
 
   return (
-    <div className={classes.join(' ')} style={style} data-slot={slot} data-player-id={player.id}
+    <div className={classes.join(' ')} style={style} data-slot={slot} data-player-id={player.id} data-portrait-side={side}
       aria-label={player.folded ? `${player.name}：フォールド済み` : player.name}>
       <div className="seat-profile">
         {winner && <span className="seat-win-badge" title={`${winner.ranking} +${winner.amount.toLocaleString()}`}
