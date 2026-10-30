@@ -1,6 +1,6 @@
 import { type VisibleState, boardSize, boardsOf, streetName } from '@wildcard/engine';
 import { useMemo, useState, type CSSProperties } from 'react';
-import { showdownSelections, usesCard } from '../showdownSelection.js';
+import { showdownSelections } from '../showdownSelection.js';
 import { CardSlot, PlayingCard } from './PlayingCard.js';
 import { Seat } from './Seat.js';
 import { displaySlot } from '../seatLayout.js';
@@ -92,6 +92,7 @@ export function PokerTable({ state, viewerId, shape = 'racetrack', runtime = nul
         isViewer={player !== null && player.id === viewerId}
         winner={winners.find(winner => winner.playerId === player?.id) ?? null}
         usedCards={selected && selected.playerId === player?.id && selected.usedCards.length ? selected.usedCards : undefined}
+        usedPositions={selected && selected.playerId === player?.id && selected.usedCards.length ? selected.positions.hole : undefined}
         clock={runtime?.clock ?? null}
         dealtAt={runtime?.handStartedAt ?? null}
         dealOrder={player ? (player.seat - state.dealerSeat - 1 + state.seatCount) % state.seatCount : 0}
@@ -123,8 +124,8 @@ export function PokerTable({ state, viewerId, shape = 'racetrack', runtime = nul
                 const card = board[i];
                 const reveal = runtime?.events.slice().reverse().find(event => event.kind === 'board' && event.run === run && i >= event.from && i < event.from + event.count);
                 return card && (!reveal || now >= reveal.at) ? <PlayingCard key={i} card={card} revealAt={reveal?.at ?? null} revealKind="board"
-                  highlighted={selected?.run === run && usesCard(selected.usedCards, card)}
-                  dimmed={selected?.run === run && selected.usedCards.length > 0 && !usesCard(selected.usedCards, card)}
+                  highlighted={selected?.run === run && selected.positions.board[i] === true}
+                  dimmed={selected?.run === run && selected.usedCards.length > 0 && selected.positions.board[i] !== true}
                   revealDelay={(reveal?.kind === 'board' ? i - reveal.from : 0) * T.boardGap} /> : <CardSlot key={i} />;
               })}
             </div>

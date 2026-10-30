@@ -17,6 +17,7 @@ export function ServerPanel({ variantId, role, onRoleChange, onStart }: {
   const [chips, setChips] = useState(1000);
   const [smallBlind, setSmallBlind] = useState(10);
   const [bigBlind, setBigBlind] = useState(20);
+  const [ante, setAnte] = useState(0);
   const [seats, setSeats] = useState(10);
   const [play, setPlay] = useState(true);
   const [createKey, setCreateKey] = useState(import.meta.env.DEV ? 'local-preview-only' : '');
@@ -36,7 +37,7 @@ export function ServerPanel({ variantId, role, onRoleChange, onStart }: {
       if (role === 'host') {
         const variant = resolveVariant(variantId);
         if (!variant) throw new Error('ルールが見つかりません');
-        const options = { name: name.trim(), chips, smallBlind, bigBlind, seatCount: seats, hostPlays: play, variant };
+        const options = { name: name.trim(), chips, smallBlind, bigBlind, ante, seatCount: seats, hostPlays: play, variant };
         const signature = JSON.stringify([serverUrl, options]);
         if (attempt.current?.signature !== signature) attempt.current = { signature, settings: { serverUrl,
           tableId: crypto.randomUUID(), name: name.trim(), token: connectionToken() } };
@@ -57,7 +58,7 @@ export function ServerPanel({ variantId, role, onRoleChange, onStart }: {
     <div className="session-fields">
       <div className="segmented"><button type="button" className={`segment ${role === 'host' ? 'segment-active' : ''}`} onClick={() => onRoleChange('host')}>部屋を作る</button><button type="button" className={`segment ${role === 'guest' ? 'segment-active' : ''}`} onClick={() => onRoleChange('guest')}>参加する</button></div>
       <label className="field"><span className="field-label">あなたの名前</span><input className="input" value={name} maxLength={24} placeholder={previous?.name ?? '名前を入力'} onChange={event => setName(event.target.value)} /></label>
-      {role === 'host' ? <><TableStakes chips={chips} smallBlind={smallBlind} bigBlind={bigBlind} onChips={setChips} onSmallBlind={setSmallBlind} onBigBlind={setBigBlind} />
+      {role === 'host' ? <><TableStakes chips={chips} smallBlind={smallBlind} bigBlind={bigBlind} ante={ante} onAnte={setAnte} onChips={setChips} onSmallBlind={setSmallBlind} onBigBlind={setBigBlind} />
         <div className="server-seats"><EditableNumber label="席数" value={seats} min={2} max={10} onChange={setSeats} /><label className="checkline"><input type="checkbox" checked={play} onChange={event => setPlay(event.target.checked)} />自分も席に着く</label></div></> : <>
         <label className="field"><span className="field-label">招待リンク / 卓ID</span><input className="input" value={invite} onChange={event => setInvite(event.target.value)} placeholder="招待リンクを貼り付け" /></label>
         {!previous && <label className="checkline"><input type="checkbox" checked={play} onChange={event => setPlay(event.target.checked)} />席に着く（オフで観戦）</label>}

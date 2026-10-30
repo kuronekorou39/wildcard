@@ -45,13 +45,15 @@ export function readOptions(value: unknown): TableOptions {
   if (!parsed.ok) throw new Error('ルールの形式が不正です');
   const name = readName(value.name);
   const { chips, smallBlind, bigBlind, seatCount, hostPlays } = value;
+  const ante = value.ante ?? 0;
+  if (!Number.isSafeInteger(ante) || (ante as number) < 0 || (ante as number) > 1_000_000_000) throw new Error('アンティの設定が不正です');
   if (![chips, smallBlind, bigBlind, seatCount].every(Number.isSafeInteger) || typeof hostPlays !== 'boolean' ||
       (seatCount as number) < 2 || (seatCount as number) > 10 || (smallBlind as number) < 1 ||
       (bigBlind as number) < (smallBlind as number) || (chips as number) < (bigBlind as number) ||
       (chips as number) > 1_000_000_000) throw new Error('人数・チップ・ブラインドの設定が不正です');
   const problems = validateVariant(parsed.variant, seatCount as number);
   if (problems.length) throw new Error(problems[0]!.message);
-  return { name, chips: chips as number, smallBlind: smallBlind as number, bigBlind: bigBlind as number,
+  return { name, ante: ante as number, chips: chips as number, smallBlind: smallBlind as number, bigBlind: bigBlind as number,
     seatCount: seatCount as number, hostPlays, variant: parsed.variant };
 }
 export function readName(value: unknown): string {

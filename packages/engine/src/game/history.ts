@@ -38,8 +38,18 @@ export function recordHandHistory(before: GameState, after: GameState, action: A
     const order = [...after.players].sort((a,b) =>
       (a.seat - (blinds?.smallBlindSeat ?? 0) + after.seatCount) % after.seatCount -
       (b.seat - (blinds?.smallBlindSeat ?? 0) + after.seatCount) % after.seatCount);
+    const antes = new Map<string, number>();
+    for (const player of players) {
+      const amount = Math.min(player.chips, after.ante ?? 0);
+      antes.set(player.id, amount);
+      if (!amount) continue;
+      update(player.id, { chips: player.chips - amount, allIn: player.chips === amount });
+      pot += amount;
+      append({ kind: 'ante', playerId: player.id, amount });
+    }
     for (const p of order) {
-      const amount = paidBy(p.id);
+      if (!p.inHand) continue;
+      const amount = paidBy(p.id) - (antes.get(p.id) ?? 0);
       if (amount <= 0) continue;
       pay(p.id, amount);
       const blind = p.seat === blinds?.smallBlindSeat ? 'SB' : p.seat === blinds?.bigBlindSeat ? 'BB' : undefined;

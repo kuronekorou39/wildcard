@@ -94,7 +94,8 @@ export class TableRuntime {
         : player.committed - (action.type === 'startHand' ? 0 : previous?.committed ?? 0);
       if (paid > 0) {
         // Antes go straight to the pot; live blinds and voluntary bets stay in front.
-        const posted = action.type === 'startHand' && after.phase === 'betting' ? player.bet : paid;
+        const ante = action.type === 'startHand' && player.inHand ? Math.min(previous?.chips ?? 0, after.ante ?? 0) : 0;
+        const posted = Math.max(0, paid - ante);
         const chips = contributedChips(posted);
         potChips = addChips(potChips, addChips(chips, contributedChips(paid - posted)));
         if (posted > 0) {

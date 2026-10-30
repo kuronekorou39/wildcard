@@ -19,9 +19,10 @@ interface SeatProps {
   readonly dealOrder?: number;
   readonly winner?: { readonly amount: number; readonly ranking: string } | null;
   readonly usedCards?: readonly Card[] | undefined;
+  readonly usedPositions?: readonly boolean[] | undefined;
 }
 
-export function Seat({ slot, seatCount, player, isTurn, isViewer, clock, dealtAt, dealOrder = 0, winner = null, usedCards }: SeatProps) {
+export function Seat({ slot, seatCount, player, isTurn, isViewer, clock, dealtAt, dealOrder = 0, winner = null, usedCards, usedPositions }: SeatProps) {
   const style = { ...seatCoordinates(slot, seatCount), '--hand-count': Math.max(1, player?.holeCards.length ?? 0) } as CSSProperties;
 
   const classes = ['seat'];
@@ -71,7 +72,7 @@ export function Seat({ slot, seatCount, player, isTurn, isViewer, clock, dealtAt
                 '--fan-position': player.holeCards.length > 1 ? i / (player.holeCards.length - 1) - .5 : 0,
               } as CSSProperties}>
                 <PlayingCard card={card} size={isViewer ? 'lg' : 'sm'}
-                  highlighted={usedCards !== undefined && usesCard(usedCards, card)} dimmed={usedCards !== undefined && !usesCard(usedCards, card)}
+                  highlighted={usedPositions ? usedPositions[i] === true : usedCards !== undefined && usesCard(usedCards, card)} dimmed={usedPositions ? usedPositions[i] !== true : usedCards !== undefined && !usesCard(usedCards, card)}
                   revealAt={dealtAt ?? null} revealDelay={T.dealReveal + (i * seatCount + dealOrder) * T.dealGap} />
               </div> : null,
         )}

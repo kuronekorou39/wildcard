@@ -3,7 +3,6 @@ import {
   activeRankings,
   boardSize,
   deckSize,
-  buildDeck,
   describePattern,
   describeWilds,
   evaluateExact,
@@ -12,6 +11,7 @@ import {
 } from '@wildcard/engine';
 import type { Card, Variant } from '@wildcard/engine';
 import { PlayingCard, cardLabel } from './PlayingCard.js';
+import { DeckContents } from './DeckContents.js';
 import { isCustomVariant, useVariants } from '../rules/customVariants.js';
 import { GameDialog } from './GameDialog.js';
 import { BannerEditor, RuleBanner } from './RuleBanner.js';
@@ -136,7 +136,7 @@ export function RuleSheet({ variant, label = 'ルール', defaultOpen = false }:
       <summary className="rule-sheet-summary">{label}</summary>
       <div className="rule-sheet-body">
         <p className="rule-sheet-deck">
-          デッキ {buildDeck(deck).length}枚（{deck.ranks.join(' ')}）
+          デッキ {deckSize(deck)}枚（{deck.ranks.join(' ')}）
           {deck.suitRanking !== undefined && ' ／ スートに強弱あり'}
           <br />
           手札{variant.structure.holeCards}枚 ／ 場{boardSize(variant.structure)}枚
@@ -150,6 +150,7 @@ export function RuleSheet({ variant, label = 'ルール', defaultOpen = false }:
             </>
           )}
         </p>
+        {opened && <details className="deck-card-editor"><summary>デッキのカード一覧</summary><DeckContents deck={deck} /></details>}
         <ol className="rule-sheet-list">
           {rankings.map((ranking) => (
             <li key={ranking.id} className="rule-row">

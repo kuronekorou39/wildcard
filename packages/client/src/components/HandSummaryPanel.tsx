@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { evaluateHand, type VisibleState } from '@wildcard/engine';
 import { PlayingCard } from './PlayingCard.js';
 import { HandHistory } from './HandHistory.js';
-import { usesCard } from '../showdownSelection.js';
+import { selectedPositions } from '../showdownSelection.js';
 
 interface HandSummaryPanelProps {
   readonly state: VisibleState;
@@ -30,16 +30,17 @@ export function HandSummaryPanel({ state, onNextHand, canStartNextHand, blockedR
         const id = selected[index] ?? run.payouts[0]?.playerId ?? run.revealed[0]?.playerId;
         const hand = run.revealed.find(h => h.playerId === id);
         const used = hand?.usedCards ?? (hand ? evaluateHand(hand.holeCards, run.board, state.variant)?.cards ?? [] : []);
+        const positions = hand ? selectedPositions(hand.holeCards, run.board, state.variant) : { hole: [], board: [] };
         return <section className="summary-run" key={index}>
           {runs.length > 1 && <h3 className="summary-run-label">{index + 1}本目</h3>}
           <div className="summary-run-board">{run.board.map((card,i) => <PlayingCard key={i} card={card} size="sm"
-            highlighted={usesCard(used,card)} dimmed={used.length > 0 && !usesCard(used,card)} />)}</div>
+            highlighted={positions.board[i] === true} dimmed={used.length > 0 && positions.board[i] !== true} />)}</div>
           {run.revealed.length > 0 ? <ul className="summary-hands">{run.revealed.map(h => {
             const win = run.payouts.find(p => p.playerId === h.playerId);
             return <li key={h.playerId}><button type="button" className="summary-hand" aria-pressed={id === h.playerId} onClick={() => setSelected(old => ({ ...old, [index]: h.playerId }))}>
               <span className="summary-hand-name">{nameOf(h.playerId)}{win && <b className="summary-hand-win">WIN +{win.amount.toLocaleString()}</b>}</span>
               <span className="summary-hand-cards">{h.holeCards.map((card,i) => <PlayingCard key={i} card={card} size="sm"
-                highlighted={id === h.playerId && usesCard(used,card)} dimmed={id === h.playerId && used.length > 0 && !usesCard(used,card)} />)}</span>
+                highlighted={id === h.playerId && positions.hole[i] === true} dimmed={id === h.playerId && used.length > 0 && positions.hole[i] !== true} />)}</span>
               <span className="summary-hand-ranking">{h.rankingName}</span>
             </button></li>;
           })}</ul> : <p className="summary-note">全員が降りたため、手は公開されません。</p>}

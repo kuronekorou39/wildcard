@@ -1,6 +1,6 @@
 import { createGame, project, type Action } from '@wildcard/engine';
 import { playerCommand, receiveRuntime, type CommandRequest, type ServerMessage, type ServerSnapshot, type TableCommand } from '@wildcard/table';
-import { loadConnection, saveConnection, type ServerSettings } from '../serverConnection.js';
+import { loadConnection, saveConnection, serverRequest, ServerRequestError, type ServerSettings } from '../serverConnection.js';
 import type { TableSnapshot, Transport } from './types.js';
 
 export class ServerTransport implements Transport {
@@ -18,9 +18,11 @@ export class ServerTransport implements Transport {
   private sentPending: string | null = null;
   private actionNote: string | null = null;
   private failures = 0;
+  private unavailable = false;
   constructor(readonly settings: ServerSettings) { this.pending = loadConnection(settings.serverUrl, settings.tableId)?.pending ?? null; }
   snapshot() { return this.cached; }
   serverSnapshot() { return this.current; }
+  isUnavailable() { return this.unavailable; }
   subscribe(listener: (snapshot: TableSnapshot) => void) { this.listeners.add(listener); return () => { this.listeners.delete(listener); }; }
   dispatch(action: Action) { const command = playerCommand(action); if (command) this.send(command); }
   send(command: TableCommand) {
@@ -42,7 +44,7 @@ export class ServerTransport implements Transport {
     this.socket?.close(1000); this.socket = null;
   }
   private connect() {
-    if (!this.active) return;
+    if (!this.active || this.unavailable) return;
     const generation = ++this.generation;
     this.sentPending = null;
     this.update({ status: 'connecting', note: this.current ? '再接続しています…' : '接続しています…' });
@@ -69,10 +71,23 @@ export class ServerTransport implements Transport {
       if (this.heartbeat) clearInterval(this.heartbeat);
       if (!this.active) return;
       if ([4001, 4003, 4004, 1008].includes(event.code)) {
+        this.unavailable = event.code === 4004;
         this.update({ status: 'rejected', pending: false, note: event.reason || '接続を終了しました' }); return;
       }
       this.update({ status: 'disconnected', note: '接続が切れました。再接続しています…' });
       this.reconnect = setTimeout(() => this.connect(), Math.min(8000, 500 * 2 ** Math.min(4, this.retries++)));
+      // WebSocket handshakes hide HTTP 404/410. Recheck occasionally after transient outages.
+      if (this.retries === 1 || this.retries % 4 === 0) void serverRequest(this.settings).catch(failure => {
+        if (!this.active || this.cached.status === 'connected') return;
+        if (failure instanceof ServerRequestError && [404, 410].includes(failure.status)) {
+          this.unavailable = true;
+          this.generation++;
+          if (this.reconnect) clearTimeout(this.reconnect);
+          if (this.heartbeat) clearInterval(this.heartbeat);
+          this.socket?.close(1000);
+          this.update({ status: 'rejected', pending: false, note: 'この卓は保存期限が過ぎたか、削除されています。' });
+        }
+      });
     };
     socket.onerror = () => { /* The close event owns retries. */ };
   }

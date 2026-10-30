@@ -5,7 +5,7 @@ import { GameDialog } from '../components/GameDialog.js';
 import { HandSummaryPanel } from '../components/HandSummaryPanel.js';
 import { useTable } from '../hooks/useTable.js';
 import { ServerTransport } from '../transport/server.js';
-import { inviteLink, serverRequest, type ServerSettings } from '../serverConnection.js';
+import { forgetConnection, inviteLink, serverRequest, type ServerSettings } from '../serverConnection.js';
 
 interface HistoryItem { readonly handId: number; readonly endedAt: number; readonly winners: readonly { name: string; amount: number }[] }
 
@@ -16,6 +16,7 @@ export function ServerTable({ settings, onExit }: { readonly settings: ServerSet
   const [historyOpen, setHistoryOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const [closeConfirm, setCloseConfirm] = useState(false);
+  const [forgetConfirm, setForgetConfirm] = useState(false);
   useEffect(() => { transport.start(); return () => transport.stop(); }, [transport]);
   const connected = snapshot.status === 'connected';
   const canControl = connected && !snapshot.pending && !remote?.closed;
@@ -29,13 +30,17 @@ export function ServerTable({ settings, onExit }: { readonly settings: ServerSet
       <button className="btn btn-small" type="button" onClick={() => { void copy(); }}>{copied ? 'コピーしました' : '招待リンクをコピー'}</button>
       <input className="input" readOnly aria-label="招待リンク" value={inviteLink(settings.tableId)} onFocus={event => event.target.select()} />
     </div>} onExit={onExit} onAction={action => transport.dispatch(action)} controllablePlayerId={myTurn}
-      exitDescription="席とチップは保持されます。同じブラウザで招待リンクを開くと戻れます。進行中のハンドは続き、不在時の手番は時間切れで処理されます。"
+      exitMode="leave" exitDescription="席とチップは保存期間内に保持されます。同じブラウザで招待リンクを開くと戻れます。進行中のハンドは続き、不在時の手番は時間切れで処理されます。"
       onStartHand={remote?.owner && !remote.closed ? () => transport.send({ type: 'start' }) : null}
       onCancelNextHand={remote?.owner && !remote.closed ? () => transport.send({ type: 'pause' }) : null}
       startRejection={!canControl ? remote?.closed ? 'この卓は終了しました' : '接続・送信を待っています' : remote?.startRejection ?? null}
       banner={<div className="server-table-controls">
         {snapshot.note && <p role="status" className="hint hint-warn">{snapshot.note}</p>}
-        <p className="hint">{remote?.closed ? '終了した卓です。保存したハンドを確認できます。' : `接続中 ${remote?.online.length ?? 0} 人`}</p>
+        <dl className="table-facts server-lifetime"><div><dt>状態</dt><dd>{transport.isUnavailable() ? '期限切れ・削除済み' : !remote ? '確認中' : remote.closed ? '終了・記録のみ' : ['betting', 'runChoice'].includes(snapshot.state.phase) ? '開催中' : '待機中'}</dd></div>
+          {remote && <div><dt>保存期限</dt><dd><time dateTime={new Date(remote.expiresAt).toISOString()}>{new Date(remote.expiresAt).toLocaleString('ja-JP', { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</time></dd></div>}</dl>
+        <p className="hint">退出しても卓は残ります。作成から7日間保存し、期限をまたぐハンドは終了後に削除します。</p>
+        {remote && <p className="hint">接続中 {remote.online.length} 人</p>}
+        {transport.isUnavailable() && <button type="button" className="btn" onClick={() => setForgetConfirm(true)}>この端末の参加情報を削除</button>}
         <button type="button" className="btn" disabled={!connected} onClick={() => setHistoryOpen(true)}>保存したハンド</button>
         {snapshot.viewerId && !remote?.closed && <button type="button" className="btn" disabled={!canControl}
           onClick={() => transport.send({ type: 'setAway', away: !snapshot.state.players.find(player => player.id === snapshot.viewerId)?.away })}>
@@ -43,6 +48,7 @@ export function ServerTable({ settings, onExit }: { readonly settings: ServerSet
         {remote?.owner && !remote.closed && <button type="button" className="btn" disabled={!canControl || !['waiting', 'showdown'].includes(snapshot.state.phase)} onClick={() => setCloseConfirm(true)}>卓を終了</button>}
       </div>} />
     {historyOpen && <HistoryDialog settings={settings} onClose={() => setHistoryOpen(false)} />}
+    {forgetConfirm && <GameDialog title="参加情報を削除" onClose={() => setForgetConfirm(false)}><p>この端末に残った、この卓への接続情報を削除します。</p><button type="button" className="btn" onClick={() => setForgetConfirm(false)}>キャンセル</button><button type="button" className="btn btn-danger" onClick={() => { forgetConnection(settings); onExit(); }}>削除して設定へ戻る</button></GameDialog>}
     {closeConfirm && <GameDialog title="卓を終了" onClose={() => setCloseConfirm(false)}><p>次のハンドを止め、この卓への新しい参加を締め切ります。記録は保存期間内に確認できます。</p><button type="button" className="btn btn-danger" onClick={() => { transport.send({ type: 'close' }); setCloseConfirm(false); }}>卓を終了する</button></GameDialog>}
   </>;
 }

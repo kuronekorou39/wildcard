@@ -65,6 +65,7 @@ function OnlinePanel({ onStart, variantId, role, onRoleChange }: {
   const [chips, setChips] = useState(1000);
   const [smallBlind, setSmallBlind] = useState(10);
   const [bigBlind, setBigBlind] = useState(20);
+  const [ante, setAnte] = useState(0);
   const badChars = invalidRoomCodeChars(code);
   const blindsOk = smallBlind > 0 && bigBlind >= smallBlind && chips >= bigBlind;
   const ready = name.trim().length > 0 && (role === 'host' ? blindsOk : isValidRoomCode(code));
@@ -73,13 +74,13 @@ function OnlinePanel({ onStart, variantId, role, onRoleChange }: {
       <div className="segmented"><button type="button" className={`segment ${role === 'host' ? 'segment-active' : ''}`} onClick={() => onRoleChange('host')}>部屋を作る</button><button type="button" className={`segment ${role === 'guest' ? 'segment-active' : ''}`} onClick={() => onRoleChange('guest')}>参加する</button></div>
       <label className="field"><span className="field-label">あなたの名前</span><input className="input" value={name} maxLength={12} placeholder="名前を入力" onChange={event => setName(event.target.value)} /></label>
       {role === 'guest' ? <label className="field"><span className="field-label">ルームコード（{ROOM_CODE_LENGTH}文字）</span><input className="input input-code" value={code} autoCapitalize="characters" placeholder="ABCDEF" onChange={event => setCode(normalizeRoomCode(event.target.value))} />{badChars.length > 0 && <span className="hint hint-warn">{badChars.join(' ')} は使用できません。</span>}</label> : <>
-        <TableStakes chips={chips} smallBlind={smallBlind} bigBlind={bigBlind} onChips={setChips} onSmallBlind={setSmallBlind} onBigBlind={setBigBlind} />
+        <TableStakes chips={chips} smallBlind={smallBlind} bigBlind={bigBlind} ante={ante} onAnte={setAnte} onChips={setChips} onSmallBlind={setSmallBlind} onBigBlind={setBigBlind} />
         <label className="checkline"><input type="checkbox" checked={hostPlays} onChange={event => setHostPlays(event.target.checked)} /><span>自分も席に着く</span></label>
         {!blindsOk && <p className="hint hint-warn">SB ≦ BB ≦ 初期チップに設定してください。</p>}
       </>}
       <p className="session-note">接続中だけの一時的な卓です。部屋を作った端末が進行を担当します。</p>
     </div>
-    <div className="session-launch"><button type="button" className="btn btn-primary btn-large btn-block" disabled={!ready} onClick={() => onStart({ role, roomCode: role === 'host' ? createRoomCode() : code, name: name.trim(), chips, smallBlind, bigBlind, hostPlays, variantId })}>{role === 'host' ? '部屋を作る' : '接続する'} <span aria-hidden="true">→</span></button></div>
+    <div className="session-launch"><button type="button" className="btn btn-primary btn-large btn-block" disabled={!ready} onClick={() => onStart({ role, roomCode: role === 'host' ? createRoomCode() : code, name: name.trim(), chips, smallBlind, bigBlind, ante, hostPlays, variantId })}>{role === 'host' ? '部屋を作る' : '接続する'} <span aria-hidden="true">→</span></button></div>
   </div>;
 }
 
@@ -89,15 +90,16 @@ function HotSeatPanel({ onStart, variantId }: { readonly onStart: (settings: Hot
   const [chips, setChips] = useState(1000);
   const [smallBlind, setSmallBlind] = useState(10);
   const [bigBlind, setBigBlind] = useState(20);
+  const [ante, setAnte] = useState(0);
   const valid = smallBlind > 0 && bigBlind >= smallBlind && chips >= bigBlind;
   return <div className="session-config">
     <div className="session-fields">
       <div className="field"><span className="field-label">プレイヤー</span><div className="player-count-control"><button type="button" className="btn" aria-label="プレイヤーを減らす" disabled={names.length <= 2} onClick={() => setNames(current => current.slice(0, -1))}>−</button><strong>{names.length}<small>人</small></strong><button type="button" className="btn" aria-label="プレイヤーを増やす" disabled={names.length >= 10} onClick={() => setNames(current => [...current, `プレイヤー${current.length + 1}`])}>＋</button><button type="button" className="btn btn-ghost" onClick={() => setPlayersOpen(true)}>名前を編集 ↗</button></div></div>
-      <TableStakes chips={chips} smallBlind={smallBlind} bigBlind={bigBlind} onChips={setChips} onSmallBlind={setSmallBlind} onBigBlind={setBigBlind} />
+      <TableStakes chips={chips} smallBlind={smallBlind} bigBlind={bigBlind} ante={ante} onAnte={setAnte} onChips={setChips} onSmallBlind={setSmallBlind} onBigBlind={setBigBlind} />
       {!valid && <p className="hint hint-warn">SB ≦ BB ≦ 初期チップに設定してください。</p>}
       <p className="session-note">手番ごとに手札を伏せ、1 台の端末で順番に操作します。</p>
     </div>
-    <div className="session-launch"><span className="session-overview">{names.length} 席 · ローカル</span><button type="button" className="btn btn-primary btn-large btn-block" disabled={!valid} onClick={() => onStart({ names: names.map((name, i) => name.trim() || `プレイヤー${i + 1}`), chips, smallBlind, bigBlind, variantId })}>卓につく <span aria-hidden="true">→</span></button></div>
+    <div className="session-launch"><span className="session-overview">{names.length} 席 · ローカル</span><button type="button" className="btn btn-primary btn-large btn-block" disabled={!valid} onClick={() => onStart({ names: names.map((name, i) => name.trim() || `プレイヤー${i + 1}`), chips, smallBlind, bigBlind, ante, variantId })}>卓につく <span aria-hidden="true">→</span></button></div>
     {playersOpen && <GameDialog title="プレイヤー" onClose={() => setPlayersOpen(false)}><ul className="player-list">{names.map((name, i) => <li className="player-row" key={i}><span className="player-index">{String(i + 1).padStart(2, '0')}</span><EditableText label={`プレイヤー${i + 1}の名前`} value={name} maxLength={12} onChange={value => setNames(current => current.map((old, at) => at === i ? value : old))} /></li>)}</ul></GameDialog>}
   </div>;
 }

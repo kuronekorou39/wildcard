@@ -391,7 +391,7 @@ export interface RevealedHand {
 }
 
 export interface HandHistoryStep {
-  readonly kind: 'deal' | 'blind' | 'straddle' | 'fold' | 'check' | 'call' | 'raise' | 'timeout-check' | 'timeout-fold' | 'run-once' | 'run-agree' | 'collect' | 'burn' | 'board' | 'refund' | 'award';
+  readonly kind: 'deal' | 'ante' | 'blind' | 'straddle' | 'fold' | 'check' | 'call' | 'raise' | 'timeout-check' | 'timeout-fold' | 'run-once' | 'run-agree' | 'collect' | 'burn' | 'board' | 'refund' | 'award';
   readonly playerId?: string;
   readonly amount?: number;
   readonly to?: number;
@@ -451,6 +451,8 @@ export interface HandSummary {
 }
 
 export interface GameState {
+  /** Per-player dead money, separate from live bets. Missing in older saved games means zero. */
+  readonly ante?: number;
   /** Current hand's public action/transfer ledger; replaced on the next deal. */
   readonly history?: readonly HandHistoryStep[];
   readonly phase: Phase;

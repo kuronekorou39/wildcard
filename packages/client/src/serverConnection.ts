@@ -29,6 +29,12 @@ export function saveConnection(connection: StoredConnection) {
   try { localStorage.setItem(storageKey(connection.serverUrl, connection.tableId), JSON.stringify(connection)); }
   catch { throw new Error('再接続の情報を保存できません。ブラウザの保存領域を確認してください'); }
 }
+export function forgetConnection(settings: ServerSettings) {
+  localStorage.removeItem(storageKey(settings.serverUrl, settings.tableId));
+}
+export class ServerRequestError extends Error {
+  constructor(message: string, readonly status: number) { super(message); }
+}
 export function connectionToken() {
   return Array.from(crypto.getRandomValues(new Uint8Array(32)), byte => byte.toString(16).padStart(2, '0')).join('');
 }
@@ -48,7 +54,7 @@ export async function serverRequest(settings: Pick<ServerSettings, 'serverUrl' |
     signal: init.signal ?? AbortSignal.timeout(15000),
   });
   const value: unknown = await response.json();
-  if (!response.ok) throw new Error(typeof value === 'object' && value && 'error' in value ? String(value.error) : 'サーバーに接続できませんでした');
+  if (!response.ok) throw new ServerRequestError(typeof value === 'object' && value && 'error' in value ? String(value.error) : 'サーバーに接続できませんでした', response.status);
   return value;
 }
 export async function createServerTable(settings: ServerSettings, options: TableOptions, createKey: string) {

@@ -80,8 +80,41 @@
 .editable-value:hover { border-bottom-color: var(--gold); color: var(--gold); }
 .editable-value:hover svg { stroke: var(--gold); opacity: 1; }
 .editable-input { min-height: 44px; padding: 7px 8px; font-size: 16px; }
-.table-stakes { display: grid; grid-template-columns: minmax(0, 1.5fr) repeat(2, minmax(0, 1fr)); gap: 20px; }
+.table-stakes { display: grid; grid-template-columns: minmax(0, 1.3fr) repeat(3, minmax(0, 1fr)); gap: 14px; }
 .table-stakes .editable-value { font-size: clamp(1.1rem, 1.6vw, 1.55rem); }
+.table-stakes .field-label { white-space: nowrap; font-size: .65rem; }
+.deck-card-editor { margin: 16px 0; min-width: 0; }
+.deck-card-editor>summary { cursor: pointer; color: var(--text-dim); padding: 10px 0; font-size: .8rem; }
+.deck-kind-scroll { max-width: 100%; overflow-x: auto; padding: 4px 0 8px; }
+.deck-kind-grid { display: grid; gap: 4px; min-width: min-content; }
+.deck-kind { border: 1px solid var(--border); border-radius: 8px; background: #302c30; color: var(--text); min-height: 53px; padding: 6px 2px; display: grid; place-items: center; cursor: pointer; }
+.deck-kind[data-red=true] { color: #f2aba7; }
+.deck-kind small { color: var(--text-dim); font-variant-numeric: tabular-nums; }
+.deck-kind[data-custom=true] { border-color: #bd9a71; }
+.deck-kind[aria-pressed=true] { background: #624a40; outline: 2px solid #ddbe98; outline-offset: -2px; }
+.deck-card-count { display: flex; align-items: end; gap: 16px; padding: 12px 0; }
+.deck-card-count .editable-field { flex: 1; margin: 0; }
+.deck-contents { min-width: 0; margin: 12px 0; padding: 12px; border: 1px solid var(--border); border-radius: 14px; background: #18171966; }
+.deck-contents-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+.deck-contents-toolbar strong { white-space: nowrap; font-size: .8rem; }
+.deck-contents-toolbar .chips { gap: 4px; }
+.deck-contents-toolbar .chip { padding: 6px 9px; font-size: .68rem; }
+.deck-contents-scroll { max-height: 270px; overflow: auto; overscroll-behavior: contain; padding: 4px; }
+.deck-contents-cards { position: relative; }
+.deck-contents-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(44px, 1fr)); gap: 8px; justify-items: center; }
+.deck-contents-card { display: block; width: 44px; }
+.deck-contents-card .card { width: 44px; height: 64px; flex: none; border-radius: 6px; font-size: 14px; }
+.deck-contents-card .card-index { font-size: 14px; }
+.deck-contents-overlap, .deck-contents-arc { height: 124px; }
+.deck-contents-overlap .deck-contents-card, .deck-contents-arc .deck-contents-card { position: absolute; transform-origin: 50% 100%; }
+.deck-pagination { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: .7rem; margin-top: 8px; }
+@media (max-width: 400px) {
+  .table-stakes { gap: 8px; }
+  .table-stakes .field-label { font-size: .56rem; }
+  .table-stakes .editable-value { font-size: 1rem; }
+  .table-stakes .editable-value svg { display: none; }
+  .deck-card-count { flex-wrap: wrap; }
+}
 .editable-field .hint-warn { display: block; font-size: .68rem; }
 .editable-compact>.field-label { display: none !important; }
 .rules-shell .editor-content .field.editable-compact { margin: 0; }

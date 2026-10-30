@@ -1,9 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import { createGame, project, reduce, legalActions, OMAHA } from '@wildcard/engine';
-import { showdownSelections, usesCard } from '../src/showdownSelection.js';
+import { selectedPositions, showdownSelections, usesCard } from '../src/showdownSelection.js';
 import { showdownWinners } from '../src/components/ShowdownResult.js';
 
 describe('勝者と役名', () => {
+  it('identical card values and shared object references highlight exactly five physical positions', () => {
+    const ace = { rank: 'A', suit: 'spades' } as const;
+    const king = { rank: 'K', suit: 'spades' } as const;
+    const board = [{ rank: 'Q', suit: 'spades' }, { rank: 'J', suit: 'spades' }, { rank: '10', suit: 'spades' }, ace, ace] as const;
+    const positions = selectedPositions([ace, king, ace, king], board, OMAHA);
+    expect(positions.hole.filter(Boolean)).toHaveLength(2);
+    expect(positions.board).toEqual([true, true, true, false, false]);
+  });
   it('オマハの強調は手札2枚・場3枚を守る', () => {
     let state = createGame({ seatCount: 3, variant: OMAHA });
     for (let seat=0;seat<3;seat++) state=reduce(state,{type:'sit',playerId:`p${seat}`,name:`P${seat}`,seat,chips:1000});

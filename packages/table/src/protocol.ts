@@ -25,6 +25,7 @@ export interface CommandReceipt {
   readonly message: string | null;
 }
 export interface TableOptions {
+  readonly ante?: number;
   readonly name: string;
   readonly chips: number;
   readonly smallBlind: number;

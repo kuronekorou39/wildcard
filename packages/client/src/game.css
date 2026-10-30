@@ -24,6 +24,10 @@
 .table-area { width: 100%; max-width: 1400px; height: 100%; max-height: none; aspect-ratio: auto; display: grid; grid-template-rows: minmax(0, 1fr) auto; min-height: 0; flex: 1; }
 .table-surface { position: relative; min-height: 0; width: 100%; height: 100%; }
 .table-felt { position: absolute; inset: 22px 27px 8px; width: calc(100% - 54px); height: calc(100% - 30px); border: 0; border-radius: 0; background: none; box-shadow: none; filter: drop-shadow(0 6px 10px #0003); pointer-events: none; }
+/* Enlarge only the artwork. Seats, bets, stock and board retain their coordinates. */
+.screen-game[data-felt=wide] .table-surface>.table-felt { inset: -12px -6% -20px; width: 112%; height: calc(100% + 32px); }
+.cpu-style-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+.cpu-style-list span { padding: 4px 8px; border-radius: 8px; background: #ffffff09; font-size: .7rem; }
 .table-center { width: calc(100% - 2 * var(--seat-w) - 52px); max-width: 700px; top: 54%; gap: 7px; }
 .table-watermark { margin-bottom: 4px; opacity: .36; pointer-events: none; }
 .table-watermark .brand { font-size: .85rem; letter-spacing: -.035em; gap: 5px; }

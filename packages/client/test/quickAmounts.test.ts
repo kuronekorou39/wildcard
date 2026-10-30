@@ -5,6 +5,15 @@ const labels = (input: Parameters<typeof quickAmounts>[0]) =>
   Object.fromEntries(quickAmounts(input).map((q) => [q.label, q.value]));
 
 describe('レイズ額のショートカット', () => {
+  it('rounds ratio targets to a blind-sized unit, keeping exact bounds and no duplicate all-in', () => {
+    const result = quickAmounts({ min: 21, max: 911, pot: 699, ownBet: 0, currentBet: 0, allIn: 911, bigBlind: 20 });
+    expect(result).toContainEqual({ label: '約 1/3 ポット', value: 230 });
+    expect(result[0]!.value).toBe(21);
+    expect(result.at(-1)).toEqual({ label: 'オールイン', value: 911 });
+    expect(result.map(q => q.value)).toEqual([...new Set(result.map(q => q.value))].sort((a, b) => a - b));
+    const nearAllIn = quickAmounts({ min: 21, max: 230, pot: 699, ownBet: 0, currentBet: 0, allIn: 230, bigBlind: 20 });
+    expect(nearAllIn.filter(q => q.value === 230)).toEqual([{ label: 'オールイン', value: 230 }]);
+  });
   it('ポットサイズはコール額を含めて計算される', () => {
     // プリフロップ: ポット30、コールに20必要、自分はまだ0
     // コールするとポットは50になり、そこにポットぶんを上乗せする

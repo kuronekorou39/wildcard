@@ -55,6 +55,7 @@ export function ActionBar({ state, playerId, onAction, turnId, locked = false }:
       ownBet: player.bet,
       currentBet: state.currentBet,
       allIn: player.bet + player.chips,
+      bigBlind: state.bigBlind,
     });
 
     return (
@@ -201,6 +202,7 @@ export interface QuickAmountInput {
    * 書いてしまうと嘘になる**ので、本当の全額をここで受け取る。
    */
   readonly allIn: number;
+  readonly bigBlind?: number;
 }
 
 /**
@@ -221,19 +223,27 @@ export function quickAmounts({
   ownBet,
   currentBet,
   allIn,
+  bigBlind = 1,
 }: QuickAmountInput): QuickAmount[] {
   const toCall = Math.max(0, currentBet - ownBet);
   const potAfterCall = pot + toCall;
 
+  const target = Math.max(1, bigBlind / 2);
+  const magnitude = 10 ** Math.floor(Math.log10(target));
+  const step = [5, 2, 1].find(n => n * magnitude <= target)! * magnitude;
   const fractions: QuickAmount[] = [
     { label: '1/3 ポット', value: currentBet + Math.round(potAfterCall / 3) },
     { label: '1/2 ポット', value: currentBet + Math.round(potAfterCall / 2) },
     { label: '3/4 ポット', value: currentBet + Math.round(potAfterCall * 3 / 4) },
     { label: 'ポット', value: currentBet + potAfterCall },
   ];
+  const rounded = fractions.map(candidate => {
+    const value = Math.round(candidate.value / step) * step;
+    return { label: `${value !== candidate.value ? '約 ' : ''}${candidate.label}`, value };
+  });
   const candidates: QuickAmount[] = [
     { label: '最小', value: min },
-    ...fractions.filter(candidate => candidate.value > min && candidate.value < max),
+    ...rounded.filter(candidate => candidate.value > min && candidate.value < max && candidate.value < allIn),
     // 上限が手持ち全部とは限らない。違うなら「オールイン」とは書かない。
     { label: max >= allIn ? 'オールイン' : '上限', value: max },
   ];

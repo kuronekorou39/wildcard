@@ -1,4 +1,5 @@
 import { EditableNumber } from '../EditableValue.js';
+import { DeckCards } from './DeckCards.js';
 import { useState } from 'react';
 import { MAX_DECK_SIZE, deckSize, type DeckRules, type Rank, type Suit } from '@wildcard/engine';
 
@@ -34,7 +35,7 @@ export function DeckEditor({ deck, allRanks, allSuits, onChange }: DeckEditorPro
     const next = deck.suits.includes(suit)
       ? deck.suits.filter((s) => s !== suit)
       : [...allSuits.filter((s) => deck.suits.includes(s) || s === suit)];
-    onChange({ ...deck, suits: next });
+    onChange({ ...deck, suits: next, overrides: deck.suits.includes(suit) ? (deck.overrides ?? []).filter(card => card.suit !== suit) : deck.overrides ?? [] });
   };
 
   const toggleRank = (rank: Rank) => {
@@ -42,7 +43,7 @@ export function DeckEditor({ deck, allRanks, allSuits, onChange }: DeckEditorPro
       ? deck.ranks.filter((r) => r !== rank)
       : // 元の並びの位置へ戻す。付け足すと強さの順序が変わってしまう。
         allRanks.filter((r) => deck.ranks.includes(r) || r === rank);
-    onChange({ ...deck, ranks: next });
+    onChange({ ...deck, ranks: next, overrides: deck.ranks.includes(rank) ? (deck.overrides ?? []).filter(card => card.rank !== rank) : deck.overrides ?? [] });
   };
 
   const moveRank = (at: number, by: number) => {
@@ -133,6 +134,8 @@ export function DeckEditor({ deck, allRanks, allSuits, onChange }: DeckEditorPro
         <EditableNumber label="各カードの枚数" value={deck.copies ?? 1} min={0} max={99} onChange={copies => onChange({ ...deck, copies })} />
         <EditableNumber label="ジョーカー" value={deck.jokers ?? 0} min={0} max={99} onChange={jokers => onChange({ ...deck, jokers })} />
       </div>
+
+      <DeckCards deck={deck} suits={allSuits} onChange={onChange} />
 
       <label className="checkline">
         <input

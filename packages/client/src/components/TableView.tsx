@@ -10,7 +10,7 @@ import { PlayingCard } from './PlayingCard.js';
 import { PokerTable } from './PokerTable.js';
 import { TableInfoPanel } from './TableInfoPanel.js';
 import { GameDialog } from './GameDialog.js';
-import { useTableShape, useRunoutReveal } from '../tableAppearance.js';
+import { useTableShape, useRunoutReveal, useWideFelt } from '../tableAppearance.js';
 import { useFoldReservation } from '../hooks/useFoldReservation.js';
 import { ActionIcon } from './ActionIcon.js';
 import { usePresentationTime } from '../hooks/usePresentationTime.js';
@@ -21,6 +21,7 @@ interface TableViewProps {
   readonly subtitle: ReactNode;
   readonly onExit: () => void;
   readonly exitDescription?: string;
+  readonly exitMode?: 'end' | 'leave';
   readonly onAction: (action: Action) => void;
   /**
    * この端末が操作してよいプレイヤー。null なら見ているだけ。
@@ -50,6 +51,7 @@ export function TableView({
   subtitle,
   onExit,
   exitDescription = 'このゲームを終了して、設定画面に戻ります。',
+  exitMode = 'end',
   onAction,
   controllablePlayerId,
   onStartHand,
@@ -67,6 +69,7 @@ export function TableView({
   const [exitOpen, setExitOpen] = useState(false);
   const { shape, updateShape, saveFailed } = useTableShape();
   const runout = useRunoutReveal();
+  const felt = useWideFelt();
   const connectionProblem = !['local', 'connected'].includes(snapshot.status);
   const dealNotice = state.phase !== 'waiting' && (state.exposedCards.length > 0 || state.misdeals > 0);
   const extraControls = <>
@@ -75,15 +78,15 @@ export function TableView({
   </>;
 
   return (
-    <div className="screen screen-game" data-phase={state.phase}>
+    <div className="screen screen-game" data-phase={state.phase} data-felt={felt.wide ? 'wide' : 'standard'}>
       <button type="button" className="btn game-corner game-back" onClick={() => setExitOpen(true)} aria-label="もどる" aria-haspopup="dialog">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14 6-6 6 6 6M8 12h13" /></svg>
       </button>
-      {exitOpen && <GameDialog title="卓を離れますか？" onClose={() => setExitOpen(false)} initialFocus=".exit-cancel">
+      {exitOpen && <GameDialog title={exitMode === 'end' ? 'ゲームを終了しますか？' : '卓を離れますか？'} onClose={() => setExitOpen(false)} initialFocus=".exit-cancel">
         <p className="exit-description">{exitDescription}</p>
         <div className="exit-actions">
-          <button type="button" className="btn exit-cancel" onClick={() => setExitOpen(false)}>卓に残る</button>
-          <button type="button" className="btn btn-muted" onClick={onExit}>離れて戻る</button>
+          <button type="button" className="btn exit-cancel" onClick={() => setExitOpen(false)}>{exitMode === 'end' ? 'プレイを続ける' : '卓に残る'}</button>
+          <button type="button" className="btn btn-muted" onClick={onExit}>{exitMode === 'end' ? '終了して設定へ戻る' : '設定へ戻る'}</button>
         </div>
       </GameDialog>}
       <button type="button" className="btn game-corner game-info" onClick={() => setInfoOpen(true)}
@@ -93,6 +96,7 @@ export function TableView({
       </button>
       {infoOpen && (
         <TableInfoPanel state={state} title={title} subtitle={subtitle} shape={shape} onShapeChange={updateShape}
+          wideFelt={felt.wide} onWideFeltChange={felt.updateWide} feltSaveFailed={felt.saveFailed}
           revealRunout={runout.revealRunout} onRunoutChange={runout.updateRunout} runoutSaveFailed={runout.saveFailed}
           shapeSaveFailed={saveFailed} onClose={() => setInfoOpen(false)}
           notices={<>{banner}<DealNotice snapshot={snapshot} /></>} controls={extraControls} />

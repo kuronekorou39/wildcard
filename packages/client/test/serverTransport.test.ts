@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createGame, project } from '@wildcard/engine';
 import { TableRuntime, type ServerSnapshot } from '@wildcard/table';
-import { loadConnection, normalizeServerUrl, saveConnection, tableIdFrom } from '../src/serverConnection.js';
+import { forgetConnection, loadConnection, normalizeServerUrl, saveConnection, tableIdFrom } from '../src/serverConnection.js';
 import { ServerTransport } from '../src/transport/server.js';
 
 class Socket {
@@ -27,7 +27,8 @@ beforeEach(() => {
   vi.useFakeTimers(); vi.setSystemTime(100000); Socket.all = [];
   const data = new Map<string, string>();
   vi.stubGlobal('WebSocket', Socket);
-  vi.stubGlobal('localStorage', { getItem: (key: string) => data.get(key) ?? null, setItem: (key: string, value: string) => data.set(key, value) });
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('{}', { status: 503 })));
+  vi.stubGlobal('localStorage', { getItem: (key: string) => data.get(key) ?? null, setItem: (key: string, value: string) => data.set(key, value), removeItem: (key: string) => data.delete(key) });
   saveConnection(settings);
 });
 afterEach(() => { vi.clearAllTimers(); vi.useRealTimers(); vi.unstubAllGlobals(); });
@@ -37,6 +38,35 @@ function start() {
   return { transport, socket };
 }
 describe('サーバーへの接続', () => {
+  it('a slow expiry response stops retries, but leaves credentials until explicitly forgotten', async () => {
+    let respond!: (response: Response) => void;
+    vi.stubGlobal('fetch', () => new Promise<Response>(resolve => { respond = resolve; }));
+    const t = new ServerTransport(settings); t.start(); vi.advanceTimersByTime(0);
+    Socket.all[0]!.close(1006);
+    vi.advanceTimersByTime(600); // A reconnect began before the HTTP probe completed.
+    respond(new Response('{"error":"expired"}', { status: 410 }));
+    await vi.advanceTimersByTimeAsync(0);
+    expect(t.isUnavailable()).toBe(true);
+    expect(t.snapshot().status).toBe('rejected');
+    const count = Socket.all.length;
+    await vi.advanceTimersByTimeAsync(20000);
+    expect(Socket.all).toHaveLength(count);
+    expect(loadConnection(settings.serverUrl, settings.tableId)).not.toBeNull();
+    forgetConnection(settings);
+    expect(loadConnection(settings.serverUrl, settings.tableId)).toBeNull();
+    t.stop();
+  });
+  it('a transient HTTP failure does not treat the room as expired or erase its credentials', async () => {
+    const t = new ServerTransport(settings); t.start(); vi.advanceTimersByTime(0);
+    Socket.all[0]!.close(1006);
+    await vi.advanceTimersByTimeAsync(500);
+    expect(t.isUnavailable()).toBe(false);
+    expect(Socket.all).toHaveLength(2);
+    Socket.all[1]!.open(); Socket.all[1]!.message(state());
+    expect(t.snapshot().status).toBe('connected');
+    expect(loadConnection(settings.serverUrl, settings.tableId)).not.toBeNull();
+    t.stop();
+  });
   it('資格情報をURLに入れず、送信前に操作を保存する', () => {
     const { transport, socket } = start();
     expect(socket.url).not.toContain(settings.token);

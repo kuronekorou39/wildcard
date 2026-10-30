@@ -7,11 +7,13 @@ import { GuestTransport } from '../src/transport/guest.js';
 import { FakeNetwork } from './fakeLink.js';
 import { MSG } from '../src/net/protocol.js';
 import { chipsTotal, TABLE_TIMING as T } from '../src/transport/presentation.js';
+import { presentedChips } from '../src/chipPresentation.js';
 
 beforeEach(() => { vi.useFakeTimers(); vi.setSystemTime(100_000); });
 afterEach(() => { vi.clearAllTimers(); vi.useRealTimers(); });
 
-const table = (hotseat = false, runs = false, paced = false) => new LocalTransport({
+const table = (hotseat = false, runs = false, paced = false, ante = 0) => new LocalTransport({
+  ante,
   paced, ...(paced ? { autoNextHandMs: T.nextHand } : {}),
   seatCount: 3, smallBlind: 10, bigBlind: 20, turnTimeMs: 1000,
   viewer: hotseat ? { kind: 'followTurn' } : { kind: 'fixed', playerId: 'p0' },
@@ -22,6 +24,21 @@ const table = (hotseat = false, runs = false, paced = false) => new LocalTranspo
 const settle = (t: LocalTransport) => vi.advanceTimersByTime(Math.max(0, t.snapshot().runtime!.readyAt - Date.now()));
 
 describe('演出を待つ進行と次のハンド', () => {
+  it('only antes appear in the center until the first betting round closes', () => {
+    const t = table(false, false, true, 5); start(t); settle(t);
+    let chips = presentedChips(t.snapshot().runtime!, Date.now());
+    expect(chipsTotal(chips.pot)).toBe(15);
+    expect(chips.pending).toBe(30);
+    call(t); settle(t); call(t); settle(t);
+    chips = presentedChips(t.snapshot().runtime!, Date.now());
+    expect(chipsTotal(chips.pot)).toBe(15);
+    expect(chips.bets.map(b => chipsTotal(b.chips)).sort()).toEqual([20, 20, 20]);
+    call(t); settle(t);
+    chips = presentedChips(t.snapshot().runtime!, Date.now());
+    expect(chipsTotal(chips.pot)).toBe(75);
+    expect(chips.pending).toBe(0);
+    t.dispose();
+  });
   it('配牌と場札が揃うまで次の操作を受け付けず、持ち時間を消費しない', () => {
     const t = table(false, false, true); start(t);
     const ready = t.snapshot().runtime!.readyAt;
@@ -200,12 +217,15 @@ describe('オンライン卓の期限と二重送信', () => {
   it('ホストだけが期限を実行し、過去の手番の再送を拒否する', async () => {
     const net = new FakeNetwork();
     const host = new HostTransport({ link: net.host, roomCode: 'ABCDEF', hostName: 'Host', hostPlays: true,
-      startingChips: 1000, seatCount: 2, smallBlind: 10, bigBlind: 20, turnTimeMs: 10000 });
+      startingChips: 1000, seatCount: 2, smallBlind: 10, bigBlind: 20, ante: 5, turnTimeMs: 10000 });
     await host.start();
     const link = net.createGuest();
     const guest = new GuestTransport({ link, roomCode: 'ABCDEF', sessionId: 'guest', name: 'Guest' });
     await guest.start(); net.connect(link);
     host.dispatch({ type: 'startHand', seed: 1 });
+    expect(guest.snapshot().state.ante).toBe(5);
+    expect(guest.snapshot().state.pot).toBe(40);
+    expect(guest.snapshot().state.players.reduce((sum, p) => sum + p.bet, 0)).toBe(30);
     host.dispatch({ type: 'call', playerId: host.rawState().turnPlayerId! });
     const id = guest.snapshot().viewerId!;
     const oldTurn = guest.snapshot().runtime!.clock!.id;

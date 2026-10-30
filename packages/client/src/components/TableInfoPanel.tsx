@@ -9,7 +9,10 @@ import { SoundSettings } from './SoundSettings.js';
 
 const TABS = [['table', 'テーブル'], ['rules', 'ルール'], ['appearance', '見た目'], ['sound', 'サウンド']] as const;
 
-export function TableInfoPanel({ state, title, subtitle, notices, controls, shape, onShapeChange, shapeSaveFailed, onClose, revealRunout, onRunoutChange, runoutSaveFailed }: {
+export function TableInfoPanel({ state, title, subtitle, notices, controls, shape, onShapeChange, shapeSaveFailed, onClose, revealRunout, onRunoutChange, runoutSaveFailed, wideFelt, onWideFeltChange, feltSaveFailed }: {
+  readonly wideFelt: boolean;
+  readonly onWideFeltChange: (value: boolean) => void;
+  readonly feltSaveFailed: boolean;
   readonly revealRunout: boolean;
   readonly onRunoutChange: (value: boolean) => void;
   readonly runoutSaveFailed: boolean;
@@ -51,6 +54,7 @@ export function TableInfoPanel({ state, title, subtitle, notices, controls, shap
             <div><dt>ルール</dt><dd>{state.variant.name}</dd></div>
             <div><dt>参加者</dt><dd>{state.players.length} / {state.seatCount}人</dd></div>
             <div><dt>ブラインド</dt><dd>SB {state.smallBlind} / BB {state.bigBlind}</dd></div>
+            <div><dt>アンティ / 人</dt><dd>{state.ante ? state.ante.toLocaleString() : 'なし'}</dd></div>
             <div><dt>持ち時間</dt><dd>1手番 30秒</dd></div>
           </dl>
           <p className="hint">時間切れはチェックできればチェック、それ以外はフォールドします。本数の選択は1本になります。</p>
@@ -81,6 +85,12 @@ export function TableInfoPanel({ state, title, subtitle, notices, controls, shap
               ))}
             </div>
             {shapeSaveFailed && <p className="hint">形を変更しました。このブラウザへの保存はできませんでした。</p>}
+          </fieldset>
+          <fieldset className="shape-fieldset">
+            <legend>テーブル背景の広さ</legend>
+            <div className="chips">{([[false, '標準'], [true, 'ワイド']] as const).map(([value, label]) => <button type="button" className={`chip ${wideFelt === value ? 'chip-on' : ''}`}
+              key={String(value)} aria-pressed={wideFelt === value} onClick={() => onWideFeltChange(value)}>{label}</button>)}</div>
+            {feltSaveFailed && <p className="hint">表示を変更しました。このブラウザへの保存はできませんでした。</p>}
           </fieldset>
           <h3 className="info-appearance-title">カードのデザイン</h3>
           <CardAppearanceOptions />

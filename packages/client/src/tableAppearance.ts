@@ -36,3 +36,16 @@ export function useRunoutReveal() {
   };
   return { revealRunout, updateRunout, saveFailed };
 }
+
+export function useWideFelt() {
+  const key = 'wildcard.wide-felt.v1';
+  const [wide, setWide] = useState(() => {
+    try { return localStorage.getItem(key) !== 'false'; } catch { return true; }
+  });
+  const [saveFailed, setSaveFailed] = useState(false);
+  const updateWide = (value: boolean) => {
+    setWide(value);
+    try { localStorage.setItem(key, String(value)); setSaveFailed(false); } catch { setSaveFailed(true); }
+  };
+  return { wide, updateWide, saveFailed };
+}

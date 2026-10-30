@@ -5,8 +5,10 @@ import { useTable } from '../hooks/useTable.js';
 import { LocalTransport } from '../transport/local.js';
 import { resolveVariant } from '../rules/customVariants.js';
 import { TABLE_TIMING } from '../transport/presentation.js';
+import { cpuStyles } from '../cpuStyles.js';
 
 export interface SoloSettings {
+  readonly ante?: number;
   readonly name: string;
   readonly opponents: number;
   readonly chips: number;
@@ -15,6 +17,7 @@ export interface SoloSettings {
   readonly variantId: string;
   /** CPU の attack 度。0 に近いほど慎重。 */
   readonly aggression: number;
+  readonly mixedCpu?: boolean;
 }
 
 interface SoloTableProps {
@@ -34,6 +37,8 @@ const THINK_MS = TABLE_TIMING.think;
  * 持たない。だからカードの強さや役の順位を差し替えても、そのまま相手になる。
  */
 export function SoloTable({ settings, onExit }: SoloTableProps) {
+  const [styleSeed] = useState(() => crypto.getRandomValues(new Uint32Array(1))[0]!);
+  const styles = useMemo(() => cpuStyles(settings.opponents, styleSeed, settings.mixedCpu ? undefined : settings.aggression), [settings, styleSeed]);
   const transport = useMemo(() => {
     const seatCount = settings.opponents + 1;
     const setup: Action[] = [
@@ -58,6 +63,7 @@ export function SoloTable({ settings, onExit }: SoloTableProps) {
       paced: true, autoNextHandMs: TABLE_TIMING.nextHand,
       seatCount,
       smallBlind: settings.smallBlind,
+      ante: settings.ante ?? 0,
       bigBlind: settings.bigBlind,
       ...(variant ? { variant } : {}),
       // 視点は自分に固定。CPU の手札は画面に出ない。
@@ -90,7 +96,7 @@ export function SoloTable({ settings, onExit }: SoloTableProps) {
       if (cancelled) return;
       // decide が見るのは自分の手札と場のカードだけ。相手の手札は渡らない。
       const decision = decide(transport.rawState(), turnId, decisionSeed.current++, {
-        aggression: settings.aggression,
+        aggression: styles[Number(turnId.replace('cpu', ''))]?.aggression ?? settings.aggression,
       });
       if (decision) transport.dispatch(decision.action);
       setThinking(null);
@@ -100,7 +106,7 @@ export function SoloTable({ settings, onExit }: SoloTableProps) {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [transport, snapshot, cpuTurn, turnId, settings.aggression]);
+  }, [transport, snapshot, cpuTurn, turnId, settings.aggression, styles]);
 
   const startHand = () => {
     handCounter.current += 1;
@@ -115,7 +121,7 @@ export function SoloTable({ settings, onExit }: SoloTableProps) {
     <TableView
       snapshot={snapshot}
       title="ソロ（CPU相手）"
-      subtitle={`SB ${settings.smallBlind} / BB ${settings.bigBlind}`}
+      subtitle={<><div>SB {settings.smallBlind} / BB {settings.bigBlind}</div><div className="cpu-style-list" aria-label="CPUのスタイル">{styles.map((style, i) => <span key={i}>CPU{i + 1} · {style.label}</span>)}</div></>}
       onExit={onExit}
       onAction={(action) => transport.dispatch(action)}
       // 操作できるのは自分の番だけ。CPU の番は見ているだけ。

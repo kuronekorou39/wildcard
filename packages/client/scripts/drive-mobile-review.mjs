@@ -74,7 +74,7 @@ try {
       await inspect(page, `${label}-playing`);
       await page.getByRole('button', {name:'もどる',exact:true}).click();
       assert.equal(await page.evaluate(() => window.tableFixture.exits()), 0);
-      await page.getByRole('button', {name:'卓に残る',exact:true}).click();
+      await page.getByRole('button', {name:'プレイを続ける',exact:true}).click();
       assert.equal(await page.getByRole('dialog').count(), 0);
       await page.evaluate(() => window.tableFixture.view(window.tableFixture.state().state.turnPlayerId));
       await page.getByRole('button', {name:'レイズ',exact:true}).click();
@@ -90,7 +90,7 @@ try {
       const offsets = await page.locator('.card-highlighted').evaluateAll(cards => cards.map(card => parseFloat(getComputedStyle(card).outlineOffset)));
       assert.ok(offsets.every(offset => offset <= -2), 'Highlights stay inside their card');
       await page.getByRole('button', {name:'もどる',exact:true}).click();
-      await page.getByRole('button', {name:'離れて戻る',exact:true}).click();
+      await page.getByRole('button', {name:'終了して設定へ戻る',exact:true}).click();
       assert.equal(await page.evaluate(() => window.tableFixture.exits()), 1);
       await page.close();
       console.log(`PASS ${label}: space, empty seats, raise, showdown, exit confirmation`);

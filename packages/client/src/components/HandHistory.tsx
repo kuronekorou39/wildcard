@@ -3,6 +3,7 @@ import { streetName, type HandHistoryStep, type VisibleState } from '@wildcard/e
 import { PlayingCard } from './PlayingCard.js';
 
 const labels: Record<HandHistoryStep['kind'], string> = {
+  ante: 'アンティ',
   deal: '配牌', blind: 'ブラインド', straddle: 'ストラドル', fold: 'フォールド', check: 'チェック', call: 'コール', raise: 'レイズ',
   'timeout-check': '時間切れ · チェック', 'timeout-fold': '時間切れ · フォールド', 'run-once': '1本でランアウト',
   'run-agree': '複数本に同意', collect: 'チップを回収', burn: 'バーン', board: '場を開く', refund: '未コール分を返却', award: 'ポットを獲得',
@@ -22,6 +23,7 @@ export function HandHistory({ state }: { readonly state: VisibleState }) {
   if (!step) return <p className="summary-note">このハンドには手順の記録がありません。</p>;
   const pending = step.players.reduce((sum,p) => sum + p.bet,0);
   const move = step.kind === 'collect' ? '各席の前 → 中央'
+    : step.kind === 'ante' ? '持ちチップ → 中央'
     : step.kind === 'award' || step.kind === 'refund' ? '中央 → 持ちチップ'
     : step.amount && ['call','raise','blind','straddle'].includes(step.kind) ? '持ちチップ → 席の前' : null;
   return <section className="hand-history" aria-label="ハンドの手順">

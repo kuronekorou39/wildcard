@@ -33,6 +33,7 @@ import { blindPositions, firstClockwise, nextClockwise, orderClockwise } from '.
 import { recordHandHistory, type AutomaticFold } from './history.js';
 
 export interface CreateGameOptions {
+  readonly ante?: number;
   readonly seatCount?: number;
   readonly smallBlind?: number;
   readonly bigBlind?: number;
@@ -41,7 +42,9 @@ export interface CreateGameOptions {
 }
 
 export function createGame(options: CreateGameOptions = {}): GameState {
+  if (!Number.isSafeInteger(options.ante ?? 0) || (options.ante ?? 0) < 0) throw new Error('アンティは0以上の整数にしてください');
   return {
+    ante: options.ante ?? 0,
     phase: 'waiting',
     extraBoards: [],
     runChoice: null,
@@ -456,7 +459,9 @@ function startHand(state: GameState, seed: number, automaticFolds: AutomaticFold
   const dealOrder = orderClockwise(seats, blinds.smallBlindSeat, state.seatCount);
   const dealt = dealHand(fresh, dealOrder, state.variant, seed, entropy);
 
-  let players = dealt.players.map<Player>((p) => {
+  let players = dealt.players.map<Player>((player) => {
+    const paid = player.inHand ? Math.min(player.chips, state.ante ?? 0) : 0;
+    const p = { ...player, chips: player.chips - paid, committed: paid, allIn: player.inHand && player.chips === paid };
     if (p.seat === blinds.smallBlindSeat) return postBlind(p, state.smallBlind);
     if (p.seat === blinds.bigBlindSeat) return postBlind(p, state.bigBlind);
     return p;

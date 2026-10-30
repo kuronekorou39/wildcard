@@ -42,8 +42,14 @@ export function estimateEquity(input: EquityInput): number {
   if (samples <= 0) return 0;
 
   // ジョーカーは rank と suit に意味がないので、同一性は cardKey で見る。
-  const known = new Set([...holeCards, ...communityCards].map(cardKey));
-  const unknown = buildDeck(variant.deck).filter((card) => !known.has(cardKey(card)));
+  const known = new Map<string, number>();
+  for (const card of [...holeCards, ...communityCards]) known.set(cardKey(card), (known.get(cardKey(card)) ?? 0) + 1);
+  const unknown = buildDeck(variant.deck).filter(card => {
+    const key = cardKey(card), count = known.get(key) ?? 0;
+    if (!count) return true;
+    known.set(key, count - 1);
+    return false;
+  });
 
   const boardToCome = Math.max(0, finalBoard - communityCards.length);
   const needed = boardToCome + opponents * holeCards.length;

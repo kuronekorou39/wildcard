@@ -8,6 +8,7 @@ import { resolveVariant } from '../rules/customVariants.js';
 import { TABLE_TIMING } from '../transport/presentation.js';
 
 export interface HotSeatSettings {
+  readonly ante?: number;
   readonly names: readonly string[];
   readonly chips: number;
   readonly smallBlind: number;
@@ -43,6 +44,7 @@ export function HotSeatTable({ settings, onExit }: HotSeatTableProps) {
       paced: true, autoNextHandMs: TABLE_TIMING.nextHand,
       seatCount,
       smallBlind: settings.smallBlind,
+      ante: settings.ante ?? 0,
       bigBlind: settings.bigBlind,
       ...(variant ? { variant } : {}),
       viewer: { kind: 'followTurn' },

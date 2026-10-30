@@ -15,6 +15,13 @@ const equity = (hole: string, board: string, opponents: number, seed = 1, sample
   });
 
 describe('勝率の推定', () => {
+  it('known cards remove only their physical copies from a duplicate deck', () => {
+    const deck = cards('As Ks Qs Js Ts 2h 3d');
+    const variant = { ...STANDARD_VARIANT, deck: { ...STANDARD_VARIANT.deck, copies: 0,
+      overrides: deck.map(card => ({ ...card, count: card.rank === 'A' || card.rank === 'K' ? 2 : 1 })) } };
+    expect(estimateEquity({ holeCards: cards('As Ks'), communityCards: cards('Qs Js Ts 2h 3d'), opponents: 1,
+      variant, samples: 5, seed: 1 })).toBe(0.5);
+  });
   it('同じ seed からは同じ結果になる', () => {
     expect(equity('As Ah', '', 1)).toBe(equity('As Ah', '', 1));
   });

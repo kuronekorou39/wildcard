@@ -5,8 +5,8 @@ import { TableSession, readOptions, type StoredTable } from '../src/table.js';
 
 const options = { name: '主催者', chips: 1000, smallBlind: 10, bigBlind: 20, seatCount: 10, hostPlays: true, variant: STANDARD_VARIANT };
 const words = (seed: number) => { const rng = createRng(seed); return Array.from({ length: 2000 }, () => Math.floor(rng() * 0x100000000)); };
-function fixture(count = 3) {
-  const session = TableSession.create('room', options, 'host', 100_000, 3_600_000);
+function fixture(count = 3, ante = 0) {
+  const session = TableSession.create('room', { ...options, ante }, 'host', 100_000, 3_600_000);
   for (let i = 1; i < count; i++) session.join(`token${i}`, `P${i}`, true);
   const online = session.data.members.map(member => member.playerId!);
   let data = session.data;
@@ -28,6 +28,15 @@ function fixture(count = 3) {
 }
 
 describe('永続する卓の進行', () => {
+  it('preserves antes through restarts without collecting live blinds', () => {
+    const t = fixture(3, 5); t.act({ type: 'start' });
+    expect(t.restore().data.game.ante).toBe(5);
+    expect(t.data.game.pot).toBe(45);
+    expect(t.data.game.players.reduce((n, p) => n + p.bet, 0)).toBe(30);
+    while (t.data.game.phase !== 'showdown') expect(t.call().receipt.ok).toBe(true);
+    expect(t.data.game.players.reduce((n, p) => n + p.chips, 0)).toBe(3000);
+    expect(t.data.game.history!.filter(step => step.kind === 'ante')).toHaveLength(3);
+  });
   it('新規着席は空いている間隔を優先し、再接続しても席を動かさない', () => {
     const session = TableSession.create('room', options, 'host', 100_000, 3_600_000);
     for (let i = 1; i < 10; i++) {
@@ -192,6 +201,8 @@ describe('入力の制約', () => {
     expect(() => readOptions({ ...options, seatCount: 11 })).toThrow();
     expect(() => readOptions({ ...options, chips: Number.MAX_SAFE_INTEGER })).toThrow();
     expect(() => readOptions({ ...options, variant: {} })).toThrow();
-    expect(readOptions(options)).toEqual(options);
+    expect(readOptions(options)).toEqual({ ...options, ante: 0 });
+    expect(readOptions({ ...options, ante: 5 }).ante).toBe(5);
+    for (const ante of [-1, 1.5, 1_000_000_001, '5']) expect(() => readOptions({ ...options, ante })).toThrow();
   });
 });

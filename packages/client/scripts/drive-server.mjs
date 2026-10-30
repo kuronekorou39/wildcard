@@ -2,6 +2,7 @@ import { chromium } from 'playwright';
 import assert from 'node:assert/strict';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { api, close, connect, pause, token } from '../../server/scripts/harness.mjs';
+import { editValue } from './setup-helpers.mjs';
 
 const base = process.env.WILDCARD_URL ?? 'http://127.0.0.1:5173/';
 const server = process.env.WILDCARD_SERVER_URL ?? 'http://127.0.0.1:8787';
@@ -60,6 +61,7 @@ try {
   }
   await host.setViewportSize({ width: 390, height: 666 });
   await host.getByRole('textbox', { name: 'あなたの名前' }).fill('はる');
+  await editValue(host, 'アンティ / 人', 5);
   await host.getByRole('button', { name: /^卓を作る/ }).click();
   await host.locator('.screen-game').waitFor();
   await until(() => snapshots.has('host'));
@@ -81,7 +83,7 @@ try {
   await guest.getByRole('button', {name: '卓に残る', exact: true}).click();
   assert.equal(snapshots.get('host').online.length, 2, 'Cancel keeps the connection');
   await guest.getByRole('button', {name: 'もどる', exact: true}).click();
-  await guest.getByRole('button', {name: '離れて戻る', exact: true}).click();
+  await guest.getByRole('button', {name: '設定へ戻る', exact: true}).click();
   await until(() => snapshots.get('host').online.length === 1);
   assert.equal(await host.getByRole('button', {name: 'ゲーム開始', exact: true}).isDisabled(), true);
   // Open the invitation as a document, rather than a same-document hash change.
@@ -104,6 +106,9 @@ try {
   for (const label of ['host', 'guest']) {
     await until(() => snapshots.get(label).runtime.handId === 1);
     const snapshot = snapshots.get(label);
+    assert.equal(snapshot.state.ante, 5);
+    assert.equal(snapshot.state.pot, 80);
+    assert.equal(snapshot.state.players.reduce((sum, p) => sum + p.bet, 0), 30);
     assert.equal('deck' in snapshot.state, false);
     assert.equal('burned' in snapshot.state, false);
     for (const player of snapshot.state.players) assert.equal(player.holeCards.filter(Boolean).length, player.id === snapshot.viewerId ? 2 : 0);
@@ -149,11 +154,14 @@ try {
   await host.locator('.server-history-list button').first().click();
   await host.locator('.server-history-dialog .summary-detail').waitFor();
   await host.getByRole('tab', { name: /^手順/ }).click();
-  for (let step = 0; step < 15 && !(await host.locator('.server-history-dialog').innerText()).includes('チェック'); step++) {
+  let anteInHistory = false;
+  for (let step = 0; step < snapshots.get('host').state.history.length && !(await host.locator('.server-history-dialog').innerText()).includes('チェック'); step++) {
     await host.locator('.server-history-dialog').getByRole('button', { name: '次の手順', exact: true }).click();
+    anteInHistory ||= (await host.locator('.server-history-dialog').innerText()).includes('アンティ');
   }
   await host.screenshot({ path: `${out}/saved-history-mobile.png` });
   assert.ok(await host.locator('.server-history-dialog').innerText().then(text => text.includes('チェック')));
+  assert.ok(anteInHistory, 'Ante payments are separate steps in saved history');
   console.log('PASS: saved hand opens with action and chip-transfer history');
   const ownToken = await host.evaluate(({ server, room }) => JSON.parse(localStorage.getItem(`wildcard.server-session.v1:${server}:${room}`)).token, { server, room });
   const metrics = await api(server, room, '/metrics', { headers: { Authorization: `Bearer ${ownToken}` } });
