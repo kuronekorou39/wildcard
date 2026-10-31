@@ -21,13 +21,37 @@ const encoder = new TextEncoder();
 const json = (value: unknown, status = 200) => Response.json(value, { status, headers: { 'Cache-Control': 'no-store' } });
 const error = (message: string, status = 400) => json({ error: message }, status);
 const TOO_MANY = 'アクセスが集中しています。1分ほど待ってからやり直してください';
+
+/**
+ * 卓の作成（作成キーの総当たりの標的）だけは、Worker のメモリでも IP ごとに回数を数える。
+ *
+ * Rate Limiting バインディングは数え方が非同期で、実測では同時30回中1回しか弾かなかった。
+ * このカウンタは実行インスタンスごと・1分窓の簡易なもので、インスタンスが複数あればその分だけ通る。
+ * 総当たりを安く止めるための第一線であり、セキュリティ境界ではない。
+ * また、ここで 429 を返しても Cloudflare の日次リクエスト上限は消費される（Worker の前で弾けるのはゾーンの WAF だけ）。
+ */
+const CREATE_ATTEMPTS = { limit: 5, windowMs: 60_000, maxEntries: 10_000 };
+const createAttempts = new Map<string, { count: number; resetAt: number }>();
+function tooManyCreates(ip: string, now = Date.now()): boolean {
+  if (createAttempts.size >= CREATE_ATTEMPTS.maxEntries) {
+    for (const [key, entry] of createAttempts) if (entry.resetAt <= now) createAttempts.delete(key);
+    if (createAttempts.size >= CREATE_ATTEMPTS.maxEntries) createAttempts.clear();
+  }
+  const entry = createAttempts.get(ip);
+  if (!entry || entry.resetAt <= now) { createAttempts.set(ip, { count: 1, resetAt: now + CREATE_ATTEMPTS.windowMs }); return false; }
+  entry.count++;
+  return entry.count > CREATE_ATTEMPTS.limit;
+}
+
 /** 作成・WebSocket 接続・その他 HTTP で別々の枠。超えたら 429 を JSON で返し、画面に理由を出せるようにする。 */
 async function overLimit(request: Request, url: URL, env: Env): Promise<boolean> {
   if (url.pathname === '/api/health') return false;
+  const ip = request.headers.get('CF-Connecting-IP') ?? 'unknown';
   const creating = request.method === 'PUT' && /^\/api\/tables\/[^/]+$/.test(url.pathname);
+  if (creating && tooManyCreates(ip)) return true;
   const limiter = creating ? env.CREATE_LIMIT : url.pathname.endsWith('/socket') ? env.SOCKET_LIMIT : env.HTTP_LIMIT;
   if (!limiter) return false;
-  const { success } = await limiter.limit({ key: request.headers.get('CF-Connecting-IP') ?? 'unknown' });
+  const { success } = await limiter.limit({ key: ip });
   return !success;
 }
 const bearer = (request: Request) => request.headers.get('Authorization')?.replace(/^Bearer /, '') ?? '';

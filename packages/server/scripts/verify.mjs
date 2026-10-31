@@ -83,18 +83,17 @@ try {
   await run.mf.dispose();
 }
 
-// 入口の回数制限：作成を2回に絞った環境で、キー違いの3回目が 429 と理由を返す（総当たりの想定）
+// 入口の回数制限：Worker のメモリで数える作成の枠（1分5回）。バインディングは緩めにし、キー違いの6回目が 429 と理由を返す（総当たりの想定）
 {
-  const limited = await runtime(undefined, limits(2, 100, 100));
+  const limited = await runtime(undefined, limits(50, 100, 100));
   try {
     const attempt = () => fetch(`${limited.base}/api/tables/${randomUUID()}`, { method: 'PUT',
       headers: { Authorization: 'Bearer wrong-key', 'Content-Type': 'application/json' }, body: '{}' });
-    assert.equal((await attempt()).status, 401);
-    assert.equal((await attempt()).status, 401);
-    const third = await attempt();
-    assert.equal(third.status, 429);
-    assert.match((await third.json()).error, /アクセスが集中/);
-    assert.equal(third.headers.get('Retry-After'), '60');
+    for (let i = 0; i < 5; i++) assert.equal((await attempt()).status, 401, `${i + 1}回目までは通る`);
+    const sixth = await attempt();
+    assert.equal(sixth.status, 429);
+    assert.match((await sixth.json()).error, /アクセスが集中/);
+    assert.equal(sixth.headers.get('Retry-After'), '60');
     assert.equal((await fetch(`${limited.base}/api/health`)).status, 200, '状態確認は制限しない');
     console.log('PASS: entry rate limit answers 429 with a reason once the allowance is used');
   } finally {
