@@ -31,17 +31,26 @@ const TOO_MANY = 'アクセスが集中しています。1分ほど待ってか�
  * また、ここで 429 を返しても Cloudflare の日次リクエスト上限は消費される（Worker の前で弾けるのはゾーンの WAF だけ）。
  */
 const CREATE_ATTEMPTS = { limit: 5, windowMs: 60_000, maxEntries: 10_000 };
-const createAttempts = new Map<string, { count: number; resetAt: number }>();
-function tooManyCreates(ip: string, now = Date.now()): boolean {
-  if (createAttempts.size >= CREATE_ATTEMPTS.maxEntries) {
-    for (const [key, entry] of createAttempts) if (entry.resetAt <= now) createAttempts.delete(key);
-    if (createAttempts.size >= CREATE_ATTEMPTS.maxEntries) createAttempts.clear();
+const tooMany = () => Response.json({ error: TOO_MANY }, { status: 429, headers: { 'Cache-Control': 'no-store', 'Retry-After': String(CREATE_ATTEMPTS.windowMs / 1000) } });
+/** IP ごとの1分窓のカウンタ。Worker のメモリと Directory DO の両方で同じものを使う。 */
+class AttemptCounter {
+  private readonly entries = new Map<string, { count: number; resetAt: number }>();
+  /** 数えてから、枠を超えたかを返す。 */
+  exceeded(key: string, now = Date.now()): boolean {
+    if (this.entries.size >= CREATE_ATTEMPTS.maxEntries) {
+      for (const [other, entry] of this.entries) if (entry.resetAt <= now) this.entries.delete(other);
+      if (this.entries.size >= CREATE_ATTEMPTS.maxEntries) this.entries.clear();
+    }
+    const entry = this.entries.get(key);
+    if (!entry || entry.resetAt <= now) { this.entries.set(key, { count: 1, resetAt: now + CREATE_ATTEMPTS.windowMs }); return false; }
+    entry.count++;
+    return entry.count > CREATE_ATTEMPTS.limit;
   }
-  const entry = createAttempts.get(ip);
-  if (!entry || entry.resetAt <= now) { createAttempts.set(ip, { count: 1, resetAt: now + CREATE_ATTEMPTS.windowMs }); return false; }
-  entry.count++;
-  return entry.count > CREATE_ATTEMPTS.limit;
 }
+const createAttempts = new AttemptCounter();
+const tooManyCreates = (ip: string) => createAttempts.exceeded(ip);
+/** Directory DO に「止めろ」と言われた IP。1分だけ覚えて、同じマシンに来た分は DO に聞かずに弾く。 */
+const blockedCreators = new Map<string, number>();
 
 /** 作成・WebSocket 接続・その他 HTTP で別々の枠。超えたら 429 を JSON で返し、画面に理由を出せるようにする。 */
 async function overLimit(request: Request, url: URL, env: Env): Promise<boolean> {
@@ -96,7 +105,7 @@ export default {
     if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
     let response: Response;
     try {
-      if (await overLimit(request, url, env)) response = Response.json({ error: TOO_MANY }, { status: 429, headers: { 'Cache-Control': 'no-store', 'Retry-After': '60' } });
+      if (await overLimit(request, url, env)) response = tooMany();
       else if (url.pathname === '/api/health' && request.method === 'GET') response = json({ ok: true, protocol: 1 });
       else {
         const match = /^\/api\/tables\/([^/]+)(\/.*)?$/.exec(url.pathname);
@@ -104,7 +113,18 @@ export default {
         const id = match[1]!;
         const path = match[2] ?? '';
         if (!path && request.method === 'PUT') {
-          if (!env.CREATE_KEY || bearer(request) !== env.CREATE_KEY) response = error('作成キーが違います', 401);
+          // 作成の試行は、作成キーを見る前に Directory DO（1つだけ）で数える。
+          // 公開環境では接続ごとに別のマシンへ振り分けられるため、メモリの数え方では接続をまたいで溜まらない。
+          const ip = request.headers.get('CF-Connecting-IP') ?? 'unknown';
+          const now = Date.now();
+          let allowed = (blockedCreators.get(ip) ?? 0) <= now;
+          if (allowed) {
+            const verdict = await env.DIRECTORY.getByName('preview').fetch('https://internal/attempt', { method: 'POST', body: JSON.stringify({ ip }) });
+            allowed = ((await verdict.json()) as { allowed: boolean }).allowed;
+            if (!allowed) blockedCreators.set(ip, now + CREATE_ATTEMPTS.windowMs);
+          }
+          if (!allowed) response = tooMany();
+          else if (!env.CREATE_KEY || bearer(request) !== env.CREATE_KEY) response = error('作成キーが違います', 401);
           else {
             const input = await body(request);
             const tokenHash = await hashToken(input.token);
@@ -135,8 +155,11 @@ export class TableDirectory extends DurableObject<Env> {
     this.queue = job.catch(() => {});
     return job;
   }
+  /** 作成の試行回数。この DO は1つしかないので、どの拠点から来ても同じ枠で数えられる。 */
+  private readonly attempts = new AttemptCounter();
   private async handle(request: Request): Promise<Response> {
     const input = await body(request);
+    if (new URL(request.url).pathname === '/attempt') return json({ allowed: !this.attempts.exceeded(String(input.ip)) });
     const id = String(input.id);
     if (!roomPattern.test(id)) return error('卓IDが不正です');
     if (new URL(request.url).pathname === '/release') {
