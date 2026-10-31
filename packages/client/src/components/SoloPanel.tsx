@@ -1,10 +1,9 @@
 import { useState } from 'react';
 import type { SoloSettings } from '../modes/SoloTable.js';
-import { EditableText, TableStakes } from './EditableValue.js';
+import { TableStakes } from './EditableValue.js';
 import { Icon } from './Icon.js';
 
-export function SoloPanel({ onStart, variantId }: { readonly onStart: (settings: SoloSettings) => void; readonly variantId: string }) {
-  const [name, setName] = useState('あなた');
+export function SoloPanel({ onStart, variantId, name }: { readonly onStart: (settings: SoloSettings) => void; readonly variantId: string; readonly name: string }) {
   const [opponents, setOpponents] = useState(2);
   const [chips, setChips] = useState(1000);
   const [smallBlind, setSmallBlind] = useState(10);
@@ -15,7 +14,6 @@ export function SoloPanel({ onStart, variantId }: { readonly onStart: (settings:
   const valid = smallBlind > 0 && bigBlind >= smallBlind && chips >= bigBlind;
   return <div className="session-config">
     <div className="session-fields">
-      <EditableText label="あなたの名前" value={name} onChange={setName} maxLength={12} />
       <div className="field"><span className="field-label">CPU の人数 <small>全 {opponents + 1} 席</small></span><div className="seat-count-picker" role="group" aria-label="CPU の人数">{Array.from({ length: 9 }, (_, i) => i + 1).map(n => <button type="button" key={n} aria-pressed={opponents === n} onClick={() => setOpponents(n)}>{n}</button>)}</div></div>
       <div className="field"><span className="field-label">CPU の打ち方</span><div className="segmented"><button type="button" aria-pressed={mixedCpu} className={`segment ${mixedCpu ? 'segment-active' : ''}`} onClick={() => setMixedCpu(true)}>混在</button>{([[.15, '慎重'], [.5, '標準'], [.85, '強気']] as const).map(([value, label]) => <button type="button" key={value} aria-pressed={!mixedCpu && aggression === value} className={`segment ${!mixedCpu && aggression === value ? 'segment-active' : ''}`} onClick={() => { setMixedCpu(false); setAggression(value); }}>{label}</button>)}</div></div>
       <TableStakes chips={chips} smallBlind={smallBlind} bigBlind={bigBlind} ante={ante} onAnte={setAnte} onChips={setChips} onSmallBlind={setSmallBlind} onBigBlind={setBigBlind} />

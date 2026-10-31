@@ -1,19 +1,18 @@
 import { useRef, useState } from 'react';
-import { EditableNumber, EditableText, TableStakes } from './EditableValue.js';
+import { EditableNumber, TableStakes } from './EditableValue.js';
 import { GameDialog } from './GameDialog.js';
 import { Icon } from './Icon.js';
 import { resolveVariant } from '../rules/customVariants.js';
 import { connectionToken, createServerTable, defaultServerUrl, invitedTable, loadConnection,
   normalizeServerUrl, saveConnection, saveServerUrl, serverRequest, tableIdFrom, type ServerSettings } from '../serverConnection.js';
 
-export function ServerPanel({ variantId, role, onRoleChange, onStart }: {
-  readonly variantId: string; readonly role: 'host' | 'guest';
+export function ServerPanel({ variantId, name, role, onRoleChange, onStart }: {
+  readonly variantId: string; readonly name: string; readonly role: 'host' | 'guest';
   readonly onRoleChange: (role: 'host' | 'guest') => void;
   readonly onStart: (settings: ServerSettings) => void;
 }) {
   const [server, setServer] = useState(defaultServerUrl);
   const [configOpen, setConfigOpen] = useState(false);
-  const [name, setName] = useState('');
   const [invite, setInvite] = useState(() => invitedTable() ?? '');
   const [chips, setChips] = useState(1000);
   const [smallBlind, setSmallBlind] = useState(10);
@@ -58,7 +57,6 @@ export function ServerPanel({ variantId, role, onRoleChange, onStart }: {
   return <div className="session-config server-session">
     <div className="session-fields">
       <div className="segmented"><button type="button" className={`segment ${role === 'host' ? 'segment-active' : ''}`} onClick={() => onRoleChange('host')}>部屋を作る</button><button type="button" className={`segment ${role === 'guest' ? 'segment-active' : ''}`} onClick={() => onRoleChange('guest')}>参加する</button></div>
-      <EditableText label="あなたの名前" value={name} onChange={setName} maxLength={24} placeholder={previous?.name ?? '名前を入力'} />
       {role === 'host' ? <><TableStakes chips={chips} smallBlind={smallBlind} bigBlind={bigBlind} ante={ante} onAnte={setAnte} onChips={setChips} onSmallBlind={setSmallBlind} onBigBlind={setBigBlind} />
         <div className="server-seats"><EditableNumber label="席数" value={seats} min={2} max={10} onChange={setSeats} /><label className="checkline"><input type="checkbox" checked={play} onChange={event => setPlay(event.target.checked)} />自分も席に着く</label></div></> : <>
         <label className="field"><span className="field-label">招待リンク / 卓ID</span><input className="input" value={invite} onChange={event => setInvite(event.target.value)} placeholder="招待リンクを貼り付け" /></label>

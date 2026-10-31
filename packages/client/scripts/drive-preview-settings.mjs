@@ -33,15 +33,16 @@ try {
       await editValue(page, '各カードの枚数', 19);
       await editValue(page, 'ジョーカー', 28);
       assert.match(await preview.innerText(), /1000 枚/);
-      for (let i = 0; i < 19; i++) await preview.getByRole('button', { name: '次へ', exact: true }).click();
-      assert.equal(await preview.locator('.card').count(), 12);
+      for (let i = 0; i < 7; i++) await preview.getByRole('button', { name: '次へ', exact: true }).click();
+      assert.equal(await preview.locator('.card').count(), 90);
       assert.equal(await preview.getByRole('button', { name: '次へ', exact: true }).isDisabled(), true);
       await editValue(page, '各カードの枚数', 99);
       assert.equal(await page.locator('.deck-contents .card').count(), 0);
       assert.equal(await page.getByRole('button', { name: '保存して卓に戻る', exact: true }).isDisabled(), true);
       await editValue(page, '各カードの枚数', 1);
       await editValue(page, 'ジョーカー', 0);
-      await preview.getByRole('button', { name: '前へ', exact: true }).click();
+      // 54枚は1ページに収まるので、ページ送りは消える
+      assert.equal(await preview.getByRole('button', { name: '次へ', exact: true }).count(), 0);
       assert.equal(await preview.locator('.card[aria-label="9♥"]').count(), 3);
     }
     for (const name of ['一覧', '重ね', '扇形']) {
@@ -52,8 +53,8 @@ try {
       assert.ok(await scroll.evaluate(el => el.scrollWidth <= el.clientWidth + 1), `${name}: 横スクロールが出ない`);
       await page.screenshot({ path: `${out}/deck-${width}-${name === '一覧' ? 'grid' : name === '重ね' ? 'overlap' : 'arc'}.png` });
     }
-    await preview.getByRole('button', { name: '次へ', exact: true }).click();
-    assert.equal(await preview.locator('.card').count(), 2);
+    // 強い順に並ぶ（♠の行の先頭が A）
+    assert.equal(await preview.locator('.deck-contents-row').first().locator('.card').first().getAttribute('aria-label'), 'A♠');
     await page.getByRole('button', { name: '保存して卓に戻る', exact: true }).click();
     await page.getByRole('button', { name: 'このルールを編集', exact: false }).click();
     await page.getByRole('tab', { name: /デッキ/ }).click();

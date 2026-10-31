@@ -49,6 +49,10 @@
 .preview-notes dt, .preview-pending { color: var(--text-dim); }
 .preview-notes dd { margin: 0; }
 .preview-pending { margin: 0; font-size: .7rem; }
+/* 名前はモード共通なので、タブの上に固定して切り替えで動かさない */
+.session-identity { flex: 0 0 auto; margin-bottom: 20px; padding: 0 3px; }
+.session-identity .field { margin: 0; }
+.session-identity .field-label { font-size: .73rem; margin-bottom: 8px; }
 .session-tabs { flex: 0 0 auto; padding: 4px; gap: 4px; border: 1px solid var(--border); background: var(--bg-dark); border-radius: 12px; margin-bottom: 24px; }
 .session-tabs .tab { padding: 12px 6px; font-size: .86rem; border-radius: 8px; white-space: nowrap; }
 .session-tabs .tab-active { background: #423338; color: var(--text); box-shadow: inset 0 0 0 1px #72545c; }
@@ -114,18 +118,22 @@
 .deck-contents-toolbar .chips { gap: 4px; }
 .deck-contents-toolbar .chip { padding: 6px 9px; font-size: .68rem; }
 .deck-contents-scroll { max-height: 270px; overflow: auto; overscroll-behavior: contain; padding: 4px; }
-/* スートごとに1行。一覧は並べ、重ねは半分ずつ重ねて折り返し、扇形は行の幅に収まる弧にする */
+/* 一覧・重ねはスートごとに1行。重なり幅と扇形の間隔は DeckContents が行の幅から決める */
 .deck-contents-cards { display: grid; gap: 10px; }
 .deck-contents-row { display: flex; flex-wrap: wrap; gap: 6px; }
 .deck-contents-card { display: block; width: 44px; }
 .deck-contents-card .card { width: 44px; height: 64px; flex: none; border-radius: 6px; font-size: 14px; }
 .deck-contents-card .card-index { font-size: 14px; }
-/* 数字は札の中央寄りにあるので、28px は見せないと隠れる */
-.deck-contents-overlap .deck-contents-row { gap: 6px 0; padding-left: 16px; }
-.deck-contents-overlap .deck-contents-card { margin-left: -16px; }
-/* 両端の札は回転で外側へ 20px ほどはみ出すので、その分を左右の余白（34px）に含めて幅に収める */
-.deck-contents-arc .deck-contents-row { position: relative; display: block; container-type: inline-size; height: 120px; --step: min(26px, (100cqw - 116px) / max(1, var(--n) - 1)); }
-.deck-contents-arc .deck-contents-card { position: absolute; left: calc(36px + var(--i) * var(--step)); top: calc(6px + 42px * var(--t) * var(--t)); transform: rotate(calc(var(--t) * 36deg)); transform-origin: 50% 115%; }
+.deck-contents-overlap .deck-contents-row { flex-direction: column; gap: 6px; }
+.deck-contents-line { display: flex; }
+.deck-contents-fan { position: relative; display: block; }
+.deck-contents-fan .deck-contents-card { position: absolute; transform-origin: 50% 115%; }
+.deck-appearance { display: grid; gap: 8px; margin-bottom: 12px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px; }
+.deck-appearance-row { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; }
+.deck-appearance-row>span:first-child { flex: 0 0 2.4em; color: var(--text-dim); font-size: .72rem; }
+.deck-appearance-row .chip { padding: 5px 8px; font-size: .66rem; }
+.deck-appearance-back { margin-left: auto; }
+.deck-appearance .hint { margin: 0; font-size: .66rem; }
 .deck-pagination { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: .7rem; margin-top: 8px; }
 @media (max-width: 400px) {
   .table-stakes { gap: 8px; }
@@ -317,6 +325,8 @@
   .rule-facts { display: none; }
   .rule-picker .rule-actions { grid-column: 2; grid-row: 1; align-self: center; margin: 0; flex-direction: column; gap: 8px; }
   .setup-session-pane { padding: 0; flex: 1; min-height: 0; }
+  .session-identity { margin-bottom: 14px; }
+  .session-identity .field-label { font-size: .68rem; margin-bottom: 6px; }
   .session-tabs { margin-bottom: 14px; padding: 3px; border-radius: 10px; }
   .session-tabs .tab { font-size: .76rem; padding: 10px 4px; }
   .session-fields { gap: 22px; padding: 3px; }
@@ -368,6 +378,8 @@
 @media (max-height: 850px) and (min-width: 761px) {
   .setup-header { flex-basis: 56px; }
   .setup-rule-pane, .setup-session-pane { padding: 18px 24px; }
+  .session-identity { margin-bottom: 12px; }
+  .session-identity .field-label { margin-bottom: 3px; }
   .session-tabs { margin-bottom: 12px; }
   .session-fields { gap: 10px; }
   .session-fields .field-label { margin-bottom: 3px; }
@@ -385,6 +397,8 @@
   .setup-desk { gap: 10px; margin-top: 4px; }
   .rule-select-trigger, .join-context { min-height: 96px; }
   .selected-rule-title strong { font-size: .85rem; }
+  .session-identity { margin-bottom: 8px; }
+  .session-identity .field-label { font-size: .63rem; margin-bottom: 3px; }
   .session-tabs { margin-bottom: 8px; }
   .session-tabs .tab { padding-block: 8px; min-height: 36px; }
   .session-fields { gap: 12px; }
@@ -408,6 +422,10 @@
   .setup-footer { display: none; }
   .setup-desk { margin-block: 8px; border-radius: 12px; grid-template-columns: .85fr 1.15fr; }
   .setup-rule-pane, .setup-session-pane { padding: 8px 16px; }
+  .session-identity { margin-bottom: 6px; }
+  .session-identity .field { display: flex; align-items: center; gap: 8px; }
+  .session-identity .field-label { flex: 0 0 66px; margin: 0; font-size: .58rem; }
+  .session-identity .editable-value, .session-identity .editable-input { flex: 1; min-height: 30px; padding-block: 4px; }
   .session-tabs { margin-bottom: 8px; }
   .session-tabs .tab { font-size: .65rem; padding: 6px 2px; min-height: 34px; }
   .session-fields { gap: 5px; padding-block: 0; }
