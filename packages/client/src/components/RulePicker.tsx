@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useMemo, useRef, useState, type RefObject } from 'react';
 import {
   activeRankings,
   boardSize,
@@ -23,6 +23,8 @@ interface RulePickerProps {
   readonly onChange: (variantId: string) => void;
   /** 編集画面を開く。渡さなければボタンを出さない。 */
   readonly onEdit?: (variantId: string) => void;
+  /** ルール詳細のダイアログをこの要素（ヘッダ）の下に収める。 */
+  readonly detailAnchor?: RefObject<HTMLElement | null>;
 }
 
 /**
@@ -32,7 +34,7 @@ interface RulePickerProps {
  * どれを選んでも同じ。Wildcard の中心にある考え方が最初に目に入る場所なので、
  * 何が変わるのかをその場で読めるようにしてある。
  */
-export function RulePicker({ value, onChange, onEdit }: RulePickerProps) {
+export function RulePicker({ value, onChange, onEdit, detailAnchor }: RulePickerProps) {
   const variants = useVariants();
   const selected = variants.find((v) => v.id === value) ?? variants[0]!;
   const [open, setOpen] = useState(false);
@@ -104,7 +106,7 @@ export function RulePicker({ value, onChange, onEdit }: RulePickerProps) {
           {matches.length === 0 && <p className="hint">該当するルールはありません。</p>}
         </div>
       </GameDialog>}
-      {sheet && <GameDialog title={selected.name} className="setup-rule-dialog" onClose={() => setSheet(false)}><RuleSheet variant={selected} defaultOpen label="役の順位と例" /></GameDialog>}
+      {sheet && <GameDialog title={selected.name} className="setup-rule-dialog" anchor={detailAnchor?.current ?? null} placement="under" onClose={() => setSheet(false)}><RuleSheet variant={selected} frame={false} /></GameDialog>}
     </div>
   );
 }
@@ -120,6 +122,8 @@ interface RuleSheetProps {
   readonly variant: Variant | null;
   readonly label?: string;
   readonly defaultOpen?: boolean;
+  /** false なら折りたたみの枠を付けず、中身だけを出す（ダイアログの中身が1つだけのとき）。 */
+  readonly frame?: boolean;
 }
 
 /**
@@ -129,10 +133,10 @@ interface RuleSheetProps {
  * 独自役は、名前を見ても何が成立するのか分からない。条件の説明と、
  * 実際に成立する札を一緒に出す（→ engine の example.ts）。
  */
-export function RuleSheet({ variant, label = 'ルール', defaultOpen = false }: RuleSheetProps) {
+export function RuleSheet({ variant, label = 'ルール', defaultOpen = false, frame = true }: RuleSheetProps) {
   // 例は役ごとに試行を回して作る。卓の画面にも出るので、
   // 開くまでは計算しない。閉じたままなら一度も走らない。
-  const [opened, setOpened] = useState(defaultOpen);
+  const [opened, setOpened] = useState(defaultOpen || !frame);
   const examples = useMemo(
     () =>
       variant && opened ? exampleHands(variant, { seed: 11 }) : new Map<string, Card[] | null>(),
@@ -145,10 +149,8 @@ export function RuleSheet({ variant, label = 'ルール', defaultOpen = false }:
   const deck = variant.deck;
   const wilds = describeWilds(variant);
 
-  return (
-    <details className="rule-sheet" open={opened} onToggle={(e) => setOpened(e.currentTarget.open)}>
-      <summary className="rule-sheet-summary">{label}</summary>
-      <div className="rule-sheet-body">
+  const body = (
+      <div className={`rule-sheet-body ${frame ? '' : 'rule-sheet-plain'}`}>
         <p className="rule-sheet-deck">
           デッキ {deckSize(deck)}枚（{deck.ranks.join(' ')}）
           {deck.suitRanking !== undefined && ' ／ スートに強弱あり'}
@@ -177,6 +179,12 @@ export function RuleSheet({ variant, label = 'ルール', defaultOpen = false }:
           ))}
         </ol>
       </div>
+  );
+  if (!frame) return body;
+  return (
+    <details className="rule-sheet" open={opened} onToggle={(e) => setOpened(e.currentTarget.open)}>
+      <summary className="rule-sheet-summary">{label}</summary>
+      {body}
     </details>
   );
 }

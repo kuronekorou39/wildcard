@@ -28,12 +28,13 @@ export function SetupScreen({ mode, onModeChange, variantId, onVariantChange, on
   const [connection, setConnection] = useState<'server' | 'p2p'>(() => invitedTable() ? 'server' : 'p2p');
   const [about, setAbout] = useState(false);
   const aboutTrigger = useRef<HTMLButtonElement>(null);
+  const header = useRef<HTMLElement>(null);
   return <div className="screen screen-setup setup-shell">
-    <header className="setup-header"><Brand /><button ref={aboutTrigger} type="button" className="preview-badge" aria-haspopup="dialog" aria-expanded={about} onClick={() => setAbout(true)}>PREVIEW <Icon kind="info" /></button></header>
+    <header ref={header} className="setup-header"><Brand /><button ref={aboutTrigger} type="button" className="preview-badge" aria-haspopup="dialog" aria-expanded={about} onClick={() => setAbout(true)}>PREVIEW <Icon kind="info" /></button></header>
     <main className="setup-desk">
       <section className="setup-rule-pane" aria-label="ルールの設定">
         {mode === 'online' && onlineRole === 'guest' ? <div className="join-context"><span aria-hidden="true"><Icon kind="external" /></span><h2>{connection === 'server' ? '招待リンクで参加' : 'ルームコードで接続'}</h2><p>ルールとチップの設定は、接続先の卓から読み込みます。</p></div> :
-          <RulePicker value={variantId} onChange={onVariantChange} onEdit={onEditRules} />}
+          <RulePicker value={variantId} onChange={onVariantChange} onEdit={onEditRules} detailAnchor={header} />}
       </section>
       <section className="setup-session-pane" aria-label="卓の設定">
         <nav className="tabs session-tabs" role="tablist" aria-label="プレイ方法">

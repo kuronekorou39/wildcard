@@ -11,7 +11,12 @@ export function GameDialog({ title, children, onClose, className = '', anchor, i
   readonly className?: string;
   readonly anchor?: HTMLElement | null;
   readonly initialFocus?: string;
-  readonly placement?: 'auto' | 'below';
+  /**
+   * auto: anchor の下に出し、入らなければ上へずらす。
+   * below: anchor の真下・左揃えに固定する。
+   * under: anchor（ヘッダなど）の下に収め、横位置は CSS のまま。上下に同じ余白を残し、外側を押して閉じられるようにする。
+   */
+  readonly placement?: 'auto' | 'below' | 'under';
 }) {
   const ref = useRef<HTMLDialogElement>(null);
   const headingId = useId();
@@ -22,12 +27,20 @@ export function GameDialog({ title, children, onClose, className = '', anchor, i
       if (!element || !anchor) return;
       const bounds = anchor.getBoundingClientRect();
       const width = element.getBoundingClientRect().width;
-      const top = placement === 'below' ? bounds.bottom + 8 :
-        Math.max(12, Math.min(bounds.bottom + 8, window.innerHeight - Math.min(540, window.innerHeight - 24) - 12));
-      element.style.inset = 'auto';
-      element.style.top = `${top}px`;
-      element.style.left = `${Math.max(12, Math.min(bounds.left, window.innerWidth - width - 12))}px`;
-      element.style.maxHeight = `${window.innerHeight - top - 12}px`;
+      const top = placement === 'auto'
+        ? Math.max(12, Math.min(bounds.bottom + 8, window.innerHeight - Math.min(540, window.innerHeight - 24) - 12))
+        : bounds.bottom + 8;
+      // 下にも上と同じ余白を残す。範囲外を押して閉じる操作のため。
+      const bottomGap = placement === 'auto' ? 12 : top;
+      if (placement === 'under') {
+        element.style.top = `${top}px`;
+        element.style.bottom = 'auto';
+      } else {
+        element.style.inset = 'auto';
+        element.style.top = `${top}px`;
+        element.style.left = `${Math.max(12, Math.min(bounds.left, window.innerWidth - width - 12))}px`;
+      }
+      element.style.maxHeight = `${window.innerHeight - top - bottomGap}px`;
     };
     position();
     if (initialFocus) element?.querySelector<HTMLElement>(initialFocus)?.focus();

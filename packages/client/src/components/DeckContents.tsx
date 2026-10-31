@@ -1,9 +1,23 @@
-import { useState } from 'react';
-import { buildDeck, deckSize, MAX_DECK_SIZE, type DeckRules } from '@wildcard/engine';
+import { useState, type CSSProperties } from 'react';
+import { buildDeck, deckSize, MAX_DECK_SIZE, SUITS, type Card, type DeckRules } from '@wildcard/engine';
 import { PlayingCard } from './PlayingCard.js';
 
-const VIEWS = [['grid', '一覧'], ['overlap', '重ねる'], ['arc', '扇形']] as const;
+const VIEWS = [['grid', '一覧'], ['overlap', '重ね'], ['arc', '扇形']] as const;
 const PAGE_SIZE = 52;
+/** 行の順。スート順で並べ、ジョーカーは最後にまとめる。 */
+const ROW_ORDER: readonly string[] = [...SUITS, 'joker'];
+
+/** スート（ジョーカーは別枠）ごとに1行へ分ける。色の違う札を同じ列に混ぜると数えにくい。 */
+function rowsBySuit(cards: readonly Card[]): readonly (readonly [string, readonly { card: Card; index: number }[]])[] {
+  const groups = new Map<string, { card: Card; index: number }[]>();
+  cards.forEach((card, index) => {
+    const key = card.joker !== undefined ? 'joker' : card.suit;
+    const group = groups.get(key) ?? [];
+    group.push({ card, index });
+    groups.set(key, group);
+  });
+  return ROW_ORDER.filter(key => groups.has(key)).map(key => [key, groups.get(key)!] as const);
+}
 
 /** Composition, never the shuffled order used by a live hand. */
 export function DeckContents({ deck }: { readonly deck: DeckRules }) {
@@ -22,14 +36,16 @@ export function DeckContents({ deck }: { readonly deck: DeckRules }) {
         className={`chip ${view === id ? 'chip-on' : ''}`} aria-pressed={view === id} onClick={() => setView(id)}>{label}</button>)}</div>
     </div>
     <div className="deck-contents-scroll" tabIndex={0} aria-label="カード一覧">
-      <div className={`deck-contents-cards deck-contents-${view}`} style={view === 'grid' ? undefined : { width: Math.max(80, (shown.length - 1) * 26 + 72) }}>
-        {shown.map((card, i) => {
-          const t = shown.length < 2 ? 0 : i / (shown.length - 1) * 2 - 1;
-          return <span className="deck-contents-card" key={start + i} style={view === 'grid' ? undefined : {
-            left: 16 + i * 26, top: view === 'arc' ? 12 + 28 * t * t : 20,
-            transform: view === 'arc' ? `rotate(${t * 20}deg)` : undefined,
-          }}><PlayingCard card={card} size="sm" /></span>;
-        })}
+      <div className={`deck-contents-cards deck-contents-${view}`}>
+        {rowsBySuit(shown).map(([suit, items]) =>
+          <div className="deck-contents-row" key={suit} data-suit={suit} style={{ '--n': items.length } as CSSProperties}>
+            {items.map(({ card, index }, i) => {
+              // 扇形では -1〜1 の位置 t から角度と高さを CSS 側で決める
+              const t = items.length < 2 ? 0 : i / (items.length - 1) * 2 - 1;
+              return <span className="deck-contents-card" key={start + index}
+                style={view === 'arc' ? { '--i': i, '--t': t } as CSSProperties : undefined}><PlayingCard card={card} size="sm" /></span>;
+            })}
+          </div>)}
       </div>
       {size === 0 && <p className="hint">カードがありません。</p>}
     </div>

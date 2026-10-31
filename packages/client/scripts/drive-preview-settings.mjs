@@ -44,11 +44,13 @@ try {
       await preview.getByRole('button', { name: '前へ', exact: true }).click();
       assert.equal(await preview.locator('.card[aria-label="9♥"]').count(), 3);
     }
-    for (const name of ['一覧', '重ねる', '扇形']) {
+    for (const name of ['一覧', '重ね', '扇形']) {
       await preview.getByRole('button', { name, exact: true }).click();
       await preview.scrollIntoViewIfNeeded();
       await fit(page);
-      await page.screenshot({ path: `${out}/deck-${width}-${name === '一覧' ? 'grid' : name === '重ねる' ? 'overlap' : 'arc'}.png` });
+      const scroll = preview.locator('.deck-contents-scroll');
+      assert.ok(await scroll.evaluate(el => el.scrollWidth <= el.clientWidth + 1), `${name}: 横スクロールが出ない`);
+      await page.screenshot({ path: `${out}/deck-${width}-${name === '一覧' ? 'grid' : name === '重ね' ? 'overlap' : 'arc'}.png` });
     }
     await preview.getByRole('button', { name: '次へ', exact: true }).click();
     assert.equal(await preview.locator('.card').count(), 2);

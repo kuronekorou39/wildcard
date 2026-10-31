@@ -114,13 +114,18 @@
 .deck-contents-toolbar .chips { gap: 4px; }
 .deck-contents-toolbar .chip { padding: 6px 9px; font-size: .68rem; }
 .deck-contents-scroll { max-height: 270px; overflow: auto; overscroll-behavior: contain; padding: 4px; }
-.deck-contents-cards { position: relative; }
-.deck-contents-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(44px, 1fr)); gap: 8px; justify-items: center; }
+/* スートごとに1行。一覧は並べ、重ねは半分ずつ重ねて折り返し、扇形は行の幅に収まる弧にする */
+.deck-contents-cards { display: grid; gap: 10px; }
+.deck-contents-row { display: flex; flex-wrap: wrap; gap: 6px; }
 .deck-contents-card { display: block; width: 44px; }
 .deck-contents-card .card { width: 44px; height: 64px; flex: none; border-radius: 6px; font-size: 14px; }
 .deck-contents-card .card-index { font-size: 14px; }
-.deck-contents-overlap, .deck-contents-arc { height: 124px; }
-.deck-contents-overlap .deck-contents-card, .deck-contents-arc .deck-contents-card { position: absolute; transform-origin: 50% 100%; }
+/* 数字は札の中央寄りにあるので、28px は見せないと隠れる */
+.deck-contents-overlap .deck-contents-row { gap: 6px 0; padding-left: 16px; }
+.deck-contents-overlap .deck-contents-card { margin-left: -16px; }
+/* 両端の札は回転で外側へ 20px ほどはみ出すので、その分を左右の余白（34px）に含めて幅に収める */
+.deck-contents-arc .deck-contents-row { position: relative; display: block; container-type: inline-size; height: 120px; --step: min(26px, (100cqw - 116px) / max(1, var(--n) - 1)); }
+.deck-contents-arc .deck-contents-card { position: absolute; left: calc(36px + var(--i) * var(--step)); top: calc(6px + 42px * var(--t) * var(--t)); transform: rotate(calc(var(--t) * 36deg)); transform-origin: 50% 115%; }
 .deck-pagination { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: .7rem; margin-top: 8px; }
 @media (max-width: 400px) {
   .table-stakes { gap: 8px; }
