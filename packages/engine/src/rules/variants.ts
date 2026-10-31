@@ -211,9 +211,9 @@ export const SHORT_DECK: Variant = {
  * エースが最弱。
  *
  * A-2-3-4-5 が普通のストレートになり、一番強いストレートは 9-10-J-Q-K。
+ * 強さの並びとは別に、連続の順（sequence）でも A を 1 として数える。
  * 10-J-Q-K-A はもう連続していないので、ロイヤルフラッシュと A-2-3-4-5 の
- * 特例役はどちらも無効にする。変数の相対指定がランクの並び順をそのまま
- * 見ているので、役のパターンを書き換えなくても正しく動く。
+ * 特例役はどちらも無効にする。役のパターンは書き換えなくてよい。
  */
 export const ACE_LOW: Variant = {
   ...STANDARD_VARIANT,
@@ -224,6 +224,7 @@ export const ACE_LOW: Variant = {
   deck: {
     suits: SUITS,
     ranks: ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'],
+    sequence: ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'],
   },
   ranking: {
     hands: disable(STANDARD_HAND_RANKINGS, 'royal_flush', 'steel_wheel', 'wheel'),

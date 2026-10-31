@@ -1,5 +1,5 @@
 import type { Card, CardCondition, DeckRules, GlobalCondition, HandPattern, Suit } from '../types.js';
-import { rankValue, suitValue } from '../deck.js';
+import { rankStep, rankValue, sequenceOf, suitValue } from '../deck.js';
 
 export interface PatternMatch {
   /** 役を構成するカード。 */
@@ -19,7 +19,7 @@ export interface PatternMatch {
  *
  * 変数の扱い:
  * - 同名の変数は同じランクを指す（X, X = ペア）
- * - offset は相対指定（X, X+1, X+2 = 連続する3枚）
+ * - offset は相対指定（X, X+1, X+2 = 連続する3枚）。連続は deck.sequence（既定は 2…A の本来の順）で見る。強さの並びではない
  * - **異なる名前の変数は異なるランクを指す**（X, X, Y, Y = ツーペア。XとYが同ランクなら不成立）
  *
  * 探索はカードを1枚割り当てるたびに条件を検証して枝刈りする。
@@ -168,8 +168,8 @@ function bindRank(
       return spec.values.includes(card.rank) ? { added: null } : null;
 
     case 'variable': {
-      const base = rankValue(card.rank, deck) - (spec.offset ?? 0);
-      if (base < 0 || base >= deck.ranks.length) return null;
+      const base = rankStep(card.rank, deck) - (spec.offset ?? 0);
+      if (base < 0 || base >= sequenceOf(deck).length) return null;
 
       const existing = bindings.get(spec.name);
       if (existing !== undefined) return existing === base ? { added: null } : null;
@@ -220,7 +220,8 @@ function satisfiesGlobal(cards: readonly Card[], global: GlobalCondition, deck: 
     }
 
     case 'consecutive': {
-      const values = cards.map((c) => rankValue(c.rank, deck)).sort((a, b) => a - b);
+      // 連続は本来の順で見る。デッキの並べ替え（強さ）では変わらない。
+      const values = cards.map((c) => rankStep(c.rank, deck)).sort((a, b) => a - b);
       return values.every((v, i) => i === 0 || v === values[i - 1]! + 1);
     }
 

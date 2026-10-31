@@ -168,6 +168,10 @@ function parseDeck(value: unknown, path: string, p: Problems): DeckRules {
     suits: p.each(deck['suits'], `${path}.suits`, suit(p)),
     ranks: p.each(deck['ranks'], `${path}.ranks`, rank(p)),
     ...optional(
+      'sequence',
+      deck['sequence'] === undefined ? undefined : p.each(deck['sequence'], `${path}.sequence`, rank(p)),
+    ),
+    ...optional(
       'suitRanking',
       deck['suitRanking'] === undefined
         ? undefined

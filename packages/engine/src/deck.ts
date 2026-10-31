@@ -1,4 +1,4 @@
-import type { Card, DeckRules, Rank, Suit } from './types.js';
+import { RANKS, type Card, type DeckRules, type Rank, type Suit } from './types.js';
 import { createRng } from './rng.js';
 
 const keyOf = (rank: Rank, suit: Suit) => `${rank}/${suit}`;
@@ -107,6 +107,21 @@ export function shuffleByIndex<T>(cards: readonly T[], nextIndex: (bound: number
     out[j] = a;
   }
   return out;
+}
+
+/** 連続の順。省略時は 2…A の本来の順。 */
+export const sequenceOf = (rules: DeckRules): readonly Rank[] => rules.sequence ?? RANKS;
+
+/**
+ * ランクの並び（連続の物差し）。デッキの `ranks` の並べ替え（強さ）では変わらない。
+ *
+ * 「強さ」とは別物。10 を A の上に動かしても 9-10-J-Q-K は連続のままで、
+ * 5 を抜いたデッキでは 2-3-4-6-7 は連続にならない。
+ */
+export function rankStep(rank: Rank, rules: DeckRules): number {
+  const i = sequenceOf(rules).indexOf(rank);
+  if (i < 0) throw new Error(`ランク ${rank} は連続の順に含まれていない`);
+  return i;
 }
 
 /** ランクの強さ。DeckRules.ranks の並び順がそのまま強さになる。 */

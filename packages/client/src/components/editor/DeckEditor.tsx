@@ -23,8 +23,8 @@ interface DeckEditorProps {
  *
  * ここで効く設計上の点が2つある。
  *
- * - **ランクの並び順がそのまま強さ**になる。並べ替えると「TT が AA より強い」が
- *   作れる代わりに、9-10-J-Q-K が連続でなくなる。その警告を画面に出す。
+ * - **ランクの並び順がそのまま強さ**になる。並べ替えると「TT が AA より強い」が作れる。
+ *   ストレートの連続は本来の順（2…A）で見るので、並べ替えても変わらない。
  * - 枚数は数字の入力一つで際限なく増える。上限を超えたら札を作らずに止める
  *   （deckSize は数えるだけで、buildDeck と違って確保しない）。
  */
@@ -125,10 +125,7 @@ export function DeckEditor({ deck, allRanks, allSuits, onChange }: DeckEditorPro
         </div>
         <button type="button" className="btn btn-ghost" onClick={() => setEditingOrder(false)}>並べ替えを完了</button>
         </>}
-        <details className="editor-note"><summary>強さとストレートの関係</summary><p className="hint">
-          並びがそのまま強さです。10 を A の上に動かせば「TT が AA より強い」になりますが、
-          9-10-J-Q-K は連続でなくなります（ストレートの意味も変わります）。
-        </p></details>
+        <p className="hint">並びが決めるのは強さだけです。ストレートの連続は 2…A の本来の順で判定します。</p>
       </div>
 
       <div className="field-row">

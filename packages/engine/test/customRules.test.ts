@@ -92,6 +92,31 @@ describe('カードの強さを差し替えられる', () => {
     expect(compareHands(pairOfTwos, pairOfAces)).toBeGreaterThan(0);
   });
 
+  it('強さを並べ替えてもストレートは本来の順で判定する', () => {
+    // 10 を A の上に動かす。TT は AA より強いが、9-10-J-Q-K は連続のまま。
+    const tenIsKing: Variant = {
+      ...STANDARD_VARIANT,
+      deck: {
+        suits: SUITS,
+        ranks: ['2', '3', '4', '5', '6', '7', '8', '9', 'J', 'Q', 'K', 'A', '10'],
+      },
+    };
+    expect(compareHands(evalWith('Ts Th 5c 4h 3s', tenIsKing), evalWith('As Ah 5c 4h 3s', tenIsKing))).toBeGreaterThan(0);
+    expect(evalWith('9s Th Jc Qh Kd', tenIsKing).rankingId).toBe('straight');
+    // A が末尾でなくなっても、J-Q-K-A-10 は連続にならない。
+    expect(evalWith('Js Qh Kc Ah Td', tenIsKing).rankingId).toBe('straight');
+    expect(evalWith('Js Qh Kc Ah 2d', tenIsKing).rankingId).toBe('high_card');
+  });
+
+  it('ランクを抜くと、その穴をまたぐ札は連続にならない', () => {
+    const noFive: Variant = {
+      ...STANDARD_VARIANT,
+      deck: { suits: SUITS, ranks: ['2', '3', '4', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'] },
+    };
+    expect(evalWith('2s 3h 4c 6h 7d', noFive).rankingId).toBe('high_card');
+    expect(evalWith('6s 7h 8c 9h Td', noFive).rankingId).toBe('straight');
+  });
+
   it('スートに強弱を付けると、それまで引き分けだった手に差が付く', () => {
     const spadesHigh: Variant = {
       ...STANDARD_VARIANT,

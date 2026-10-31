@@ -1,5 +1,5 @@
 import type { Card, HandPattern, Rank, Suit, Variant } from '../types.js';
-import { buildDeck, cardKey, rankValue } from '../deck.js';
+import { buildDeck, cardKey, rankStep, rankValue, sequenceOf } from '../deck.js';
 import { createRng } from '../rng.js';
 import { type HandResult, evaluateExact } from './evaluate.js';
 import { hasWilds, isWild, patternUsesSuits } from './wild.js';
@@ -129,6 +129,7 @@ function buildCandidate(
 ): Card[] | null {
   const { ranks, suits } = variant.deck;
   if (ranks.length === 0 || suits.length === 0) return null;
+  const sequence = sequenceOf(variant.deck);
 
   // 同じ名前の変数は同じランクを指し、違う名前は違うランクを指す。
   const bases = new Map<string, number>();
@@ -138,15 +139,17 @@ function buildCandidate(
     const existing = bases.get(name);
     if (existing !== undefined) return existing;
 
-    // offset のぶん上に札が要るので、はみ出さない範囲から選ぶ。
-    const maxOffset = Math.max(
-      ...pattern.cards
-        .filter((c) => c.rank.type === 'variable' && c.rank.name === name)
-        .map((c) => (c.rank.type === 'variable' ? (c.rank.offset ?? 0) : 0)),
-    );
-    const candidates = ranks
+    // 相対指定は連続の順（既定は 2…A）で数える。基準から offset ぶん上の札が
+    // すべてデッキにある位置だけを候補にする（5 を抜けば 3-4-5 は組めない）。
+    const offsets = pattern.cards
+      .filter((c) => c.rank.type === 'variable' && c.rank.name === name)
+      .map((c) => (c.rank.type === 'variable' ? (c.rank.offset ?? 0) : 0));
+    const candidates = sequence
       .map((_, i) => i)
-      .filter((i) => i + maxOffset < ranks.length && !usedBases.has(i));
+      .filter((i) => !usedBases.has(i) && offsets.every((o) => {
+        const rank = sequence[i + o];
+        return rank !== undefined && ranks.includes(rank);
+      }));
     const base = pick(candidates, rng);
     if (base === undefined) return null;
 
@@ -199,7 +202,7 @@ function buildCandidate(
       case 'variable': {
         const base = resolveBase(cond.rank.name, cond.rank.offset ?? 0);
         if (base === null) return null;
-        const resolved = ranks[base + (cond.rank.offset ?? 0)];
+        const resolved = sequence[base + (cond.rank.offset ?? 0)];
         // 同じ変数は同じランクを指すので、ここは代案を出せない。
         rankOrder = resolved === undefined ? [] : [resolved];
         break;
@@ -302,9 +305,7 @@ function pickFiller(
     let n = 0;
     if (usedRanks.has(card.rank)) n += 8; // ペアを作ってしまう
     n += (suitCounts.get(card.suit) ?? 0) * 2; // 同じスートが増えるとフラッシュに寄る
-    const near = hand.some(
-      (c) => Math.abs(rankValue(c.rank, variant.deck) - rankValue(card.rank, variant.deck)) <= 2,
-    );
+    const near = hand.some((c) => Math.abs(rankStep(c.rank, variant.deck) - rankStep(card.rank, variant.deck)) <= 2);
     if (near) n += 3; // ストレートに寄る
     return n;
   };
