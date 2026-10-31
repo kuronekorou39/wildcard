@@ -1,6 +1,7 @@
 import { chromium } from 'playwright';
 import { mkdir } from 'node:fs/promises';
 import assert from 'node:assert/strict';
+import { chooseRule } from './setup-helpers.mjs';
 
 const URL = process.env.WILDCARD_URL ?? 'http://127.0.0.1:5173/';
 const OUT = process.env.WILDCARD_SHOTS ?? 'shots-workspace';
@@ -37,6 +38,7 @@ try {
     assert.match(await page.getByRole('button', { name: '初期チップを編集', exact: true }).innerText(), /2,000/);
     await page.locator('.rule-select-trigger').click();
     await page.screenshot({ path: `${OUT}/${width}-rules.png` });
+    await page.getByRole('button', { name: '検索・絞り込み', exact: true }).click();
     await page.getByRole('searchbox', { name: 'ルールを検索' }).fill('オマハ');
     await page.getByRole('option').first().click();
     assert.match(await page.locator('.selected-rule-title').innerText(), /オマハ/);
@@ -72,7 +74,7 @@ try {
   await page.getByRole('button', { name: 'BBを編集', exact: true }).click();
   await page.getByRole('spinbutton', { name: 'BB', exact: true }).fill('20');
   await page.keyboard.press('Enter');
-  await page.getByRole('button', { name: 'バナー', exact: true }).click();
+  await page.getByRole('button', { name: 'これを元に作る', exact: true }).click();
   const encoded = await page.evaluate(() => {
     const canvas = document.createElement('canvas'); canvas.width = 900; canvas.height = 300;
     const context = canvas.getContext('2d');
@@ -82,21 +84,25 @@ try {
   });
   await page.getByLabel('バナー画像', { exact: true }).setInputFiles({ name: 'banner.png', mimeType: 'image/png', buffer: Buffer.from(encoded, 'base64') });
   await page.locator('.banner-editor img').waitFor();
-  await page.getByRole('button', { name: 'バナーを保存', exact: true }).click();
+  await page.getByRole('button', { name: '保存して卓に戻る', exact: true }).click();
   const source = await page.locator('.rule-select-trigger img').getAttribute('src');
   assert.match(source, /^data:image\/webp;base64,/);
+  await page.locator('.rule-select-trigger').click();
+  const customId = await page.getByRole('option', { selected: true }).getAttribute('data-variant');
+  await page.keyboard.press('Escape');
   await page.reload();
+  await chooseRule(page, customId);
   assert.equal(await page.locator('.rule-select-trigger img').getAttribute('src'), source);
   await page.locator('.rule-select-trigger').click();
-  assert.equal(await page.locator('[data-variant="standard"] img').getAttribute('src'), source);
+  assert.equal(await page.locator(`[data-variant="${customId}"] img`).getAttribute('src'), source);
+  await page.getByRole('button', { name: '検索・絞り込み', exact: true }).click();
   await page.getByRole('searchbox').fill('オマハ');
   await page.getByRole('searchbox').press('ArrowDown');
   await page.keyboard.press('Enter');
   assert.match(await page.locator('.selected-rule-title').innerText(), /オマハ/);
   assert.equal(await page.locator('.rule-select-trigger img').count(), 0);
-  await page.locator('.rule-select-trigger').click();
-  await page.locator('[data-variant="standard"]').click();
-  await page.getByRole('button', { name: 'これを元に作る' }).click();
+  await chooseRule(page, customId);
+  await page.getByRole('button', { name: 'このルールを編集' }).click();
   assert.equal(await page.locator('.banner-editor img').getAttribute('src'), source);
   await page.getByRole('button', { name: '名前を編集', exact: true }).click();
   await page.getByRole('textbox', { name: '名前', exact: true }).fill('バナー確認');
@@ -107,17 +113,17 @@ try {
   assert.equal(await page.locator('.rule-select-trigger img').getAttribute('src'), source);
   assert.match(await page.locator('.selected-rule-title').innerText(), /バナー確認/);
   await page.screenshot({ path: `${OUT}/uploaded-banner.png` });
-  await page.getByRole('button', { name: 'バナー', exact: true }).click();
+  await page.getByRole('button', { name: 'このルールを編集' }).click();
   await page.getByRole('button', { name: 'フォレスト', exact: true }).click();
   await page.evaluate(() => {
     const original = Storage.prototype.setItem;
     window.restoreStorage = () => { Storage.prototype.setItem = original; };
     Storage.prototype.setItem = () => { throw new Error('quota'); };
   });
-  await page.getByRole('button', { name: 'バナーを保存', exact: true }).click();
+  await page.getByRole('button', { name: '保存して卓に戻る', exact: true }).click();
   assert.match(await page.getByRole('alert').innerText(), /保存できません/);
   await page.evaluate(() => window.restoreStorage());
-  await page.getByRole('button', { name: '閉じる', exact: true }).click();
+  await page.getByRole('button', { name: '← 戻る', exact: true }).click();
   assert.equal(await page.locator('.rule-select-trigger img').getAttribute('src'), source);
   await page.getByRole('button', { name: 'このルールを編集' }).click();
   await page.evaluate(() => {

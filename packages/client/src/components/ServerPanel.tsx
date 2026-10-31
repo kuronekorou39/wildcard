@@ -65,12 +65,15 @@ export function ServerPanel({ variantId, role, onRoleChange, onStart }: {
       </>}
       {problem && <p className="hint hint-warn" role="alert">{problem}</p>}
     </div>
-    <div className="session-launch"><button type="button" className="btn btn-primary btn-large btn-block" disabled={busy || !ready} onClick={() => { void launch(); }}>{busy ? '接続しています…' : role === 'host' ? '卓を作る' : previous ? '卓に戻る' : '参加する'}<span aria-hidden="true">→</span></button><button className="server-endpoint" type="button" aria-label="サーバー接続設定" title={server || '接続先を設定'} onClick={() => setConfigOpen(true)}><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 7h16M4 17h16M9 4v6M15 14v6" /></svg></button></div>
-    {configOpen && <GameDialog title="サーバー接続" onClose={() => setConfigOpen(false)}>
+    <div className="session-launch">
+      <button className="server-endpoint" type="button" aria-label="サーバー接続設定" onClick={() => setConfigOpen(true)}><span>サーバー接続 <span aria-hidden="true">↗</span></span><small>{!server ? '接続先を設定' : role === 'host' ? createKey ? '作成キー入力済み' : '作成キーが必要' : '招待で参加・キー不要'}</small></button>
+      <button type="button" className="btn btn-primary btn-large btn-block" disabled={busy || !ready} onClick={() => { void launch(); }}>{busy ? '接続しています…' : role === 'host' ? '卓を作る' : previous ? '卓に戻る' : '参加する'}<span aria-hidden="true">→</span></button>
+    </div>
+    {configOpen && <GameDialog title="サーバー接続" className="server-connection-dialog" onClose={() => setConfigOpen(false)}>
+      <p className="server-access-note">作成：作成キーが必要 ／ 参加：招待リンクのみ</p>
       <label className="field"><span className="field-label">接続先URL</span><input className="input" defaultValue={server} placeholder="https://…" onBlur={event => { try { const url = normalizeServerUrl(event.target.value); setServer(url); saveServerUrl(url); setProblem(null); } catch (failure) { setProblem((failure as Error).message); } }} /></label>
-      <label className="field"><span className="field-label">作成キー</span><input type="password" autoComplete="off" className="input" value={createKey} onChange={event => setCreateKey(event.target.value)} /></label>
-      <p className="hint">検証用サーバーへの接続設定です。参加者には招待リンクを共有します。</p>
-      <p className="hint">席への再接続情報はこのブラウザに保存します。別の端末では同じ席に戻れません。</p>
+      {role === 'host' && <label className="field"><span className="field-label">作成キー</span><input aria-label="作成キー" type="password" autoComplete="off" className="input" value={createKey} onChange={event => setCreateKey(event.target.value)} /><span className="hint">管理者から受け取ったキーを入力</span></label>}
+      <p className="hint">同じ席への復帰は、このブラウザから。</p>
       {problem && <p className="hint hint-warn" role="alert">{problem}</p>}
     </GameDialog>}
   </div>;

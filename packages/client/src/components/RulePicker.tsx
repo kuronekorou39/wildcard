@@ -14,8 +14,8 @@ import { PlayingCard, cardLabel } from './PlayingCard.js';
 import { DeckContents } from './DeckContents.js';
 import { isCustomVariant, useVariants } from '../rules/customVariants.js';
 import { GameDialog } from './GameDialog.js';
-import { BannerEditor, RuleBanner } from './RuleBanner.js';
-import { ruleBanner, saveRuleBanner, type RuleBannerStyle } from '../rules/ruleBanners.js';
+import { RuleBanner } from './RuleBanner.js';
+import { EMPTY_RULE_FILTERS, filterVariants, type RuleFilters } from '../rules/filterVariants.js';
 
 interface RulePickerProps {
   readonly value: string;
@@ -37,16 +37,17 @@ export function RulePicker({ value, onChange, onEdit }: RulePickerProps) {
   const [open, setOpen] = useState(false);
   const trigger = useRef<HTMLButtonElement>(null);
   const [sheet, setSheet] = useState(false);
-  const [query, setQuery] = useState('');
-  const [banner, setBanner] = useState<RuleBannerStyle | null>(null);
-  const [error, setError] = useState('');
-  const [bannerBusy, setBannerBusy] = useState(false);
-  const matches = variants.filter(variant => `${variant.name} ${variant.description ?? ''}`.toLocaleLowerCase().includes(query.toLocaleLowerCase()));
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [advanced, setAdvanced] = useState(false);
+  const [filters, setFilters] = useState<RuleFilters>(EMPTY_RULE_FILTERS);
+  const matches = filterVariants(variants, filters);
+  const updateFilter = (patch: Partial<RuleFilters>) => setFilters(current => ({ ...current, ...patch }));
+  const clearSearch = () => { setFilters(EMPTY_RULE_FILTERS); setAdvanced(false); };
 
   return (
     <div className="rule-picker">
       <button ref={trigger} type="button" className="rule-select-trigger" aria-label={`ルールを選ぶ：${selected.name}`} aria-haspopup="dialog" aria-expanded={open}
-        onClick={() => { setQuery(''); setOpen(true); }}>
+        onClick={() => { clearSearch(); setSearchOpen(false); setOpen(true); }}>
         <RuleBanner variant={selected} />
         <span className="selected-rule-title"><strong>{selected.name}</strong><span className="rule-chevron" aria-hidden="true">⌄</span></span>
       </button>
@@ -55,17 +56,32 @@ export function RulePicker({ value, onChange, onEdit }: RulePickerProps) {
         <button type="button" className="rule-tool" aria-label="ルール詳細" title="ルール詳細" onClick={() => setSheet(true)}>
           <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 11v6M12 7v.5" /></svg>
         </button>
-        <button type="button" className="rule-tool" aria-label="バナー" title="バナーを変更" onClick={() => { setBanner(ruleBanner(selected.id)); setError(''); }}>
-          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3" /><circle cx="8" cy="9" r="1.5" /><path d="m4 17 5-5 4 4 3-3 5 5" /></svg>
-        </button>
         {onEdit && <button type="button" className="rule-tool rule-edit-button" aria-label={isCustomVariant(selected.id) ? 'このルールを編集' : 'これを元に作る'} title={isCustomVariant(selected.id) ? 'ルールを編集' : 'コピーして編集'} onClick={() => onEdit(selected.id)}>
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 4 5 5M4 20l5-1L20 8a2 2 0 0 0-5-5L4 14z" /></svg>
         </button>}
       </div>
-      {open && <GameDialog title="ルールを選ぶ" className="rule-select-dialog" anchor={trigger.current} initialFocus=".rule-search" onClose={() => setOpen(false)}>
-        <input type="search" className="input rule-search" aria-label="ルールを検索" placeholder="ルールを検索" value={query} onChange={event => setQuery(event.target.value)} onKeyDown={event => {
-          if (event.key === 'ArrowDown') { event.preventDefault(); event.currentTarget.parentElement?.querySelector<HTMLButtonElement>('[role=option]')?.focus(); }
-        }} />
+      {open && <GameDialog title="ルールを選ぶ" className="rule-select-dialog" anchor={trigger.current} initialFocus=".rule-option[aria-selected=true]" onClose={() => setOpen(false)}>
+        <div className="rule-search-toolbar"><span role="status">{matches.length} 件</span><button type="button" className="search-toggle" aria-expanded={searchOpen} aria-controls="rule-search-panel" onClick={() => {
+          setSearchOpen(!searchOpen);
+          if (searchOpen) clearSearch();
+        }}><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10" cy="10" r="6" /><path d="m15 15 5 5" /></svg>{searchOpen ? '検索を閉じる' : '検索・絞り込み'}</button></div>
+        {searchOpen && <div className="rule-search-panel" id="rule-search-panel">
+          <input type="search" className="input rule-search" aria-label="ルールを検索" placeholder="名前・キーワード" value={filters.query} onChange={event => updateFilter({ query: event.target.value })} onKeyDown={event => {
+            if (event.key === 'ArrowDown') { event.preventDefault(); event.currentTarget.closest('dialog')?.querySelector<HTMLButtonElement>('[role=option]')?.focus(); }
+          }} />
+          <div className="rule-filter-row"><div className="rule-source-filters" role="group" aria-label="ルールの種類">
+            {([['all', 'すべて'], ['preset', '既定'], ['custom', '自作']] as const).map(([value, label]) => <button key={value} type="button" aria-pressed={filters.source === value} onClick={() => updateFilter({ source: value })}>{label}</button>)}
+          </div><button type="button" className="search-toggle" aria-expanded={advanced} aria-controls="rule-advanced-filters" onClick={() => {
+            setAdvanced(!advanced);
+            if (advanced) updateFilter({ holeCards: '', limit: '', deck: 'all' });
+          }}>詳細条件 {advanced ? '−' : '＋'}</button></div>
+          {advanced && <div className="rule-advanced-filters" id="rule-advanced-filters">
+            <label><span>手札</span><select aria-label="手札枚数" className="input" value={filters.holeCards} onChange={event => updateFilter({ holeCards: event.target.value })}><option value="">すべて</option>{[...new Set(variants.map(v => v.structure.holeCards))].sort((a, b) => a - b).map(n => <option key={n} value={n}>{n}枚</option>)}</select></label>
+            <label><span>デッキ</span><select aria-label="デッキ枚数" className="input" value={filters.deck} onChange={event => updateFilter({ deck: event.target.value as RuleFilters['deck'] })}><option value="all">すべて</option><option value="short">52枚未満</option><option value="standard">52枚</option><option value="large">53枚以上</option></select></label>
+            <label><span>ベット</span><select aria-label="ベット形式" className="input" value={filters.limit} onChange={event => updateFilter({ limit: event.target.value })}><option value="">すべて</option><option value="no-limit">NL</option><option value="pot-limit">PL</option><option value="fixed-limit">FL</option></select></label>
+          </div>}
+          {(filters.query || filters.source !== 'all' || filters.holeCards || filters.limit || filters.deck !== 'all') && <button type="button" className="search-clear" onClick={clearSearch}>条件をクリア</button>}
+        </div>}
         <div className="rule-options" role="listbox" aria-label="ルール" onKeyDown={event => {
           const options = Array.from(event.currentTarget.querySelectorAll<HTMLButtonElement>('[role=option]'));
           const current = options.indexOf(document.activeElement as HTMLButtonElement);
@@ -87,14 +103,6 @@ export function RulePicker({ value, onChange, onEdit }: RulePickerProps) {
         </div>
       </GameDialog>}
       {sheet && <GameDialog title={selected.name} className="setup-rule-dialog" onClose={() => setSheet(false)}><RuleSheet variant={selected} defaultOpen label="役の順位と例" /></GameDialog>}
-      {banner && <GameDialog title="ルールのバナー" className="banner-dialog" onClose={() => setBanner(null)}>
-        <BannerEditor variant={selected} value={banner} onChange={setBanner} onBusyChange={setBannerBusy} />
-        {error && <p className="hint hint-warn" role="alert">{error}</p>}
-        <button type="button" className="btn btn-primary btn-block" disabled={bannerBusy} onClick={() => {
-          if (saveRuleBanner(selected.id, banner)) setBanner(null);
-          else setError('保存できませんでした。ブラウザの保存容量・設定を確認してください。');
-        }}>バナーを保存</button>
-      </GameDialog>}
     </div>
   );
 }

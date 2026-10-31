@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import type { OnlineSettings } from '../modes/OnlineTable.js';
 import type { SoloSettings } from '../modes/SoloTable.js';
 import { SoloPanel } from './SoloPanel.js';
@@ -26,8 +26,9 @@ export function SetupScreen({ mode, onModeChange, variantId, onVariantChange, on
   const [onlineRole, setOnlineRole] = useState<'host' | 'guest'>(() => invitedTable() ? 'guest' : 'host');
   const [connection, setConnection] = useState<'server' | 'p2p'>(() => invitedTable() ? 'server' : 'p2p');
   const [about, setAbout] = useState(false);
+  const aboutTrigger = useRef<HTMLButtonElement>(null);
   return <div className="screen screen-setup setup-shell">
-    <header className="setup-header"><Brand /><button type="button" className="preview-badge" onClick={() => setAbout(true)}>PREVIEW <span aria-hidden="true">ⓘ</span></button></header>
+    <header className="setup-header"><Brand /><button ref={aboutTrigger} type="button" className="preview-badge" aria-haspopup="dialog" aria-expanded={about} onClick={() => setAbout(true)}>PREVIEW <span aria-hidden="true">ⓘ</span></button></header>
     <main className="setup-desk">
       <section className="setup-rule-pane" aria-label="ルールの設定">
         {mode === 'online' && onlineRole === 'guest' ? <div className="join-context"><span aria-hidden="true">↗</span><h2>{connection === 'server' ? '招待リンクで参加' : 'ルームコードで接続'}</h2><p>ルールとチップの設定は、接続先の卓から読み込みます。</p></div> :
@@ -46,7 +47,16 @@ export function SetupScreen({ mode, onModeChange, variantId, onVariantChange, on
       </section>
     </main>
     <footer className="setup-footer"><span>ルール・挙動の確認用</span><span>カスタムルールはこのブラウザに保存</span></footer>
-    {about && <GameDialog title="このプレビューについて" onClose={() => setAbout(false)}><p>ルールの編集と、テーブルの表示・進行を確認するためのプレビューです。</p><p>P2P は部屋を作った端末が進行する一時的な卓です。サーバー接続では再接続とハンドの保存を検証できます。アカウント・クラブはまだありません。</p><p>作成したルールとバナーは、このブラウザに保存されます。ルールは編集画面の「受け渡し」から書き出せます。</p></GameDialog>}
+    {about && <GameDialog title="このプレビューについて" className="preview-dialog" anchor={aboutTrigger.current} placement="below" onClose={() => setAbout(false)}>
+      <p className="preview-intro">ルール・盤面・進行の検証版</p>
+      <table className="preview-modes"><tbody>
+        <tr><th scope="row">ソロ</th><td>CPU と対局</td></tr>
+        <tr><th scope="row">P2P</th><td>端末間で接続・主催者が進行</td></tr>
+        <tr><th scope="row">サーバー</th><td>作成キーで作成・招待で参加<br /><small>再接続・履歴に対応</small></td></tr>
+      </tbody></table>
+      <dl className="preview-notes"><div><dt>ルール・バナー</dt><dd>このブラウザに保存</dd></div><div><dt>ルールの書き出し</dt><dd>編集 → 受け渡し</dd></div></dl>
+      <p className="preview-pending">アカウント・クラブは未対応</p>
+    </GameDialog>}
   </div>;
 }
 
