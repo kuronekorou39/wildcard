@@ -90,8 +90,10 @@ function stepFor(count: number, width: number, range: { min: number; max: number
   return Math.max(range.min, Math.min(range.max, (width - CARD_W - side * 2) / (count - 1)));
 }
 
-function DeckRow({ view, entries, width }: { readonly view: View; readonly entries: readonly Entry[]; readonly width: number }) {
-  if (view === 'grid') return <div className="deck-contents-row">{entries.map(({ card, key }) => <span className="deck-contents-card" key={key}><PlayingCard card={card} size="sm" /></span>)}</div>;
+function DeckRow({ view, entries: strongestFirst, width }: { readonly view: View; readonly entries: readonly Entry[]; readonly width: number }) {
+  if (view === 'grid') return <div className="deck-contents-row">{strongestFirst.map(({ card, key }) => <span className="deck-contents-card" key={key}><PlayingCard card={card} size="sm" /></span>)}</div>;
+  // 重ね・扇形は後の札が前の札に重なる。強い札が隠れないよう、弱い順に置いて強い札を一番上（右端）にする
+  const entries = [...strongestFirst].reverse();
   if (view === 'overlap') {
     const step = stepFor(entries.length, width, OVERLAP);
     // 最小の重なりでも入らないときだけ折り返す

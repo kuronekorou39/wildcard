@@ -53,7 +53,9 @@ try {
       assert.ok(await scroll.evaluate(el => el.scrollWidth <= el.clientWidth + 1), `${name}: 横スクロールが出ない`);
       await page.screenshot({ path: `${out}/deck-${width}-${name === '一覧' ? 'grid' : name === '重ね' ? 'overlap' : 'arc'}.png` });
     }
-    // 強い順に並ぶ（♠の行の先頭が A）
+    // 一覧は強い順（♠の行の先頭が A）、扇形は強い札が一番上（右端）に来る
+    assert.equal(await preview.locator('.deck-contents-fan .card').last().getAttribute('aria-label'), 'A♠');
+    await preview.getByRole('button', { name: '一覧', exact: true }).click();
     assert.equal(await preview.locator('.deck-contents-row').first().locator('.card').first().getAttribute('aria-label'), 'A♠');
     await page.getByRole('button', { name: '保存して卓に戻る', exact: true }).click();
     await page.getByRole('button', { name: 'このルールを編集', exact: false }).click();

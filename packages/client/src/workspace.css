@@ -53,6 +53,9 @@
 .session-identity { flex: 0 0 auto; margin-bottom: 20px; padding: 0 3px; }
 .session-identity .field { margin: 0; }
 .session-identity .field-label { font-size: .73rem; margin-bottom: 8px; }
+/* 名前は画面の主役なので、他の値より大きく出す */
+.session-identity .editable-value, .session-identity .input.editable-input { min-height: 52px; font-size: 1.45rem; }
+.session-identity .editable-value svg { width: 16px; height: 16px; }
 /* 選択中の背景は .tab-indicator が1枚だけ持ち、タブの間を滑って移動する */
 .session-tabs { --tab-pad: 4px; position: relative; flex: 0 0 auto; padding: var(--tab-pad); gap: 4px; border: 1px solid var(--border); background: var(--bg-dark); border-radius: 12px; margin-bottom: 24px; }
 .session-tabs .tab { position: relative; z-index: 1; padding: 12px 6px; font-size: .86rem; border-radius: 8px; white-space: nowrap; background: transparent; transition: color .2s ease; }
@@ -304,6 +307,7 @@
   .session-fields .field-label { font-size: .85rem; }
   .session-fields .segment { font-size: .9rem; padding: 14px 10px; }
   .editable-value, .input.editable-input, .session-fields .input { font-size: 1.2rem; min-height: 50px; }
+  .session-identity .editable-value, .session-identity .input.editable-input { font-size: 1.6rem; min-height: 58px; }
   .seat-count-picker button { min-height: 52px; font-size: 1.05rem; }
   .rules-shell .editor-workspace { grid-template-columns: 170px minmax(0, 1fr) 270px; }
   .rules-shell .editor-content>.panel { padding: 32px; }
@@ -334,6 +338,7 @@
   .setup-session-pane { padding: 0; flex: 1; min-height: 0; }
   .session-identity { margin-bottom: 14px; }
   .session-identity .field-label { font-size: .68rem; margin-bottom: 6px; }
+  .session-identity .editable-value, .session-identity .input.editable-input { font-size: 1.25rem; min-height: 46px; }
   .session-tabs { --tab-pad: 3px; margin-bottom: 14px; border-radius: 10px; }
   .session-tabs .tab { font-size: .76rem; padding: 10px 4px; }
   .session-fields { gap: 22px; padding: 3px; }
@@ -406,6 +411,7 @@
   .selected-rule-title strong { font-size: .85rem; }
   .session-identity { margin-bottom: 8px; }
   .session-identity .field-label { font-size: .63rem; margin-bottom: 3px; }
+  .session-identity .editable-value, .session-identity .input.editable-input { font-size: 1.15rem; min-height: 40px; }
   .session-tabs { margin-bottom: 8px; }
   .session-tabs .tab { padding-block: 8px; min-height: 36px; }
   .session-fields { gap: 12px; }
@@ -432,7 +438,7 @@
   .session-identity { margin-bottom: 6px; }
   .session-identity .field { display: flex; align-items: center; gap: 8px; }
   .session-identity .field-label { flex: 0 0 66px; margin: 0; font-size: .58rem; }
-  .session-identity .editable-value, .session-identity .editable-input { flex: 1; min-height: 30px; padding-block: 4px; }
+  .session-identity .editable-value, .session-identity .input.editable-input { flex: 1; min-height: 30px; padding-block: 4px; font-size: 1.05rem; }
   .session-tabs { margin-bottom: 8px; }
   .session-tabs .tab { font-size: .65rem; padding: 6px 2px; min-height: 34px; }
   .session-fields { gap: 5px; padding-block: 0; }
