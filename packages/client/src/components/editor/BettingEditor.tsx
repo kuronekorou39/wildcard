@@ -43,8 +43,7 @@ export function BettingEditor({ betting, structure, onChange }: BettingEditorPro
   };
 
   return (
-    <section className="panel">
-      <h2 className="panel-title">賭け方</h2>
+    <section className="panel" aria-label="賭け方">
 
       <div className="field">
         <span className="field-label">制度</span>

@@ -10,10 +10,12 @@ interface Props {
   readonly suffix?: string;
   readonly placeholder?: string;
   readonly compact?: boolean;
+  /** 複数行の文章。Enter は改行、Ctrl+Enter（⌘+Enter）で確定。 */
+  readonly multiline?: boolean;
 }
 
 /** Values stay readable until explicitly edited; Escape always discards the draft. */
-function EditableValue({ label, value, onChange, min, max, maxLength, suffix, placeholder, compact = false }: Props) {
+function EditableValue({ label, value, onChange, min, max, maxLength, suffix, placeholder, compact = false, multiline = false }: Props) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState('');
   const [error, setError] = useState('');
@@ -32,18 +34,24 @@ function EditableValue({ label, value, onChange, min, max, maxLength, suffix, pl
     onChange(draft);
     setEditing(false);
   };
-  return <div className={`field editable-field ${compact ? 'editable-compact' : ''}`}>
+  const focusOnMount = (element: HTMLInputElement | HTMLTextAreaElement | null) => { if (element && document.activeElement !== element) { element.focus(); element.select(); } };
+  const onKeyDown = (event: React.KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    if (event.nativeEvent.isComposing || event.keyCode === 229) return;
+    if (event.key === 'Escape') { event.preventDefault(); cancelled.current = true; restoreFocus.current = true; setEditing(false); }
+    if (event.key === 'Enter' && (!multiline || event.ctrlKey || event.metaKey)) { event.preventDefault(); restoreFocus.current = true; commit(); }
+  };
+  return <div className={`field editable-field ${compact ? 'editable-compact' : ''} ${multiline ? 'editable-multiline' : ''}`}>
     <span className="field-label">{label}</span>
-    {editing ? <input className="input editable-input" aria-label={label}
+    {editing && multiline ? <>
+      <textarea className="input editable-input editable-textarea" aria-label={label} maxLength={maxLength} placeholder={placeholder}
+        rows={Math.min(8, Math.max(3, draft.split('\n').length + 1))} value={draft} ref={focusOnMount}
+        onChange={event => setDraft(event.target.value)} onBlur={commit} onKeyDown={onKeyDown} />
+      <small className="hint editable-hint">Ctrl+Enter で確定、Esc で取り消し</small>
+    </> : editing ? <input className="input editable-input" aria-label={label}
       type={number ? 'number' : 'text'} inputMode={number ? 'numeric' : undefined}
       min={min} max={max} step={number ? 1 : undefined} maxLength={maxLength} placeholder={placeholder}
-      value={draft} ref={element => { if (element && document.activeElement !== element) { element.focus(); element.select(); } }}
-      onChange={event => setDraft(event.target.value)} onBlur={commit}
-      onKeyDown={event => {
-        if (event.nativeEvent.isComposing || event.keyCode === 229) return;
-        if (event.key === 'Escape') { event.preventDefault(); cancelled.current = true; restoreFocus.current = true; setEditing(false); }
-        if (event.key === 'Enter') { event.preventDefault(); restoreFocus.current = true; commit(); }
-      }} /> : <button type="button" className={`editable-value ${!number && !value ? 'editable-empty' : ''}`} aria-label={`${label}を編集`} aria-describedby={valueId}
+      value={draft} ref={focusOnMount}
+      onChange={event => setDraft(event.target.value)} onBlur={commit} onKeyDown={onKeyDown} /> : <button type="button" className={`editable-value ${!number && !value ? 'editable-empty' : ''}`} aria-label={`${label}を編集`} aria-describedby={valueId}
       ref={element => { if (element && restoreFocus.current) { restoreFocus.current = false; element.focus(); } }}
       onClick={() => { cancelled.current = false; setDraft(String(value)); setError(''); setEditing(true); }}>
       <span id={valueId}>{number ? value.toLocaleString() : value || placeholder || '未設定'}{suffix && <small>{suffix}</small>}</span>

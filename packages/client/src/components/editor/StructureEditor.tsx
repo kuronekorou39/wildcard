@@ -33,8 +33,7 @@ export function StructureEditor({ structure, onChange }: StructureEditorProps) {
     set({ streets: structure.streets.filter((_, i) => i !== at) });
 
   return (
-    <section className="panel">
-      <h2 className="panel-title">配り方</h2>
+    <section className="panel" aria-label="配り方">
 
       <div className="field-row">
         <EditableNumber label="手札" value={structure.holeCards} min={0} max={20} onChange={holeCards => set({ holeCards })} />

@@ -27,8 +27,7 @@ export function OptionsEditor({ options, onChange }: OptionsEditorProps) {
   const percent = (value: number | undefined) => Math.round((value ?? 0) * 100);
 
   return (
-    <section className="panel">
-      <h2 className="panel-title">卓の作法</h2>
+    <section className="panel" aria-label="卓の作法">
 
       <label className="field">
         <span className="field-label">

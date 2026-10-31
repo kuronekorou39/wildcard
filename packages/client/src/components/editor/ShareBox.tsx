@@ -3,7 +3,6 @@ import type { Variant } from '@wildcard/engine';
 import { exportVariant, importVariant } from '../../rules/customVariants.js';
 
 interface ShareBoxProps {
-  readonly defaultOpen?: boolean;
   readonly variant: Variant;
   /** 取り込んだルールを開く。渡さなければ取り込み欄を出さない。 */
   readonly onImported?: (variantId: string) => void;
@@ -16,7 +15,7 @@ interface ShareBoxProps {
  * 取り込む側では **id を必ず振り直す**（→ customVariants.ts）。
  * 他人のルールがプリセットの id を名乗って上書きできてしまうのを防ぐ。
  */
-export function ShareBox({ variant, onImported, defaultOpen = false }: ShareBoxProps) {
+export function ShareBox({ variant, onImported }: ShareBoxProps) {
   const [text, setText] = useState('');
   const [problems, setProblems] = useState<readonly string[]>([]);
   const [copied, setCopied] = useState(false);
@@ -43,8 +42,7 @@ export function ShareBox({ variant, onImported, defaultOpen = false }: ShareBoxP
   };
 
   return (
-    <details className="panel share-box" open={defaultOpen}>
-      <summary className="panel-title share-summary">受け渡し</summary>
+    <section className="panel share-box" aria-label="受け渡し">
       <p className="hint share-note">ルールの内容を書き出します。バナーはこのブラウザだけの設定です。</p>
 
       <div className="field">
@@ -83,6 +81,6 @@ export function ShareBox({ variant, onImported, defaultOpen = false }: ShareBoxP
           )}
         </div>
       )}
-    </details>
+    </section>
   );
 }

@@ -1,5 +1,5 @@
 import { EditableNumber } from '../EditableValue.js';
-import { DeckCards } from './DeckCards.js';
+import { DeckContents } from '../DeckContents.js';
 import { Icon } from '../Icon.js';
 import { useState } from 'react';
 import { MAX_DECK_SIZE, deckSize, type DeckRules, type Rank, type Suit } from '@wildcard/engine';
@@ -58,8 +58,7 @@ export function DeckEditor({ deck, allRanks, allSuits, onChange }: DeckEditorPro
   };
 
   return (
-    <section className="panel">
-      <h2 className="panel-title">デッキ</h2>
+    <section className="panel" aria-label="デッキ">
 
       <div className="field">
         <span className="field-label">スート（外すと丸ごと消える）</span>
@@ -133,7 +132,10 @@ export function DeckEditor({ deck, allRanks, allSuits, onChange }: DeckEditorPro
         <EditableNumber label="ジョーカー" value={deck.jokers ?? 0} min={0} max={99} onChange={jokers => onChange({ ...deck, jokers })} />
       </div>
 
-      <DeckCards deck={deck} suits={allSuits} onChange={onChange} />
+      <div className="field">
+        <span className="field-label">カードごとの枚数</span>
+        <DeckContents deck={deck} onChange={onChange} />
+      </div>
 
       <label className="checkline">
         <input

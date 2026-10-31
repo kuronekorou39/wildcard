@@ -50,9 +50,8 @@ export function App() {
         {screen.kind === 'editor' &&
         <RuleEditor
           source={resolveVariant(screen.sourceId) ?? VARIANT_PRESETS[0]!}
-          onClose={toSetup}
-          onPlay={(id) => {
-            setVariantId(id);
+          onClose={(savedId) => {
+            if (savedId) setVariantId(savedId);
             toSetup();
           }}
         />

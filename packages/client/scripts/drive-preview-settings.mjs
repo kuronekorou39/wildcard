@@ -22,47 +22,41 @@ try {
     await page.getByRole('group', { name: 'CPU の人数' }).getByRole('button', { name: '9', exact: true }).click();
     await page.getByRole('button', { name: 'これを元に作る', exact: false }).click();
     await page.getByRole('tab', { name: /デッキ/ }).click();
-    await page.locator('.deck-card-editor>summary').click();
     await page.getByRole('button', { name: '9♥ 1枚', exact: true }).click();
     await editValue(page, '9♥ の枚数', 3);
     assert.equal(await page.getByRole('button', { name: '9♥ 3枚', exact: true }).count(), 1);
     const preview = page.getByRole('region', { name: 'デッキの構成' });
     assert.match(await preview.innerText(), /54 枚/);
-    assert.equal(await preview.locator('.card[aria-label="9♥"]').count(), 3);
+    // 種類ごとに1枚で、枚数は札の右上
+    assert.equal(await preview.locator('button[aria-label="9♥ 3枚"] .deck-count').innerText(), '×3');
     if (width === 1920) {
       await editValue(page, '各カードの枚数', 19);
       await editValue(page, 'ジョーカー', 28);
+      // 9♥ だけ3枚なので 52×19 − 19 + 3 + 28 = ちょうど 1000 枚。上限ぴったりは通る。
       assert.match(await preview.innerText(), /1000 枚/);
-      for (let i = 0; i < 7; i++) await preview.getByRole('button', { name: '次へ', exact: true }).click();
-      assert.equal(await preview.locator('.card').count(), 90);
-      assert.equal(await preview.getByRole('button', { name: '次へ', exact: true }).isDisabled(), true);
+      assert.equal(await preview.locator('.hint-warn').count(), 0);
+      assert.equal(await preview.locator('button[aria-label="JOKER 28枚"] .deck-count').innerText(), '×28');
       await editValue(page, '各カードの枚数', 99);
-      assert.equal(await page.locator('.deck-contents .card').count(), 0);
-      assert.equal(await page.getByRole('button', { name: '保存して卓に戻る', exact: true }).isDisabled(), true);
+      assert.match(await preview.innerText(), /1000 枚を超えています/);
+      assert.equal(await page.getByRole('button', { name: '保存', exact: true }).isDisabled(), true);
       await editValue(page, '各カードの枚数', 1);
       await editValue(page, 'ジョーカー', 0);
-      // 54枚は1ページに収まるので、ページ送りは消える
-      assert.equal(await preview.getByRole('button', { name: '次へ', exact: true }).count(), 0);
-      assert.equal(await preview.locator('.card[aria-label="9♥"]').count(), 3);
+      assert.equal(await preview.locator('button[aria-label="JOKER 0枚"][data-empty="true"]').count(), 1);
+      assert.equal(await page.getByRole('button', { name: '保存', exact: true }).isDisabled(), false);
     }
-    for (const name of ['一覧', '重ね', '扇形']) {
-      await preview.getByRole('button', { name, exact: true }).click();
-      await preview.scrollIntoViewIfNeeded();
-      await fit(page);
-      const scroll = preview.locator('.deck-contents-scroll');
-      assert.ok(await scroll.evaluate(el => el.scrollWidth <= el.clientWidth + 1), `${name}: 横スクロールが出ない`);
-      await page.screenshot({ path: `${out}/deck-${width}-${name === '一覧' ? 'grid' : name === '重ね' ? 'overlap' : 'arc'}.png` });
-    }
-    // 一覧は強い順（♠の行の先頭が A）、扇形は強い札が一番上（右端）に来る
-    assert.equal(await preview.locator('.deck-contents-fan .card').last().getAttribute('aria-label'), 'A♠');
-    await preview.getByRole('button', { name: '一覧', exact: true }).click();
-    assert.equal(await preview.locator('.deck-contents-row').first().locator('.card').first().getAttribute('aria-label'), 'A♠');
-    await page.getByRole('button', { name: '保存して卓に戻る', exact: true }).click();
+    await preview.scrollIntoViewIfNeeded();
+    await fit(page);
+    const scroll = page.locator('.editor-content');
+    assert.ok(await scroll.evaluate(el => el.scrollWidth <= el.clientWidth + 1), '一覧: 横スクロールが出ない');
+    await page.screenshot({ path: `${out}/deck-${width}.png` });
+    // 一覧は強い順（♠の行の先頭が A）。先頭の行はジョーカー。
+    assert.equal(await preview.locator('.deck-contents-row').nth(1).locator('.card').first().getAttribute('aria-label'), 'A♠');
+    await page.getByRole('button', { name: '保存', exact: true }).click();
+    await page.getByRole('button', { name: '戻る', exact: true }).click();
     await page.getByRole('button', { name: 'このルールを編集', exact: false }).click();
     await page.getByRole('tab', { name: /デッキ/ }).click();
-    await page.locator('.deck-card-editor>summary').click();
     assert.equal(await page.getByRole('button', { name: '9♥ 3枚', exact: true }).count(), 1);
-    await page.getByRole('button', { name: '保存して卓に戻る', exact: true }).click();
+    await page.getByRole('button', { name: '戻る', exact: true }).click();
     await page.getByRole('button', { name: /^はじめる/ }).click();
     await page.getByRole('button', { name: '卓の情報', exact: true }).click();
     assert.equal(await page.locator('.cpu-style-list span').count(), 9);

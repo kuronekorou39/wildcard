@@ -33,7 +33,15 @@ await page.getByRole('button', { name: 'これを元に作る' }).click();
 await page.getByRole('heading', { name: 'ルールを設定' }).waitFor();
 console.log('--- 編集画面を開いた ---');
 
-const problems = () => page.locator('.editor-problems li').allInnerTexts();
+// 矛盾は見出し下の要約を押すと開く（狭い画面では右の欄が無い）。
+const problems = async () => {
+  await page.locator('.editor-summary').click();
+  await page.locator('.editor-inspector-dialog').waitFor();
+  const list = await page.locator('.editor-inspector-dialog .editor-problems li').allInnerTexts();
+  await page.keyboard.press('Escape');
+  await page.locator('.editor-inspector-dialog').waitFor({ state: 'hidden' });
+  return list;
+};
 console.log(`  最初の矛盾: ${(await problems()).length}件`);
 
 // ---- 名前を付ける ----
@@ -42,7 +50,7 @@ await editValue(page, '名前', '六枚フロップ・素数入り');
 // ---- デッキ: クラブを抜く ----
 await page.getByRole('tab', { name: /デッキ/ }).click();
 await page.getByRole('button', { name: '♣', exact: true }).click();
-const deckLine = await page.locator('.panel', { hasText: 'デッキ' }).first().locator('.editor-figures').innerText();
+const deckLine = await page.locator('#rules-panel .editor-figures').last().innerText();
 console.log(`  クラブを抜いた: ${deckLine.trim()}`);
 
 // ---- 配り方: フロップを6枚に ----
@@ -55,13 +63,13 @@ console.log('  フロップを6枚にした');
 
 // ---- 役: 独自役を足す ----
 await page.getByRole('tab', { name: /役の強さ/ }).click();
-await page.getByRole('button', { name: '＋ 役を足す' }).click();
+await page.getByRole('button', { name: '役を足す' }).click();
 const editor = page.locator('.ranking-editor');
 await editor.waitFor();
 await editor.getByRole('textbox').first().fill('スリーカード＋ペア（自作）');
 
 // 「ペア＋三連」を組む: 同じランク2枚 ＋ 連続3枚
-await editor.getByRole('button', { name: '＋ まとまりを足す' }).click();
+await editor.getByRole('button', { name: 'まとまりを足す' }).click();
 const second = editor.locator('.block-row').nth(1);
 await second.locator('select').selectOption('run');
 await second.locator('input[type=number]').fill('3');
@@ -90,16 +98,15 @@ await shot('10-editor');
 // 手札10枚 × 6人 ＝ 60枚。クラブを抜いた39枚では配りきれない。
 await page.getByRole('tab', { name: /配り方/ }).click();
 await editValue(page, '手札', '10');
-await page.getByRole('tab', { name: /検証/ }).click();
 const bad = await problems();
 console.log(`--- わざと壊す（手札10枚） --- 矛盾 ${bad.length}件`);
 for (const line of bad) console.log(`  ${line.replace(/\s+/g, ' ').trim()}`);
-await page.getByRole('tab', { name: /配り方/ }).click();
 await editValue(page, '手札', '2');
-await page.getByRole('tab', { name: /検証/ }).click();
 console.log(`  戻したら ${(await problems()).length}件`);
 
 // ---- 順位表で確かめる ----
+await page.locator('.editor-summary').click();
+await page.getByRole('button', { name: '役の順位と例' }).click();
 await page.waitForTimeout(200);
 const rows = page.locator('.rule-sheet-list > li');
 console.log(`--- できあがり --- 役 ${await rows.count()}種`);
@@ -112,9 +119,12 @@ for (let i = 0; i < (await rows.count()); i++) {
   console.log(`  ${label.padEnd(20)} ${cards.join(' ')}`);
 }
 await shot('11-editor-preview');
+await page.keyboard.press('Escape');
 
 // ---- 保存して遊ぶ ----
-await page.getByRole('button', { name: '保存して卓に戻る' }).click();
+await page.getByRole('button', { name: '保存', exact: true }).click();
+await page.getByRole('button', { name: '保存済み', exact: true }).waitFor();
+await page.getByRole('button', { name: '戻る', exact: true }).click();
 await page.getByRole('tab', { name: 'ソロ' }).waitFor();
 // 編集に入る前のモード（ソロ）のまま戻ってきているはず。
 const activeTab = await page.locator('.tab-active').innerText();

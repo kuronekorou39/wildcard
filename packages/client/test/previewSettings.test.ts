@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest';
 import { buildDeck, STANDARD_VARIANT } from '@wildcard/engine';
-import { cardCount, setCardCount } from '../src/components/editor/DeckCards.js';
+import { cardCount, setCardCount } from '../src/components/DeckContents.js';
 import { cpuStyles } from '../src/cpuStyles.js';
 
 it('per-card overrides change the real deck and reset to the current shared count', () => {

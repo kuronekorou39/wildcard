@@ -44,16 +44,17 @@ try {
     assert.match(await page.locator('.selected-rule-title').innerText(), /オマハ/);
     await page.getByRole('button', { name: 'これを元に作る' }).click();
     await page.locator('.rules-shell').waitFor();
-    for (const section of ['ルール情報', 'デッキ', '配り方', 'ベット', '役の強さ', '卓の作法', '受け渡し', '検証']) {
+    for (const section of ['ルール情報', 'デッキ', '配り方', '賭け方', '役の強さ', '卓の作法', '受け渡し']) {
       await page.getByRole('tab', { name: new RegExp(section) }).click();
-      if (['ルール情報', 'デッキ', '配り方', '検証'].includes(section)) await page.screenshot({ path: `${OUT}/${width}-editor-${section === 'ルール情報' ? 'info' : section === '配り方' ? 'structure' : section === '検証' ? 'check' : 'deck'}.png` });
+      if (['ルール情報', 'デッキ', '配り方', '役の強さ'].includes(section)) await page.screenshot({ path: `${OUT}/${width}-editor-${section === 'ルール情報' ? 'info' : section === '配り方' ? 'structure' : section === '役の強さ' ? 'ranking' : 'deck'}.png` });
       const geometry = await page.evaluate(() => {
-        const actions = document.querySelector('.editor-actions').getBoundingClientRect();
-        return { docHeight: document.documentElement.scrollHeight, docWidth: document.documentElement.scrollWidth, bottom: actions.bottom };
+        const content = document.querySelector('.editor-content').getBoundingClientRect();
+        return { docHeight: document.documentElement.scrollHeight, docWidth: document.documentElement.scrollWidth, bottom: content.bottom };
       });
       assert.ok(geometry.docHeight <= height + 1 && geometry.docWidth <= width + 1 && geometry.bottom <= height + 1, `${width} ${section}: ${JSON.stringify(geometry)}`);
     }
-    await page.getByRole('button', { name: '保存して卓に戻る' }).click();
+    await page.getByRole('button', { name: '保存', exact: true }).click();
+    await page.getByRole('button', { name: '戻る', exact: true }).click();
     await page.locator('.setup-shell').waitFor({ state: 'visible' });
     assert.match(await page.getByRole('button', { name: '初期チップを編集', exact: true }).innerText(), /2,000/);
     assert.match(await page.locator('.selected-rule-title').innerText(), /写し/);
@@ -84,7 +85,8 @@ try {
   });
   await page.getByLabel('バナー画像', { exact: true }).setInputFiles({ name: 'banner.png', mimeType: 'image/png', buffer: Buffer.from(encoded, 'base64') });
   await page.locator('.banner-editor img').waitFor();
-  await page.getByRole('button', { name: '保存して卓に戻る', exact: true }).click();
+  await page.getByRole('button', { name: '保存', exact: true }).click();
+  await page.getByRole('button', { name: '戻る', exact: true }).click();
   const source = await page.locator('.rule-select-trigger img').getAttribute('src');
   assert.match(source, /^data:image\/webp;base64,/);
   await page.locator('.rule-select-trigger').click();
@@ -109,7 +111,8 @@ try {
   await page.getByRole('textbox', { name: '名前', exact: true }).dispatchEvent('keydown', { key: 'Enter', isComposing: true });
   assert.equal(await page.getByRole('textbox', { name: '名前', exact: true }).isVisible(), true, 'IME confirmation must keep editing');
   await page.keyboard.press('Enter');
-  await page.getByRole('button', { name: '保存して卓に戻る' }).click();
+  await page.getByRole('button', { name: '保存', exact: true }).click();
+  await page.getByRole('button', { name: '戻る', exact: true }).click();
   assert.equal(await page.locator('.rule-select-trigger img').getAttribute('src'), source);
   assert.match(await page.locator('.selected-rule-title').innerText(), /バナー確認/);
   await page.screenshot({ path: `${OUT}/uploaded-banner.png` });
@@ -120,10 +123,12 @@ try {
     window.restoreStorage = () => { Storage.prototype.setItem = original; };
     Storage.prototype.setItem = () => { throw new Error('quota'); };
   });
-  await page.getByRole('button', { name: '保存して卓に戻る', exact: true }).click();
+  await page.getByRole('button', { name: '保存', exact: true }).click();
   assert.match(await page.getByRole('alert').innerText(), /保存できません/);
   await page.evaluate(() => window.restoreStorage());
-  await page.getByRole('button', { name: '← 戻る', exact: true }).click();
+  // 未保存のまま戻ろうとすると聞かれる。捨てて戻る。
+  await page.getByRole('button', { name: '戻る', exact: true }).click();
+  await page.getByRole('button', { name: '保存せずに戻る', exact: true }).click();
   assert.equal(await page.locator('.rule-select-trigger img').getAttribute('src'), source);
   await page.getByRole('button', { name: 'このルールを編集' }).click();
   await page.evaluate(() => {
@@ -131,7 +136,8 @@ try {
     window.restoreStorage = () => { Storage.prototype.setItem = original; };
     Storage.prototype.setItem = () => { throw new Error('quota'); };
   });
-  await page.getByRole('button', { name: '保存して卓に戻る' }).click();
+  await page.getByRole('button', { name: 'フォレスト', exact: true }).click();
+  await page.getByRole('button', { name: '保存', exact: true }).click();
   assert.match(await page.getByRole('alert').innerText(), /保存できません/);
   assert.equal(await page.locator('.rules-shell').isVisible(), true);
   await page.evaluate(() => window.restoreStorage());

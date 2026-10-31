@@ -122,31 +122,17 @@
 .deck-card-editor>summary::-webkit-details-marker { display: none; }
 .deck-card-editor>summary::before { content: ''; display: inline-block; width: .42em; height: .42em; margin: 0 .6em 0 .2em; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: translateY(-.12em) rotate(-45deg); transition: transform .15s ease; }
 .deck-card-editor[open]>summary::before { transform: translateY(-.25em) rotate(45deg); }
-.deck-kind-scroll { max-width: 100%; overflow-x: auto; padding: 4px 0 8px; }
-.deck-kind-grid { display: grid; gap: 4px; min-width: min-content; }
-.deck-kind { border: 1px solid var(--border); border-radius: 8px; background: #302c30; color: var(--text); min-height: 53px; padding: 6px 2px; display: grid; place-items: center; cursor: pointer; }
-.deck-kind[data-red=true] { color: #f2aba7; }
-.deck-kind small { color: var(--text-dim); font-variant-numeric: tabular-nums; }
-.deck-kind[data-custom=true] { border-color: #bd9a71; }
-.deck-kind[aria-pressed=true] { background: #624a40; outline: 2px solid #ddbe98; outline-offset: -2px; }
 .deck-card-count { display: flex; align-items: end; gap: 16px; padding: 12px 0; }
 .deck-card-count .editable-field { flex: 1; margin: 0; }
 .deck-contents { min-width: 0; margin: 12px 0; padding: 12px; border: 1px solid var(--border); border-radius: 14px; background: #18171966; }
 .deck-contents-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
 .deck-contents-toolbar strong { white-space: nowrap; font-size: .8rem; }
-.deck-contents-toolbar .chips { gap: 4px; }
-.deck-contents-toolbar .chip { padding: 6px 9px; font-size: .68rem; }
-.deck-contents-scroll { max-height: 270px; overflow: auto; overscroll-behavior: contain; padding: 4px; }
-/* 一覧・重ねはスートごとに1行。重なり幅と扇形の間隔は DeckContents が行の幅から決める */
-.deck-contents-cards { display: grid; gap: 10px; }
-.deck-contents-row { display: flex; flex-wrap: wrap; gap: 6px; }
-.deck-contents-card { display: block; width: 44px; }
+.deck-contents-toolbar .hint { margin: 0; font-size: .66rem; }
+/* スートごとに1行。種類ごとに1枚で、枚数は札の右上に出す */
+.deck-contents-cards { display: grid; gap: 4px; }
+.deck-contents-row { display: flex; flex-wrap: wrap; gap: 8px; }
 .deck-contents-card .card { width: 44px; height: 64px; flex: none; border-radius: 6px; font-size: 14px; }
 .deck-contents-card .card-index { font-size: 14px; }
-.deck-contents-overlap .deck-contents-row { flex-direction: column; gap: 6px; }
-.deck-contents-line { display: flex; }
-.deck-contents-fan { position: relative; display: block; }
-.deck-contents-fan .deck-contents-card { position: absolute; transform-origin: 50% 115%; }.deck-pagination { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: .7rem; margin-top: 8px; }
 @media (max-width: 400px) {
   .table-stakes { gap: 8px; }
   .table-stakes .field-label { font-size: .56rem; }
@@ -248,17 +234,25 @@
 .banner-editor .hint { font-size: .66rem; line-height: 1.7; }
 .banner-dialog .btn-block { margin-top: 24px; }
 .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-.setup-rule-dialog .rule-sheet, #rules-check .rule-sheet { background: transparent; margin-top: 0; }
+.setup-rule-dialog .rule-sheet { background: transparent; margin-top: 0; }
 
-/* The editor is a set of pages, not one expanding document. */
-.rules-shell .editor-head { flex: 0 0 66px; padding: 0; display: flex; align-items: center; gap: 20px; }
-.rules-shell .editor-head .brand { margin-right: auto; }
-.preview-label { font-size: .65rem; letter-spacing: .16em; color: var(--text-dim); }
-.rules-shell .editor-heading { flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between; padding: 22px 0; }
+/* The editor is a set of pages, not one expanding document. The header matches the top screen so the logo stays put. */
+.rules-shell .editor-head { justify-content: space-between; gap: 16px; }
+.editor-head-actions { display: flex; align-items: center; gap: 8px; }
+.editor-head-actions .btn { display: inline-flex; align-items: center; gap: 6px; padding: 10px 16px; border-radius: 10px; font-size: .78rem; }
+.editor-head-actions .btn .ui-icon { font-size: .95rem; }
+.editor-head-actions .editor-save { min-width: 96px; justify-content: center; background: #9d343c; border: 1px solid #bf6265; }
+.editor-head-actions .editor-save:disabled { opacity: .55; cursor: default; }
+.editor-head-actions .editor-delete { color: var(--danger); background: transparent; }
+.rules-shell .editor-heading { flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 22px 0; }
 .rules-shell .editor-title { font-size: 1.5rem; margin: 0; }
 .editor-current-name { font-size: .75rem; color: var(--text-dim); margin: 8px 0 0; }
-.editor-save-state { font-size: .7rem; color: var(--gold); padding: 7px 12px; border: 1px solid var(--border); border-radius: 20px; }
-.rules-shell .editor-workspace { flex: 1; min-height: 0; display: grid; grid-template-columns: 150px minmax(0, 1fr) 230px; gap: 24px; align-items: stretch; overflow: hidden; }
+/* スマホだけの要約。大画面では右の欄が同じ内容を常に出す。 */
+.editor-summary { display: none; flex-direction: column; align-items: flex-end; gap: 4px; max-width: 55%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 10px; background: transparent; color: var(--text-dim); font-size: .62rem; text-align: right; cursor: pointer; }
+.editor-summary strong { display: inline-flex; align-items: center; gap: 4px; color: var(--success); font-size: .66rem; font-weight: 600; }
+.editor-summary-bad strong { color: var(--danger); }
+.editor-save-error { margin: 0 0 12px; font-size: .75rem; }
+.rules-shell .editor-workspace { flex: 1; min-height: 0; display: grid; grid-template-columns: 150px minmax(0, 1fr) 230px; gap: 24px; align-items: stretch; overflow: hidden; margin-bottom: max(18px, env(safe-area-inset-bottom)); }
 .rules-shell .editor-nav { position: static; display: flex; flex-direction: column; gap: 5px; padding: 0; overflow-y: auto; border: 0; background: none; }
 .editor-nav button { display: flex; align-items: center; gap: 12px; flex: 0 0 auto; min-height: 46px; padding: 12px; border: 1px solid transparent; border-radius: 9px; color: var(--text-dim); background: transparent; text-align: left; font-size: .8rem; cursor: pointer; }
 .editor-nav button>span { font-size: .62rem; color: #8d8187; }
@@ -269,9 +263,15 @@
 .rules-shell .editor-content>.panel { border: 0; margin: 0; padding: 24px; background: transparent; }
 .rules-shell .editor-content .field { margin-bottom: 18px; }
 .rules-shell .editor-content .field-label { font-size: .76rem; }
-.rules-shell #rules-info .editable-value { font-size: .92rem; font-weight: 500; }
-.rules-shell #rules-info>.editable-field:nth-of-type(2) .editable-value { font-size: .8rem; line-height: 1.7; }
-.rules-shell .editor-content .panel-title { font-size: 1rem; margin-bottom: 24px; }
+/* 名前は画面の主役。トップの名前欄と同じ大きさにする。説明は複数行のまま読める。 */
+.rules-shell #rules-info .editable-value, .rules-shell #rules-info .input.editable-input { min-height: 52px; font-size: 1.45rem; font-weight: 600; }
+.rules-shell #rules-info .editable-value svg { width: 16px; height: 16px; }
+.rules-shell #rules-info .editable-multiline .editable-value, .rules-shell #rules-info .editable-multiline .input.editable-input { min-height: 44px; font-size: .9rem; font-weight: 400; line-height: 1.7; }
+.editable-multiline .editable-value { align-items: flex-start; }
+.editable-multiline .editable-value>span { display: block; -webkit-line-clamp: unset; white-space: pre-wrap; }
+.editable-multiline .editable-value svg { margin-top: 6px; }
+.input.editable-textarea { display: block; width: 100%; resize: vertical; font-family: inherit; }
+.editable-hint { display: block; margin-top: 4px; font-size: .62rem; }
 .rules-shell .editor-content .hint, .rules-shell .editor-content .checkline-note { font-size: .7rem; line-height: 1.7; }
 .rules-shell .editor-content .segmented { margin-bottom: 0; }
 .rules-shell .editor-content .segment { font-size: .74rem; padding: 9px 6px; }
@@ -279,22 +279,47 @@
 .editor-inspector { padding: 20px; background: #211e21; border: 1px solid var(--border); border-radius: 14px; }
 .editor-inspector>strong { display: block; font-size: 2.75rem; font-weight: 500; color: var(--gold); padding: 8px 0 16px; }
 .editor-inspector>strong small { display: block; font-size: .7rem; color: var(--text-dim); margin-top: 6px; }
-.editor-inspector dl { display: grid; gap: 16px; padding-bottom: 24px; margin-bottom: 20px; border-bottom: 1px solid var(--border); font-size: .75rem; }
+.editor-inspector dl { display: grid; gap: 14px; padding-bottom: 20px; margin-bottom: 16px; border-bottom: 1px solid var(--border); font-size: .75rem; }
 .editor-inspector dl div { display: flex; justify-content: space-between; }
 .editor-inspector dt { color: var(--text-dim); }
 .editor-inspector dd { margin: 0; }
 .editor-inspector .field-label { font-size: .7rem; }
 .editor-inspector .hint, .editor-inspector .editor-figures { font-size: .65rem; line-height: 1.8; }
-.validation-status { display: flex; align-items: center; gap: 8px; border: 0; background: transparent; color: var(--success); font-size: .72rem; padding: 12px 0; cursor: pointer; text-align: left; }
-.validation-status>span { margin-left: auto; }
+.validation-status { display: flex; align-items: center; gap: 8px; margin: 0; color: var(--success); font-size: .72rem; padding: 12px 0 4px; }
 .validation-bad { color: var(--danger); }
-.rules-shell .editor-actions { position: static; flex: 0 0 auto; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 0; padding: 18px 0 max(18px, env(safe-area-inset-bottom)); background: transparent; border: 0; }
-.editor-status-button { margin-right: auto; background: transparent; border: 0; color: var(--success); font-size: .72rem; cursor: pointer; padding: 10px 0; }
-.editor-status-button.hint-warn { color: var(--danger); }
-.rules-shell .editor-actions .btn { flex: 0 0 auto; min-width: 120px; padding: 14px 22px; border-radius: 10px; font-size: .8rem; }
-.editor-actions .btn-primary { background: #9d343c; border: 1px solid #bf6265; }
-.editor-save-error { order: -1; flex-basis: 100%; margin: 0; font-size: .75rem; }
-.editor-delete { background: transparent; font-size: .75rem; margin-top: 16px; }
+/* 矛盾はそれぞれ、直せるタブへ飛ぶボタン。 */
+.editor-inspector .editor-problems { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.editor-problems button { display: block; width: 100%; padding: 8px 10px; border: 1px solid #6e4a4a; border-radius: 8px; background: #3a2a2d; color: #ffd0cd; font-size: .68rem; line-height: 1.6; text-align: left; cursor: pointer; }
+.editor-problems button>span { display: block; color: var(--gold); font-size: .6rem; margin-bottom: 2px; }
+.editor-problems button:hover { border-color: var(--gold); }
+.editor-inspector .editor-preview { display: inline-flex; align-items: center; gap: 6px; width: 100%; justify-content: center; margin-top: 14px; font-size: .74rem; }
+.editor-inspector-dialog { width: min(420px, calc(100vw - 24px)); }
+.editor-inspector-dialog .editor-inspector { border: 0; background: transparent; padding: 0; }
+.editor-leave-dialog { width: min(420px, calc(100vw - 24px)); }
+.editor-leave-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
+.editor-leave-actions .btn { flex: 1 1 auto; }
+/* 役の行: つまみ ↑↓ 本文 使う 編集。狭くても折り返さず、本文だけが縮む。 */
+.rules-shell .ranking-note { margin: 0 0 14px; }
+.rules-shell .ranking-row { display: grid; grid-template-columns: auto auto minmax(0, 1fr) auto auto; align-items: center; gap: 8px; }
+.ranking-handle { display: grid; place-items: center; width: 24px; align-self: stretch; min-height: 44px; border: 0; border-radius: 6px; background: transparent; color: var(--text-dim); font-size: .8rem; letter-spacing: -.2em; cursor: grab; touch-action: none; user-select: none; }
+.ranking-handle:hover, .ranking-handle:focus-visible { color: var(--gold); background: #ffffff10; }
+.ranking-item-dragging { opacity: .45; }
+.ranking-item-over-before { box-shadow: 0 -2px 0 0 var(--gold); }
+.ranking-item-over-after { box-shadow: 0 2px 0 0 var(--gold); }
+.rules-shell .ranking-edit { min-width: 56px; text-align: center; white-space: nowrap; }
+.ranking-example { margin-top: 6px; }
+.ranking-example .card { --card-width: 26px; }
+.ranking-example-none { display: block; margin-top: 6px; color: var(--text-dim); font-size: .62rem; }
+/* デッキの構成: 種類ごとに1枚。0枚は薄く、2枚以上は右上に枚数。 */
+.deck-contents-card { position: relative; display: block; width: 44px; padding: 0; border: 0; background: transparent; color: inherit; }
+button.deck-contents-card { cursor: pointer; border-radius: 7px; }
+button.deck-contents-card:hover .card, button.deck-contents-card:focus-visible .card { outline: 2px solid var(--gold); outline-offset: 1px; }
+.deck-contents-card[aria-pressed=true] .card { outline: 2px solid var(--gold); outline-offset: 1px; box-shadow: 0 0 0 4px #dbc5a633; }
+.deck-contents-card[data-custom=true]::after { content: ''; position: absolute; left: 4px; bottom: 4px; width: 6px; height: 6px; border-radius: 50%; background: var(--gold); }
+.deck-contents-card[data-empty=true] .card { opacity: .28; filter: grayscale(1); }
+.deck-contents-card .deck-count { position: absolute; top: -6px; right: -6px; min-width: 20px; padding: 2px 5px; border-radius: 10px; background: var(--gold); color: #2a2024; font-size: .62rem; font-weight: 700; text-align: center; line-height: 1.3; box-shadow: 0 1px 3px #0008; }
+.deck-contents-card[data-empty=true] .deck-count { background: #6a5f63; color: var(--text); }
+.deck-contents-row { padding: 6px 0; }
 .rules-shell .street-row { flex-wrap: nowrap; gap: 8px; }
 .rules-shell .street-name { flex: 1 1 80px; min-width: 70px; font-size: .76rem; }
 .rules-shell .street-num { flex: 0 1 64px; min-width: 0; }
@@ -320,6 +345,7 @@
   .setup-rule-pane, .setup-session-pane { padding: 22px; }
   .rules-shell .editor-workspace { grid-template-columns: 132px minmax(0, 1fr); gap: 18px; }
   .rules-shell .editor-sidebar { display: none; }
+  .editor-summary { display: flex; }
 }
 @media (max-width: 760px) and (min-height: 501px) {
   .setup-shell { padding: 0 16px; }
@@ -367,26 +393,35 @@
 }
 @media (max-width: 760px) {
   .rules-shell { padding-inline: 14px; }
-  .rules-shell .editor-head { flex-basis: 54px; gap: 12px; }
-  .preview-label { font-size: .5rem; }
-  .rules-shell .editor-heading { padding: 14px 0; }
+  .rules-shell .editor-head { flex-basis: 58px; gap: 8px; }
+  .rules-shell .editor-head .brand { font-size: 1.25rem; }
+  .rules-shell .editor-head .character-mark { width: 32px; height: 32px; }
+  .rules-shell .editor-head .character-mark img { width: 54px; top: -8px; left: -12px; }
+  .editor-head-actions { gap: 6px; }
+  .editor-head-actions .btn { padding: 9px 10px; font-size: .7rem; }
+  .editor-head-actions .editor-save { min-width: 64px; }
+  .rules-shell .editor-heading { padding: 12px 0; gap: 10px; }
   .rules-shell .editor-title { font-size: 1.15rem; }
-  .editor-current-name { margin-top: 4px; font-size: .65rem; max-width: 65vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .editor-save-state { font-size: .6rem; }
-  .rules-shell .editor-workspace { display: flex; flex-direction: column; gap: 12px; }
-  .rules-shell .editor-nav { flex: 0 0 auto; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; overflow: visible; }
-  .editor-nav button { justify-content: center; gap: 3px; padding: 8px 3px; min-height: 38px; font-size: .68rem; border-color: var(--border); border-radius: 7px; }
+  .editor-current-name { margin-top: 4px; font-size: .65rem; max-width: 40vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .editor-summary { padding: 6px 10px; }
+  .rules-shell .editor-workspace { display: flex; flex-direction: column; gap: 10px; margin-bottom: max(12px, env(safe-area-inset-bottom)); }
+  .rules-shell .editor-nav { flex: 0 0 auto; flex-direction: row; flex-wrap: nowrap; gap: 4px; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; padding-bottom: 2px; }
+  .rules-shell .editor-nav::-webkit-scrollbar { display: none; }
+  .editor-nav button { flex: 0 0 auto; justify-content: center; gap: 4px; padding: 8px 12px; min-height: 38px; font-size: .7rem; border-color: var(--border); border-radius: 7px; white-space: nowrap; }
   .editor-nav button>span { display: none; }
   .rules-shell .editor-content { flex: 1; }
   .rules-shell .editor-content>.panel { padding: 16px; }
-  .rules-shell .editor-content .panel-title { font-size: .9rem; margin-bottom: 16px; }
   .rules-shell .editor-content .field { margin-bottom: 14px; }
   .rules-shell .editor-content .field-label { font-size: .7rem; }
-  .rules-shell .editor-actions { gap: 8px; padding: 10px 0 max(12px, env(safe-area-inset-bottom)); }
-  .editor-status-button { flex-basis: 100%; text-align: left; font-size: .65rem; padding: 0 0 3px; }
-  .rules-shell .editor-actions .btn { padding: 12px; font-size: .73rem; }
-  .rules-shell .editor-actions .editor-save { flex: 1; }
-  .rules-shell .editor-actions .btn-primary { flex: 1.7; }
+  .rules-shell #rules-info .editable-value, .rules-shell #rules-info .input.editable-input { min-height: 46px; font-size: 1.25rem; }
+  .rules-shell .ranking-row { gap: 6px; }
+  .rules-shell .ranking-edit { min-width: 48px; padding-inline: 6px; }
+  /* 13枚が2行に収まる大きさ */
+  .deck-contents-row { gap: 5px; }
+  .deck-contents-card { width: 34px; }
+  .deck-contents-card .card { width: 34px; height: 49px; font-size: 11px; }
+  .deck-contents-card .card-index { font-size: 11px; }
+  .deck-contents-card .deck-count { top: -5px; right: -5px; min-width: 17px; padding: 1px 4px; font-size: .56rem; }
   .rule-option { grid-template-columns: 74px minmax(0, 1fr) 16px; gap: 10px; }
   .rule-banner-compact { height: 54px; }
   .rule-option strong { font-size: .76rem; }
@@ -405,7 +440,7 @@
   .rule-facts { padding-bottom: 14px; margin-bottom: 12px; }
   .setup-footer { flex-basis: 36px; }
   .rules-shell .editor-head { flex-basis: 52px; }
-  .rules-shell .editor-heading { padding-block: 14px; }
+  .rules-shell .editor-heading { padding-block: 12px; }
 }
 @media (max-width: 760px) and (min-height: 501px) and (max-height: 720px) {
   .setup-shell { padding-bottom: 8px; }
@@ -469,12 +504,15 @@
   .selected-rule-title strong { font-size: .85rem; }
   .rule-picker .rule-actions { margin-top: 10px; }
   .rule-actions .rule-edit-button { margin-left: 0; }
-  .rules-shell .editor-head { flex-basis: 42px; }
-  .rules-shell .editor-heading { display: none; }
-  .rules-shell .editor-workspace { margin-top: 10px; display: grid; grid-template-columns: 110px minmax(0, 1fr); }
+  .rules-shell .editor-head { flex-basis: 44px; }
+  .rules-shell .editor-head .brand { font-size: 1.15rem; }
+  .rules-shell .editor-head .character-mark { display: none; }
+  .editor-head-actions .btn { padding: 7px 10px; font-size: .66rem; }
+  /* 横向きでは見出しを消し、要約だけを1行に残す */
+  .rules-shell .editor-heading { padding: 6px 0 0; justify-content: flex-end; }
+  .rules-shell .editor-heading>div { display: none; }
+  .editor-summary { display: flex; flex-direction: row; align-items: center; gap: 10px; max-width: none; padding: 4px 10px; }
+  .rules-shell .editor-workspace { margin-top: 8px; margin-bottom: 8px; display: grid; grid-template-columns: 110px minmax(0, 1fr); }
   .rules-shell .editor-nav { display: flex; flex-direction: column; overflow-y: auto; gap: 3px; }
   .editor-nav button { min-height: 32px; font-size: .64rem; }
-  .rules-shell .editor-actions { padding-block: 8px; }
-  .editor-status-button { flex-basis: auto; margin-right: auto; }
-  .rules-shell .editor-actions .btn { flex: 0 0 auto; padding: 9px 12px; }
 }
