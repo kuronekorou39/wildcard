@@ -4,14 +4,15 @@ import { GameDialog } from './GameDialog.js';
 import { Icon } from './Icon.js';
 import { resolveVariant } from '../rules/customVariants.js';
 import { connectionToken, createServerTable, defaultServerUrl, invitedTable, loadConnection,
-  normalizeServerUrl, saveConnection, saveServerUrl, serverRequest, tableIdFrom, type ServerSettings } from '../serverConnection.js';
+  saveConnection, serverRequest, tableIdFrom, type ServerSettings } from '../serverConnection.js';
 
 export function ServerPanel({ variantId, name, role, onRoleChange, onStart }: {
   readonly variantId: string; readonly name: string; readonly role: 'host' | 'guest';
   readonly onRoleChange: (role: 'host' | 'guest') => void;
   readonly onStart: (settings: ServerSettings) => void;
 }) {
-  const [server, setServer] = useState(defaultServerUrl);
+  // 接続先は配布時の設定で決まり、画面には出さない。参加者に必要なのは招待リンクだけ、作成者は作成キーだけ。
+  const server = defaultServerUrl();
   const [configOpen, setConfigOpen] = useState(false);
   const [invite, setInvite] = useState(() => invitedTable() ?? '');
   const [chips, setChips] = useState(1000);
@@ -31,8 +32,7 @@ export function ServerPanel({ variantId, name, role, onRoleChange, onStart }: {
     if (busy) return;
     setBusy(true); setProblem(null);
     try {
-      const serverUrl = normalizeServerUrl(server);
-      saveServerUrl(serverUrl);
+      const serverUrl = server;
       let settings: ServerSettings;
       if (role === 'host') {
         const variant = resolveVariant(variantId);
@@ -65,13 +65,14 @@ export function ServerPanel({ variantId, name, role, onRoleChange, onStart }: {
       {problem && <p className="hint hint-warn" role="alert">{problem}</p>}
     </div>
     <div className="session-launch">
-      <button className="server-endpoint" type="button" aria-label="サーバー接続設定" onClick={() => setConfigOpen(true)}><span>サーバー接続 <Icon kind="external" /></span><small>{!server ? '接続先を設定' : role === 'host' ? createKey ? '作成キー入力済み' : '作成キーが必要' : '招待で参加・キー不要'}</small></button>
+      {role === 'host'
+        ? <button className="server-endpoint" type="button" aria-label="作成キーの設定" onClick={() => setConfigOpen(true)}><span>作成キー <Icon kind="external" /></span><small>{!server ? 'サーバー未設定' : createKey ? '入力済み' : '管理者から受け取ったキーが必要'}</small></button>
+        : <p className="server-endpoint server-endpoint-note"><span>招待リンクで参加</span><small>{!server ? 'サーバー未設定' : 'キー不要'}</small></p>}
       <button type="button" className="btn btn-primary btn-large btn-block" disabled={busy || !ready} onClick={() => { void launch(); }}>{busy ? '接続しています…' : role === 'host' ? '卓を作る' : previous ? '卓に戻る' : '参加する'}<Icon kind="arrow-right" /></button>
     </div>
-    {configOpen && <GameDialog title="サーバー接続" className="server-connection-dialog" onClose={() => setConfigOpen(false)}>
-      <p className="server-access-note">作成：作成キーが必要 ／ 参加：招待リンクのみ</p>
-      <label className="field"><span className="field-label">接続先URL</span><input className="input" defaultValue={server} placeholder="https://…" onBlur={event => { try { const url = normalizeServerUrl(event.target.value); setServer(url); saveServerUrl(url); setProblem(null); } catch (failure) { setProblem((failure as Error).message); } }} /></label>
-      {role === 'host' && <label className="field"><span className="field-label">作成キー</span><input aria-label="作成キー" type="password" autoComplete="off" className="input" value={createKey} onChange={event => setCreateKey(event.target.value)} /><span className="hint">管理者から受け取ったキーを入力</span></label>}
+    {configOpen && <GameDialog title="作成キーの設定" className="server-connection-dialog" onClose={() => setConfigOpen(false)}>
+      <p className="server-access-note">卓を作るときだけ必要です。参加者は招待リンクだけで入れます。</p>
+      <label className="field"><span className="field-label">作成キー</span><input aria-label="作成キー" type="password" autoComplete="off" className="input" value={createKey} onChange={event => setCreateKey(event.target.value)} /><span className="hint">管理者から受け取ったキーを入力</span></label>
       <p className="hint">同じ席への復帰は、このブラウザから。</p>
       {problem && <p className="hint hint-warn" role="alert">{problem}</p>}
     </GameDialog>}

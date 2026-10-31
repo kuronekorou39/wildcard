@@ -9,6 +9,7 @@
 .server-session .table-stakes { margin-bottom: 0; }
 .server-endpoint { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 0; min-height: 40px; padding: 6px 10px; border: 1px solid var(--border); border-radius: 10px; background: transparent; color: var(--gold); cursor: pointer; font: inherit; font-size: .75rem; }
 .server-endpoint small { color: var(--text-dim); font-size: .66rem; }
+.server-endpoint-note { margin: 0; cursor: default; color: var(--text-dim); }
 .server-access-note { color: var(--gold); font-size: .75rem; margin: 16px 0; }
 .server-connection-dialog .field { display: grid; gap: 8px; margin: 20px 0; }
 .server-connection-dialog .field-label { margin: 0; }
@@ -75,7 +76,8 @@
 .segment-divider { flex: 0 0 1px; align-self: stretch; margin: 6px 3px; background: var(--border); }
 .setup-session-pane>[role=tabpanel] { flex: 1; min-height: 0; display: flex; }
 .session-config { flex: 1; display: flex; flex-direction: column; min-width: 0; min-height: 0; }
-.session-fields { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; display: grid; align-content: start; gap: clamp(12px, 2.4dvh, 24px); padding: 2px 3px; }
+/* 左右の余白で「タブの中の項目」と分かるように一段下げる。開始ボタンはタブと同じ幅に戻す */
+.session-fields { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; display: grid; align-content: start; gap: clamp(12px, 2.4dvh, 24px); padding: 2px 14px; }
 .session-fields .field { margin: 0; }
 .session-fields .field-label { font-size: .73rem; margin-bottom: 8px; display: flex; align-items: baseline; justify-content: space-between; }
 .session-fields .field-label small { font-weight: 400; color: var(--text-dim); font-size: .68rem; }
@@ -85,7 +87,7 @@
 .session-fields .checkline { margin: 0; font-size: .8rem; }
 .session-launch { flex: 0 0 auto; padding-top: 20px; }
 .session-overview { display: block; text-align: right; font-size: .7rem; color: var(--text-dim); margin-bottom: 12px; }
-.session-launch .btn { display: flex; align-items: center; justify-content: space-between; padding: 19px 22px; border-radius: 12px; background: #9d343c; font-size: .95rem; border: 1px solid #bf6265; }
+.session-launch .btn { display: flex; align-items: center; justify-content: space-between; padding: 24px 26px; border-radius: 14px; background: #9d343c; font-size: 1.12rem; border: 1px solid #bf6265; }
 .session-launch .btn:hover:not(:disabled) { background: #b64149; }
 .seat-count-picker { display: grid; grid-template-columns: repeat(9, minmax(0, 1fr)); gap: 4px; }
 .seat-count-picker button { min-height: 44px; border: 1px solid var(--border); border-radius: 8px; color: var(--text-dim); background: transparent; cursor: pointer; font-variant-numeric: tabular-nums; }
@@ -308,6 +310,7 @@
   .session-fields .segment { font-size: .9rem; padding: 14px 10px; }
   .editable-value, .input.editable-input, .session-fields .input { font-size: 1.2rem; min-height: 50px; }
   .session-identity .editable-value, .session-identity .input.editable-input { font-size: 1.6rem; min-height: 58px; }
+  .session-launch .btn { padding: 28px 30px; font-size: 1.25rem; }
   .seat-count-picker button { min-height: 52px; font-size: 1.05rem; }
   .rules-shell .editor-workspace { grid-template-columns: 170px minmax(0, 1fr) 270px; }
   .rules-shell .editor-content>.panel { padding: 32px; }
@@ -352,7 +355,8 @@
   .seat-count-picker button { min-height: 40px; font-size: .85rem; border-radius: 6px; }
   .session-launch { padding-top: 12px; }
   .session-overview { display: none; }
-  .session-launch .btn { padding: 15px 18px; font-size: .9rem; }
+  .session-launch .btn { padding: 19px 20px; font-size: 1.02rem; }
+  .session-fields { padding-inline: 10px; }
   .setup-footer { flex-basis: 32px; font-size: .55rem; }
   .setup-footer>span:last-child { font-size: .5rem; }
   .join-context>span { display: none; }
@@ -424,7 +428,7 @@
   .server-session .session-fields>.field>.field-label { flex: 0 0 62px; margin: 0; }
   .server-session .session-fields>.field>.input { min-width: 0; flex: 1; }
   .session-launch { padding-top: 6px; }
-  .session-launch .btn { padding-block: 12px; }
+  .session-launch .btn { padding-block: 14px; }
   .setup-footer { display: none; }
 }
 @media (max-height: 500px) {

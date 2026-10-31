@@ -39,15 +39,17 @@ async function fits(page, label, settings = false) {
   assert.ok(geometry.documentWidth <= geometry.width + 1 && geometry.documentHeight <= geometry.height + 1, `${label}: ${JSON.stringify(geometry)}`);
   if (settings) assert.ok(geometry.fieldScroll <= 1 && geometry.launchBottom <= geometry.height + 1, `${label}: ${JSON.stringify(geometry)}`);
 }
+// 接続先は画面から設定できない。配布時の設定の代わりに、保存済みの接続先として先に書き込む
 async function configureServer(page, owner = false) {
-  await page.getByRole('button', { name: 'サーバー接続設定', exact: true }).click();
-  await page.getByRole('textbox', { name: '接続先URL', exact: true }).fill(server);
-  if (owner) await page.getByLabel('作成キー', { exact: true }).fill(createKey);
+  if (!owner) return;
+  await page.getByRole('button', { name: '作成キーの設定', exact: true }).click();
+  await page.getByLabel('作成キー', { exact: true }).fill(createKey);
   await page.getByRole('dialog').getByRole('button', { name: '閉じる', exact: true }).click();
 }
 try {
   const hostContext = await browser.newContext({ viewport: { width: 390, height: 844 } });
   const guestContext = await browser.newContext({ viewport: { width: 1920, height: 1080 } });
+  for (const context of [hostContext, guestContext]) await context.addInitScript(url => { try { localStorage.setItem('wildcard.server-url.v1', url); } catch { /* about:blank など */ } }, server);
   const host = await hostContext.newPage(); const guest = await guestContext.newPage();
   observe(host, 'host'); observe(guest, 'guest');
   await host.goto(base);

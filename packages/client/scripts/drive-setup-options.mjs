@@ -64,17 +64,18 @@ try {
       await fits(page, `${width}-${connection === 'P2P' ? 'p2p' : 'server'}-host`);
       if (connection === 'サーバー') {
         await editValue(page, 'あなたの名前', '接続確認');
-        await page.getByRole('button', { name: 'サーバー接続設定', exact: true }).click();
+        await page.getByRole('button', { name: '作成キーの設定', exact: true }).click();
+        assert.equal(await page.getByRole('textbox', { name: '接続先URL' }).count(), 0, '接続先URLは画面に出さない');
         await page.getByLabel('作成キー', { exact: true }).fill('');
         await page.screenshot({ path: `${out}/${width}-server-settings.png` });
         await page.keyboard.press('Escape');
-        assert.match(await page.locator('.server-endpoint').innerText(), /作成キーが必要/);
+        assert.match(await page.locator('.server-endpoint').innerText(), /キーが必要/);
         assert.equal(await page.getByRole('button', { name: '卓を作る', exact: false }).isDisabled(), true);
-        await page.getByRole('button', { name: 'サーバー接続設定', exact: true }).click();
+        await page.getByRole('button', { name: '作成キーの設定', exact: true }).click();
         await page.getByLabel('作成キー', { exact: true }).fill('qa-key-not-sent');
         await page.keyboard.press('Escape');
         assert.equal(await page.getByRole('button', { name: '卓を作る', exact: false }).isEnabled(), true);
-        await page.getByRole('button', { name: 'サーバー接続設定', exact: true }).click();
+        await page.getByRole('button', { name: '作成キーの設定', exact: true }).click();
         await page.getByLabel('作成キー', { exact: true }).fill('');
         await page.keyboard.press('Escape');
       }
@@ -84,9 +85,7 @@ try {
         assert.match(await page.locator('.server-endpoint').innerText(), /キー不要/);
         await page.getByRole('textbox', { name: '招待リンク / 卓ID', exact: true }).fill('00000000-0000-4000-8000-000000000001');
         assert.equal(await page.locator('.server-session .session-launch .btn').isEnabled(), true);
-        await page.getByRole('button', { name: 'サーバー接続設定', exact: true }).click();
-        assert.equal(await page.getByLabel('作成キー', { exact: true }).count(), 0);
-        await page.keyboard.press('Escape');
+        assert.equal(await page.getByRole('button', { name: '作成キーの設定', exact: true }).count(), 0, '参加者にキー設定は出さない');
       }
     }
     await page.close();
