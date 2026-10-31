@@ -93,14 +93,25 @@ export function estimateEquity(input: EquityInput): number {
   return score / samples;
 }
 
+/** 1回の判断で許す役の評価回数。標準のホールデム・オマハはこの中に収まる。 */
+const EVALUATION_BUDGET = 80_000;
+/** これより減らすと勝率がほぼ当てずっぽうになる。 */
+const MIN_SAMPLES = 6;
+
 /**
  * 状況に応じた試行回数。
  *
  * ボードが揃うほど未知が減って結果が安定するので、試行を減らしても精度が落ちない。
  * プリフロップは逆に振れ幅が大きいので多めに回す。
+ *
+ * evaluationsPerHand は1人の手を評価するのに試す組み合わせの数（→ evaluationCount）。
+ * 手札や場を増やしたルールではここが何万にもなるので、全体の計算量が
+ * 予算を超えないよう試行を削る。削り切れないほど重い構成は編集画面が警告する。
  */
-export function suggestedSamples(communityCards: number, opponents: number): number {
+export function suggestedSamples(communityCards: number, opponents: number, evaluationsPerHand = 21): number {
   const base = communityCards === 0 ? 240 : communityCards < 5 ? 180 : 120;
   // 相手が増えるほど1試行が重くなるので、人数で割って時間を揃える。
-  return Math.max(60, Math.round(base / Math.max(1, opponents)));
+  const byPlayers = Math.max(60, Math.round(base / Math.max(1, opponents)));
+  const perSample = Math.max(1, evaluationsPerHand) * (Math.max(1, opponents) + 1);
+  return Math.max(MIN_SAMPLES, Math.min(byPlayers, Math.floor(EVALUATION_BUDGET / perSample)));
 }

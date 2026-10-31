@@ -265,3 +265,22 @@ describe('制度に合わせて打つ', () => {
     expect(state.phase).toBe('showdown');
   });
 });
+
+describe('配る枚数が多いルールでも固まらない', () => {
+  it('1手の組み合わせが数千通りでも、試行を削って数秒以内に判断する', () => {
+    // 手札6枚・場10枚（役5枚）は 16C5 = 4,368 通り。標準の 21 通りの 200 倍。
+    const heavy: Variant = {
+      ...STANDARD_VARIANT,
+      id: 'heavy',
+      name: '重い配り方',
+      structure: { holeCards: 6, handSize: 5, streets: [{ name: '場', cards: 10 }] },
+    };
+    const state = reduce(cpuTable(2, 1000, heavy), { type: 'startHand', seed: 5 });
+    const started = performance.now();
+    const decision = decide(state, state.turnPlayerId!, 1, DEFAULT_STYLE);
+    const elapsed = performance.now() - started;
+    expect(decision).not.toBeNull();
+    expect(validate(state, decision!.action)).toBeNull();
+    expect(elapsed, `判断に ${Math.round(elapsed)}ms かかった`).toBeLessThan(8000);
+  });
+});

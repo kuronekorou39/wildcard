@@ -135,4 +135,13 @@ describe('試行回数の目安', () => {
   it('下限を割らない', () => {
     expect(suggestedSamples(5, 9)).toBeGreaterThanOrEqual(60);
   });
+
+  it('1手の評価が重いルールでは、全体の計算量が収まるまで試行を削る', () => {
+    // 手札10枚・場20枚（役5枚）は 1手 142,506 通り。標準の 21 通りと同じ回数は回せない。
+    expect(suggestedSamples(0, 1, 142_506)).toBeLessThan(suggestedSamples(0, 1));
+    expect(suggestedSamples(0, 1, 142_506)).toBeGreaterThanOrEqual(6);
+    // 標準・オマハ（60通り）の範囲では今までどおり。
+    expect(suggestedSamples(0, 1, 60)).toBe(suggestedSamples(0, 1));
+    expect(suggestedSamples(5, 9, 60)).toBe(suggestedSamples(5, 9));
+  });
 });

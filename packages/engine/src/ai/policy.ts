@@ -2,6 +2,8 @@ import type { Action, GameState } from '../types.js';
 import { legalActions } from '../game/reduce.js';
 import { createRng } from '../rng.js';
 import { hasWilds } from '../rules/wild.js';
+import { evaluationCount } from '../rules/evaluate.js';
+import { boardSize } from '../variant.js';
 import { estimateEquity, suggestedSamples } from './equity.js';
 
 /**
@@ -71,7 +73,11 @@ export function decide(
   // ワイルドが入ると1回の評価が数倍重くなる（置き換えを試すため）。
   // 試行回数をそのままにすると考える時間が跳ね上がるので、そのぶん減らす。
   // 推定は粗くなるが、方策を決めるのに必要な精度は保てる。
-  const base = style.samples ?? suggestedSamples(state.communityCards.length, opponents);
+  const base = style.samples ?? suggestedSamples(
+    state.communityCards.length,
+    opponents,
+    evaluationCount(state.variant.structure, me.holeCards.length, boardSize(state.variant.structure)),
+  );
   const samples = hasWilds(state.variant) ? Math.max(25, Math.round(base / 3)) : base;
   const equity = estimateEquity({
     holeCards: me.holeCards,

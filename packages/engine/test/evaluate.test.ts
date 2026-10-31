@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { evaluationCount } from '../src/rules/evaluate.js';
 import { compareHands, evaluateBest } from '../src/rules/evaluate.js';
 import { STANDARD_VARIANT } from '../src/rules/presets.js';
 import { cards } from './helpers.js';
@@ -110,5 +111,19 @@ describe('最強の5枚を7枚から選べている', () => {
 
   it('5枚未満は判定できない', () => {
     expect(evaluateBest(cards('As Ah Kd Qc'), STANDARD_VARIANT)).toBeNull();
+  });
+});
+
+describe('evaluationCount', () => {
+  const board5 = [{ name: 'フロップ', cards: 3 }, { name: 'ターン', cards: 1 }, { name: 'リバー', cards: 1 }];
+  it('手札と場から役の枚数を選ぶ組み合わせの数', () => {
+    // ホールデム: 7枚から5枚 = 21通り
+    expect(evaluationCount({ holeCards: 2, handSize: 5, streets: board5 }, 2, 5)).toBe(21);
+    // オマハ: 手札からちょうど2枚 × 場から3枚 = 6 × 10
+    expect(evaluationCount({ holeCards: 4, handSize: 5, streets: board5, holeUsage: { min: 2, max: 2 } }, 4, 5)).toBe(60);
+    // 手札10枚・場20枚なら 30C5
+    expect(evaluationCount({ holeCards: 10, handSize: 5, streets: [{ name: '場', cards: 20 }] }, 10, 20)).toBe(142_506);
+    // 場がまだ無いプリフロップは評価できないので 0（最終的な場の枚数で見る）
+    expect(evaluationCount({ holeCards: 2, handSize: 5, streets: board5 }, 2, 0)).toBe(0);
   });
 });

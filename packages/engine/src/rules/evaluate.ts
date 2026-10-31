@@ -1,4 +1,4 @@
-import type { Card, Variant } from '../types.js';
+import type { Card, HandStructure, Variant } from '../types.js';
 import { boardUsageOf, holeUsageOf } from '../variant.js';
 import { type PatternMatch, compareTiebreak, matchPattern } from './pattern.js';
 import { hasWilds, substitutionsForPattern, wildPositions } from './wild.js';
@@ -55,6 +55,34 @@ export function evaluateHand(
     }
   }
   return best;
+}
+
+/**
+ * evaluateHand が1回に試す組み合わせの数。
+ *
+ * 手札と場が増えると急に膨らむ（手札10枚・場20枚なら 14万通り）。
+ * CPU の勝率推定はこれを試行回数×人数ぶん繰り返すので、試行を決めるときに見る。
+ */
+export function evaluationCount(structure: HandStructure, holeCards: number, boardCards: number): number {
+  const { handSize } = structure;
+  const holeUsage = holeUsageOf(structure);
+  const boardUsage = boardUsageOf(structure);
+  const low = Math.max(holeUsage.min, handSize - boardUsage.max, handSize - boardCards);
+  const high = Math.min(holeUsage.max, handSize - boardUsage.min, holeCards, handSize);
+  let total = 0;
+  for (let h = Math.max(0, low); h <= high; h++) {
+    const b = handSize - h;
+    if (b < 0 || b > boardCards) continue;
+    total += choose(holeCards, h) * choose(boardCards, b);
+  }
+  return total;
+}
+
+function choose(n: number, k: number): number {
+  if (k < 0 || k > n) return 0;
+  let result = 1;
+  for (let i = 1; i <= k; i++) result = (result * (n - k + i)) / i;
+  return Math.round(result);
 }
 
 /**
