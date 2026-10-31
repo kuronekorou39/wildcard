@@ -4,7 +4,7 @@ import { GameDialog } from './GameDialog.js';
 import { Icon } from './Icon.js';
 import { resolveVariant } from '../rules/customVariants.js';
 import { connectionToken, createServerTable, defaultServerUrl, invitedTable, loadConnection,
-  saveConnection, serverRequest, tableIdFrom, type ServerSettings } from '../serverConnection.js';
+  saveConnection, serverRequest, tableIdFrom, UNREACHABLE_SERVER, type ServerSettings } from '../serverConnection.js';
 
 export function ServerPanel({ variantId, name, role, onRoleChange, onStart }: {
   readonly variantId: string; readonly name: string; readonly role: 'host' | 'guest';
@@ -51,7 +51,7 @@ export function ServerPanel({ variantId, name, role, onRoleChange, onStart }: {
         await serverRequest(settings, '/join', { method: 'POST', body: JSON.stringify({ token: settings.token, name: settings.name, play }) });
       }
       onStart(settings);
-    } catch (failure) { setProblem(failure instanceof TypeError ? 'サーバーに接続できません。接続先と起動状態を確認してください' : (failure as Error).message); }
+    } catch (failure) { setProblem(failure instanceof TypeError ? UNREACHABLE_SERVER : (failure as Error).message); }
     finally { setBusy(false); }
   };
   return <div className="session-config server-session">

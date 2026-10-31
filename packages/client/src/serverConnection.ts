@@ -35,6 +35,11 @@ export function forgetConnection(settings: ServerSettings) {
 export class ServerRequestError extends Error {
   constructor(message: string, readonly status: number) { super(message); }
 }
+/**
+ * 応答が読めないときの説明。Cloudflare の日次上限（無料枠）に達した応答は CORS ヘッダが無く、
+ * ブラウザからは通信断と区別できないので、両方の可能性を書く。
+ */
+export const UNREACHABLE_SERVER = 'サーバーに接続できません。通信環境の問題か、サーバーが本日の利用上限に達している可能性があります（上限は日本時間 9:00 に戻ります）。';
 export function connectionToken() {
   return Array.from(crypto.getRandomValues(new Uint8Array(32)), byte => byte.toString(16).padStart(2, '0')).join('');
 }

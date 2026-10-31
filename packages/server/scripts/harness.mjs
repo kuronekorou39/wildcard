@@ -14,10 +14,17 @@ export async function bundle() {
     format: 'esm', platform: 'neutral', mainFields: ['module', 'main'], target: 'es2022', external: ['cloudflare:workers'] });
   await build({ entryPoints: ['../engine/src/index.ts'], outfile: 'dist/test-engine.mjs', bundle: true, format: 'esm', platform: 'node' });
 }
-export async function runtime(persist) {
+// 入口の回数制限。検証は1つのIPから10人分をまとめて動かすので、本番（wrangler.jsonc）より広い枠にする
+export const limits = (create, http, socket) => ({
+  CREATE_LIMIT: { namespace_id: '1001', simple: { limit: create, period: 60 } },
+  HTTP_LIMIT: { namespace_id: '1002', simple: { limit: http, period: 60 } },
+  SOCKET_LIMIT: { namespace_id: '1003', simple: { limit: socket, period: 60 } },
+});
+const simulationLimits = limits(50, 1200, 400);
+export async function runtime(persist, ratelimits = simulationLimits) {
   const directory = persist ?? await mkdtemp(join(tmpdir(), 'wildcard-server-'));
   const mf = new Miniflare({ name: 'wildcard-test', modules: true, scriptPath: resolve('dist/test-worker.js'),
-    compatibilityDate: '2026-07-30', log: new Log(LogLevel.ERROR),
+    compatibilityDate: '2026-07-30', log: new Log(LogLevel.ERROR), ratelimits,
     durableObjects: { TABLES: { className: 'PokerTable', useSQLite: true }, DIRECTORY: { className: 'TableDirectory', useSQLite: true } },
     durableObjectsPersist: directory, bindings: { CREATE_KEY: createKey, ALLOWED_ORIGINS: 'http://localhost:5173', MAX_TABLES: '5', TABLE_TTL_HOURS: '168' } });
   const base = (await mf.ready).origin;

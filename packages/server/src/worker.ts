@@ -7,6 +7,10 @@ export interface Env {
   TABLES: DurableObjectNamespace<PokerTable>;
   DIRECTORY: DurableObjectNamespace<TableDirectory>;
   CREATE_KEY?: string;
+  /** 入口の回数制限。テストの Miniflare では未設定のこともあるので省略可。 */
+  CREATE_LIMIT?: RateLimit;
+  HTTP_LIMIT?: RateLimit;
+  SOCKET_LIMIT?: RateLimit;
   ALLOWED_ORIGINS: string;
   MAX_TABLES: string;
   TABLE_TTL_HOURS: string;
@@ -16,6 +20,16 @@ const tokenPattern = /^[0-9a-f]{64}$/i;
 const encoder = new TextEncoder();
 const json = (value: unknown, status = 200) => Response.json(value, { status, headers: { 'Cache-Control': 'no-store' } });
 const error = (message: string, status = 400) => json({ error: message }, status);
+const TOO_MANY = 'アクセスが集中しています。1分ほど待ってからやり直してください';
+/** 作成・WebSocket 接続・その他 HTTP で別々の枠。超えたら 429 を JSON で返し、画面に理由を出せるようにする。 */
+async function overLimit(request: Request, url: URL, env: Env): Promise<boolean> {
+  if (url.pathname === '/api/health') return false;
+  const creating = request.method === 'PUT' && /^\/api\/tables\/[^/]+$/.test(url.pathname);
+  const limiter = creating ? env.CREATE_LIMIT : url.pathname.endsWith('/socket') ? env.SOCKET_LIMIT : env.HTTP_LIMIT;
+  if (!limiter) return false;
+  const { success } = await limiter.limit({ key: request.headers.get('CF-Connecting-IP') ?? 'unknown' });
+  return !success;
+}
 const bearer = (request: Request) => request.headers.get('Authorization')?.replace(/^Bearer /, '') ?? '';
 const keyFor = (handId: number) => `hand:${String(handId).padStart(12, '0')}`;
 async function hashToken(token: unknown) {
@@ -58,7 +72,8 @@ export default {
     if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
     let response: Response;
     try {
-      if (url.pathname === '/api/health' && request.method === 'GET') response = json({ ok: true, protocol: 1 });
+      if (await overLimit(request, url, env)) response = Response.json({ error: TOO_MANY }, { status: 429, headers: { 'Cache-Control': 'no-store', 'Retry-After': '60' } });
+      else if (url.pathname === '/api/health' && request.method === 'GET') response = json({ ok: true, protocol: 1 });
       else {
         const match = /^\/api\/tables\/([^/]+)(\/.*)?$/.exec(url.pathname);
         if (!match || !roomPattern.test(match[1]!)) return error('卓が見つかりません', 404);

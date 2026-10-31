@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
-import { bundle, runtime, createTable, api, connect, close, settle, pause, token } from './harness.mjs';
+import { randomUUID } from 'node:crypto';
+import { bundle, runtime, createTable, api, connect, close, settle, pause, token, limits } from './harness.mjs';
 
 await bundle();
 const { STANDARD_VARIANT, legalActions } = await import('../dist/test-engine.mjs');
@@ -80,4 +81,23 @@ try {
 } finally {
   close(peers);
   await run.mf.dispose();
+}
+
+// 入口の回数制限：作成を2回に絞った環境で、キー違いの3回目が 429 と理由を返す（総当たりの想定）
+{
+  const limited = await runtime(undefined, limits(2, 100, 100));
+  try {
+    const attempt = () => fetch(`${limited.base}/api/tables/${randomUUID()}`, { method: 'PUT',
+      headers: { Authorization: 'Bearer wrong-key', 'Content-Type': 'application/json' }, body: '{}' });
+    assert.equal((await attempt()).status, 401);
+    assert.equal((await attempt()).status, 401);
+    const third = await attempt();
+    assert.equal(third.status, 429);
+    assert.match((await third.json()).error, /アクセスが集中/);
+    assert.equal(third.headers.get('Retry-After'), '60');
+    assert.equal((await fetch(`${limited.base}/api/health`)).status, 200, '状態確認は制限しない');
+    console.log('PASS: entry rate limit answers 429 with a reason once the allowance is used');
+  } finally {
+    await limited.mf.dispose();
+  }
 }

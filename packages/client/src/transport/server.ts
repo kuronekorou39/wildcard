@@ -1,6 +1,6 @@
 import { createGame, project, type Action } from '@wildcard/engine';
 import { playerCommand, receiveRuntime, type CommandRequest, type ServerMessage, type ServerSnapshot, type TableCommand } from '@wildcard/table';
-import { loadConnection, saveConnection, serverRequest, ServerRequestError, type ServerSettings } from '../serverConnection.js';
+import { loadConnection, saveConnection, serverRequest, ServerRequestError, UNREACHABLE_SERVER, type ServerSettings } from '../serverConnection.js';
 import type { TableSnapshot, Transport } from './types.js';
 
 export class ServerTransport implements Transport {
@@ -79,6 +79,9 @@ export class ServerTransport implements Transport {
       // WebSocket handshakes hide HTTP 404/410. Recheck occasionally after transient outages.
       if (this.retries === 1 || this.retries % 4 === 0) void serverRequest(this.settings).catch(failure => {
         if (!this.active || this.cached.status === 'connected') return;
+        // 回数制限や上限は理由を出す。通信断と日次上限は区別できないので、両方の可能性を書く。
+        if (failure instanceof ServerRequestError && failure.status === 429) { this.update({ note: `${failure.message} 再接続を続けます。` }); return; }
+        if (failure instanceof TypeError) { this.update({ note: `${UNREACHABLE_SERVER} 再接続を続けます。` }); return; }
         if (failure instanceof ServerRequestError && [404, 410].includes(failure.status)) {
           this.unavailable = true;
           this.generation++;
