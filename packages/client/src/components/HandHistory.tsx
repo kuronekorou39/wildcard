@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { streetName, type HandHistoryStep, type VisibleState } from '@wildcard/engine';
 import { PlayingCard } from './PlayingCard.js';
+import { Icon } from './Icon.js';
 
 const labels: Record<HandHistoryStep['kind'], string> = {
   ante: 'アンティ',
@@ -28,9 +29,9 @@ export function HandHistory({ state }: { readonly state: VisibleState }) {
     : step.amount && ['call','raise','blind','straddle'].includes(step.kind) ? '持ちチップ → 席の前' : null;
   return <section className="hand-history" aria-label="ハンドの手順">
     <div className="history-navigation">
-      <button className="btn" disabled={index === 0} onClick={() => setIndex(i => i-1)} aria-label="前の手順">←</button>
+      <button className="btn" disabled={index === 0} onClick={() => setIndex(i => i-1)} aria-label="前の手順"><Icon kind="arrow-left" /></button>
       <output>{index + 1} / {steps.length}</output>
-      <button className="btn" disabled={index === steps.length-1} onClick={() => setIndex(i => i+1)} aria-label="次の手順">→</button>
+      <button className="btn" disabled={index === steps.length-1} onClick={() => setIndex(i => i+1)} aria-label="次の手順"><Icon kind="arrow-right" /></button>
     </div>
     <input type="range" min={0} max={steps.length-1} step={1} value={index} onChange={e => setIndex(Number(e.target.value))} aria-label="表示する手順" />
     <div className="history-snapshot" aria-live="polite">

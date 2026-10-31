@@ -4,7 +4,8 @@ import type { SoloSettings } from '../modes/SoloTable.js';
 import { SoloPanel } from './SoloPanel.js';
 import { RulePicker } from './RulePicker.js';
 import { Brand } from './Brand.js';
-import { TableStakes } from './EditableValue.js';
+import { Icon } from './Icon.js';
+import { EditableText, TableStakes } from './EditableValue.js';
 import { GameDialog } from './GameDialog.js';
 import { ROOM_CODE_LENGTH, createRoomCode, invalidRoomCodeChars, isValidRoomCode, normalizeRoomCode } from '../room.js';
 import { ServerPanel } from './ServerPanel.js';
@@ -28,10 +29,10 @@ export function SetupScreen({ mode, onModeChange, variantId, onVariantChange, on
   const [about, setAbout] = useState(false);
   const aboutTrigger = useRef<HTMLButtonElement>(null);
   return <div className="screen screen-setup setup-shell">
-    <header className="setup-header"><Brand /><button ref={aboutTrigger} type="button" className="preview-badge" aria-haspopup="dialog" aria-expanded={about} onClick={() => setAbout(true)}>PREVIEW <span aria-hidden="true">ⓘ</span></button></header>
+    <header className="setup-header"><Brand /><button ref={aboutTrigger} type="button" className="preview-badge" aria-haspopup="dialog" aria-expanded={about} onClick={() => setAbout(true)}>PREVIEW <Icon kind="info" /></button></header>
     <main className="setup-desk">
       <section className="setup-rule-pane" aria-label="ルールの設定">
-        {mode === 'online' && onlineRole === 'guest' ? <div className="join-context"><span aria-hidden="true">↗</span><h2>{connection === 'server' ? '招待リンクで参加' : 'ルームコードで接続'}</h2><p>ルールとチップの設定は、接続先の卓から読み込みます。</p></div> :
+        {mode === 'online' && onlineRole === 'guest' ? <div className="join-context"><span aria-hidden="true"><Icon kind="external" /></span><h2>{connection === 'server' ? '招待リンクで参加' : 'ルームコードで接続'}</h2><p>ルールとチップの設定は、接続先の卓から読み込みます。</p></div> :
           <RulePicker value={variantId} onChange={onVariantChange} onEdit={onEditRules} />}
       </section>
       <section className="setup-session-pane" aria-label="卓の設定">
@@ -77,7 +78,7 @@ function OnlinePanel({ onStart, variantId, role, onRoleChange }: {
   return <div className="session-config">
     <div className="session-fields">
       <div className="segmented"><button type="button" className={`segment ${role === 'host' ? 'segment-active' : ''}`} onClick={() => onRoleChange('host')}>部屋を作る</button><button type="button" className={`segment ${role === 'guest' ? 'segment-active' : ''}`} onClick={() => onRoleChange('guest')}>参加する</button></div>
-      <label className="field"><span className="field-label">あなたの名前</span><input className="input" value={name} maxLength={12} placeholder="名前を入力" onChange={event => setName(event.target.value)} /></label>
+      <EditableText label="あなたの名前" value={name} onChange={setName} maxLength={12} placeholder="名前を入力" />
       {role === 'guest' ? <label className="field"><span className="field-label">ルームコード（{ROOM_CODE_LENGTH}文字）</span><input className="input input-code" value={code} autoCapitalize="characters" placeholder="ABCDEF" onChange={event => setCode(normalizeRoomCode(event.target.value))} />{badChars.length > 0 && <span className="hint hint-warn">{badChars.join(' ')} は使用できません。</span>}</label> : <>
         <TableStakes chips={chips} smallBlind={smallBlind} bigBlind={bigBlind} ante={ante} onAnte={setAnte} onChips={setChips} onSmallBlind={setSmallBlind} onBigBlind={setBigBlind} />
         <label className="checkline"><input type="checkbox" checked={hostPlays} onChange={event => setHostPlays(event.target.checked)} /><span>自分も席に着く</span></label>
@@ -85,6 +86,6 @@ function OnlinePanel({ onStart, variantId, role, onRoleChange }: {
       </>}
       <p className="session-note">接続中だけの一時的な卓です。部屋を作った端末が進行を担当します。</p>
     </div>
-    <div className="session-launch"><button type="button" className="btn btn-primary btn-large btn-block" disabled={!ready} onClick={() => onStart({ role, roomCode: role === 'host' ? createRoomCode() : code, name: name.trim(), chips, smallBlind, bigBlind, ante, hostPlays, variantId })}>{role === 'host' ? '部屋を作る' : '接続する'} <span aria-hidden="true">→</span></button></div>
+    <div className="session-launch"><button type="button" className="btn btn-primary btn-large btn-block" disabled={!ready} onClick={() => onStart({ role, roomCode: role === 'host' ? createRoomCode() : code, name: name.trim(), chips, smallBlind, bigBlind, ante, hostPlays, variantId })}>{role === 'host' ? '部屋を作る' : '接続する'}<Icon kind="arrow-right" /></button></div>
   </div>;
 }

@@ -17,6 +17,7 @@ import { chromium } from 'playwright';
 import { existsSync, mkdirSync, readdirSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
+import { editValue } from './setup-helpers.mjs';
 
 const URL = process.env.WILDCARD_URL ?? 'http://localhost:5173/';
 const OUT = process.env.WILDCARD_SHOTS ?? 'shots-online';
@@ -95,7 +96,7 @@ async function assertNoDuplicateCards(page, label) {
 await host.goto(URL, { waitUntil: 'networkidle' });
 await host.getByRole('tab', { name: /^オンライン/ }).click();
 await host.getByRole('button', { name: '部屋を作る', exact: true }).first().click();
-await host.locator('.field', { hasText: 'あなたの名前' }).locator('input').fill('あかり');
+await editValue(host, 'あなたの名前', 'あかり');
 await snap(host, 'host-setup');
 await host.getByRole('button', { name: '部屋を作る', exact: true }).last().click();
 
@@ -110,7 +111,7 @@ await host.keyboard.press('Escape');
 await guest.goto(URL, { waitUntil: 'networkidle' });
 await guest.getByRole('tab', { name: /^オンライン/ }).click();
 await guest.getByRole('button', { name: '参加する', exact: true }).first().click();
-await guest.locator('.field', { hasText: 'あなたの名前' }).locator('input').fill('ばしょう');
+await editValue(guest, 'あなたの名前', 'ばしょう');
 await guest.locator('.input-code').fill(roomCode);
 await snap(guest, 'guest-setup');
 await guest.getByRole('button', { name: '接続する', exact: true }).click();

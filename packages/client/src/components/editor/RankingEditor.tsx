@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Icon } from '../Icon.js';
 import {
   describePattern,
   exampleHand,
@@ -144,7 +145,7 @@ export function RankingEditor({ variant, onChange }: RankingEditorProps) {
       </ol>
 
       <button type="button" className="btn btn-ghost" onClick={add}>
-        ＋ 役を足す
+        <Icon kind="plus" />役を足す
       </button>
     </section>
   );

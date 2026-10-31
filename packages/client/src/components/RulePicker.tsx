@@ -15,6 +15,7 @@ import { DeckContents } from './DeckContents.js';
 import { isCustomVariant, useVariants } from '../rules/customVariants.js';
 import { GameDialog } from './GameDialog.js';
 import { RuleBanner } from './RuleBanner.js';
+import { Icon } from './Icon.js';
 import { EMPTY_RULE_FILTERS, filterVariants, type RuleFilters } from '../rules/filterVariants.js';
 
 interface RulePickerProps {
@@ -49,7 +50,7 @@ export function RulePicker({ value, onChange, onEdit }: RulePickerProps) {
       <button ref={trigger} type="button" className="rule-select-trigger" aria-label={`ルールを選ぶ：${selected.name}`} aria-haspopup="dialog" aria-expanded={open}
         onClick={() => { clearSearch(); setSearchOpen(false); setOpen(true); }}>
         <RuleBanner variant={selected} />
-        <span className="selected-rule-title"><strong>{selected.name}</strong><span className="rule-chevron" aria-hidden="true">⌄</span></span>
+        <span className="selected-rule-title"><strong>{selected.name}</strong><span className="rule-chevron" aria-hidden="true"><Icon kind="chevron-down" /></span></span>
       </button>
       <dl className="rule-facts"><div><dt>デッキ</dt><dd>{deckSize(selected.deck)}<small>枚</small></dd></div><div><dt>手札</dt><dd>{selected.structure.holeCards}<small>枚</small></dd></div><div><dt>ボード</dt><dd>{boardSize(selected.structure)}<small>枚</small></dd></div><div><dt>ベット</dt><dd className="rule-limit">{selected.betting.limit === 'no-limit' ? 'NL' : selected.betting.limit === 'pot-limit' ? 'PL' : 'FL'}</dd></div></dl>
       <div className="rule-actions">
@@ -60,7 +61,8 @@ export function RulePicker({ value, onChange, onEdit }: RulePickerProps) {
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 4 5 5M4 20l5-1L20 8a2 2 0 0 0-5-5L4 14z" /></svg>
         </button>}
       </div>
-      {open && <GameDialog title="ルールを選ぶ" className="rule-select-dialog" anchor={trigger.current} initialFocus=".rule-option[aria-selected=true]" onClose={() => setOpen(false)}>
+      {open && <GameDialog title="ルールを選ぶ" className="rule-select-dialog" anchor={trigger.current} initialFocus=".rule-option[aria-selected=true]" onClose={() => setOpen(false)}
+        actions={onEdit && <button type="button" className="btn btn-muted btn-small" onClick={() => { setOpen(false); onEdit('standard'); }}><Icon kind="plus" />作成</button>}>
         <div className="rule-search-toolbar"><span role="status">{matches.length} 件</span><button type="button" className="search-toggle" aria-expanded={searchOpen} aria-controls="rule-search-panel" onClick={() => {
           setSearchOpen(!searchOpen);
           if (searchOpen) clearSearch();
@@ -74,7 +76,7 @@ export function RulePicker({ value, onChange, onEdit }: RulePickerProps) {
           </div><button type="button" className="search-toggle" aria-expanded={advanced} aria-controls="rule-advanced-filters" onClick={() => {
             setAdvanced(!advanced);
             if (advanced) updateFilter({ holeCards: '', limit: '', deck: 'all' });
-          }}>詳細条件 {advanced ? '−' : '＋'}</button></div>
+          }}>詳細条件 <Icon kind={advanced ? 'minus' : 'plus'} /></button></div>
           {advanced && <div className="rule-advanced-filters" id="rule-advanced-filters">
             <label><span>手札</span><select aria-label="手札枚数" className="input" value={filters.holeCards} onChange={event => updateFilter({ holeCards: event.target.value })}><option value="">すべて</option>{[...new Set(variants.map(v => v.structure.holeCards))].sort((a, b) => a - b).map(n => <option key={n} value={n}>{n}枚</option>)}</select></label>
             <label><span>デッキ</span><select aria-label="デッキ枚数" className="input" value={filters.deck} onChange={event => updateFilter({ deck: event.target.value as RuleFilters['deck'] })}><option value="all">すべて</option><option value="short">52枚未満</option><option value="standard">52枚</option><option value="large">53枚以上</option></select></label>
@@ -97,7 +99,7 @@ export function RulePicker({ value, onChange, onEdit }: RulePickerProps) {
             className="rule-option" onClick={() => { onChange(variant.id); setOpen(false); }}>
             <RuleBanner variant={variant} compact />
             <span><strong>{variant.name}</strong><small>{isCustomVariant(variant.id) ? 'カスタム · ' : ''}{deckSize(variant.deck)}枚 · 手札{variant.structure.holeCards}枚</small></span>
-            <span className="rule-option-check" aria-hidden="true">{variant.id === selected.id ? '✓' : ''}</span>
+            <span className="rule-option-check" aria-hidden="true">{variant.id === selected.id && <Icon kind="check" />}</span>
           </button>)}
           {matches.length === 0 && <p className="hint">該当するルールはありません。</p>}
         </div>

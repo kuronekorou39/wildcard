@@ -60,7 +60,7 @@ try {
     await host.screenshot({ path: `${out}/setup-${width}.png` });
   }
   await host.setViewportSize({ width: 390, height: 666 });
-  await host.getByRole('textbox', { name: 'あなたの名前' }).fill('はる');
+  await editValue(host, 'あなたの名前', 'はる');
   await editValue(host, 'アンティ / 人', 5);
   await host.getByRole('button', { name: /^卓を作る/ }).click();
   await host.locator('.screen-game').waitFor();
@@ -69,7 +69,7 @@ try {
   assert.ok(room);
   await guest.goto(host.url());
   await configureServer(guest);
-  await guest.getByRole('textbox', { name: 'あなたの名前' }).fill('あおい');
+  await editValue(guest, 'あなたの名前', 'あおい');
   await guest.getByRole('button', { name: /^参加する/ }).last().click();
   await guest.locator('.screen-game').waitFor();
   await until(() => snapshots.has('guest'));

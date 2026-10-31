@@ -1,10 +1,13 @@
 import { useEffect, useId, useRef, type ReactNode } from 'react';
+import { Icon } from './Icon.js';
 
 /** 卓を押し下げない情報パネル。長い内容はパネル内だけでスクロールする。 */
-export function GameDialog({ title, children, onClose, className = '', anchor, initialFocus, placement = 'auto' }: {
+export function GameDialog({ title, children, onClose, className = '', anchor, initialFocus, placement = 'auto', actions }: {
   readonly title: string;
   readonly children: ReactNode;
   readonly onClose: () => void;
+  /** 「閉じる」の左に並べる操作ボタン。 */
+  readonly actions?: ReactNode;
   readonly className?: string;
   readonly anchor?: HTMLElement | null;
   readonly initialFocus?: string;
@@ -42,7 +45,10 @@ export function GameDialog({ title, children, onClose, className = '', anchor, i
       }}>
       <div className="game-dialog-head">
         <h2 id={headingId}>{title}</h2>
-        <button type="button" className="btn btn-muted btn-small" onClick={() => ref.current?.close()} autoFocus>閉じる</button>
+        <div className="game-dialog-actions">
+          {actions}
+          <button type="button" className="btn btn-muted btn-small" onClick={() => ref.current?.close()} autoFocus><Icon kind="close" />閉じる</button>
+        </div>
       </div>
       <div className="game-dialog-body">{children}</div>
     </dialog>

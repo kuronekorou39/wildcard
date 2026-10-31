@@ -1,4 +1,5 @@
 import { EditableNumber, EditableText } from '../EditableValue.js';
+import { Icon } from '../Icon.js';
 import { boardSize, type HandStructure, type Street, type UsageRange } from '@wildcard/engine';
 
 interface StructureEditorProps {
@@ -89,7 +90,7 @@ export function StructureEditor({ structure, onChange }: StructureEditorProps) {
           ))}
         </ul>
         <button type="button" className="btn btn-ghost" onClick={addStreet}>
-          ＋ 段階を足す
+          <Icon kind="plus" />段階を足す
         </button>
         <p className="hint">バーンの枚数も必要なデッキ枚数に含めます。</p>
       </div>

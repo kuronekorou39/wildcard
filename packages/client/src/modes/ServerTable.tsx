@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { SavedHand } from '@wildcard/table';
 import { TableView } from '../components/TableView.js';
+import { Icon } from '../components/Icon.js';
 import { GameDialog } from '../components/GameDialog.js';
 import { HandSummaryPanel } from '../components/HandSummaryPanel.js';
 import { useTable } from '../hooks/useTable.js';
@@ -73,7 +74,7 @@ function HistoryDialog({ settings, onClose }: { readonly settings: ServerSetting
     {loading ? <p className="hint" role="status">読み込んでいます…</p> : problem ? <p className="hint hint-warn" role="alert">{problem}</p> : record ?
       <HandSummaryPanel state={record.state} onNextHand={() => {}} canStartNextHand={false} blockedReason={null} showNextHand={false} /> :
       hands.length ? <ol className="server-history-list">{hands.map(hand => <li key={hand.handId}><button type="button" onClick={() => setSelected(hand.handId)}>
-        <strong>#{hand.handId}</strong><span>{hand.winners.map(winner => `${winner.name} +${winner.amount.toLocaleString()}`).join(' / ')}<small>{new Date(hand.endedAt).toLocaleString('ja-JP')}</small></span><span aria-hidden="true">→</span>
+        <strong>#{hand.handId}</strong><span>{hand.winners.map(winner => `${winner.name} +${winner.amount.toLocaleString()}`).join(' / ')}<small>{new Date(hand.endedAt).toLocaleString('ja-JP')}</small></span><span aria-hidden="true"><Icon kind="arrow-right" /></span>
       </button></li>)}</ol> : <p className="hint">終了したハンドがここに残ります。</p>}
   </GameDialog>;
 }

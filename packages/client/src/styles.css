@@ -801,12 +801,23 @@ button {
   display: none;
 }
 
-.rule-sheet-summary::before {
-  content: '▸ ';
+/* 開閉の印は文字ではなく、線で描いた山形にする */
+.rule-sheet-summary::before,
+.share-summary::before {
+  content: '';
+  display: inline-block;
+  width: 0.42em;
+  height: 0.42em;
+  margin: 0 0.6em 0 0.2em;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: translateY(-0.12em) rotate(-45deg);
+  transition: transform 0.15s ease;
 }
 
-.rule-sheet[open] .rule-sheet-summary::before {
-  content: '▾ ';
+.rule-sheet[open] .rule-sheet-summary::before,
+.share-box[open] .share-summary::before {
+  transform: translateY(-0.25em) rotate(45deg);
 }
 
 .rule-sheet-body {
@@ -1359,14 +1370,6 @@ button {
 
 .share-summary::-webkit-details-marker {
   display: none;
-}
-
-.share-summary::before {
-  content: '▸ ';
-}
-
-.share-box[open] .share-summary::before {
-  content: '▾ ';
 }
 
 .share-text {

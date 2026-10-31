@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import type { Action } from '@wildcard/engine';
 import type { TableSnapshot } from '../transport/types.js';
+import { Icon } from './Icon.js';
 import { ActionBar } from './ActionBar.js';
 import { RunChoiceBar } from './RunChoiceBar.js';
 import { ShowCardsControl } from './ShowCardsControl.js';
@@ -163,7 +164,7 @@ export function TableView({
                     onClick={foldReservation.toggle}>
                     <ActionIcon kind="fold" />
                     <span>フォールド<small>予約</small></span>
-                    {foldReservation.reserved && <span className="reservation-check" aria-hidden="true">✓</span>}
+                    {foldReservation.reserved && <span className="reservation-check" aria-hidden="true"><Icon kind="check" /></span>}
                   </button>
                 )}
               </div>

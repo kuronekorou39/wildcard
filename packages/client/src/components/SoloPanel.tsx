@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { SoloSettings } from '../modes/SoloTable.js';
 import { EditableText, TableStakes } from './EditableValue.js';
+import { Icon } from './Icon.js';
 
 export function SoloPanel({ onStart, variantId }: { readonly onStart: (settings: SoloSettings) => void; readonly variantId: string }) {
   const [name, setName] = useState('あなた');
@@ -20,6 +21,6 @@ export function SoloPanel({ onStart, variantId }: { readonly onStart: (settings:
       <TableStakes chips={chips} smallBlind={smallBlind} bigBlind={bigBlind} ante={ante} onAnte={setAnte} onChips={setChips} onSmallBlind={setSmallBlind} onBigBlind={setBigBlind} />
       {!valid && <p className="hint hint-warn">SB ≦ BB ≦ 初期チップに設定してください。</p>}
     </div>
-    <div className="session-launch"><span className="session-overview">{opponents + 1} 席 · CPU {opponents} 人</span><button type="button" className="btn btn-primary btn-large btn-block" disabled={!valid} onClick={() => onStart({ name: name.trim() || 'あなた', opponents, chips, smallBlind, bigBlind, ante, variantId, aggression, mixedCpu })}>はじめる <span aria-hidden="true">→</span></button></div>
+    <div className="session-launch"><span className="session-overview">{opponents + 1} 席 · CPU {opponents} 人</span><button type="button" className="btn btn-primary btn-large btn-block" disabled={!valid} onClick={() => onStart({ name: name.trim() || 'あなた', opponents, chips, smallBlind, bigBlind, ante, variantId, aggression, mixedCpu })}>はじめる<Icon kind="arrow-right" /></button></div>
   </div>;
 }

@@ -32,7 +32,7 @@
 .setup-shell, .rules-shell { position: relative; width: 100%; height: 100dvh; min-height: 0; max-width: 1360px; margin: 0 auto; padding: 0 36px; gap: 0; overflow: hidden; }
 .setup-header { display: flex; flex: 0 0 76px; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); }
 .preview-badge { display: flex; align-items: center; gap: 12px; color: var(--gold); background: transparent; border: 1px solid var(--border); border-radius: 30px; padding: 10px 14px; font-size: .67rem; letter-spacing: .15em; cursor: pointer; }
-.preview-badge span { font-size: 1rem; }
+.preview-badge .ui-icon { font-size: 1rem; }
 .setup-desk { flex: 1; min-height: 0; max-height: 760px; margin-top: clamp(8px, 2dvh, 20px); display: grid; grid-template-columns: 1fr 1fr; border: 1px solid var(--border); border-radius: 20px; background: var(--surface); overflow: hidden; }
 .setup-rule-pane, .setup-session-pane { min-width: 0; min-height: 0; padding: clamp(20px, 2.6vw, 38px); }
 .setup-rule-pane { border-right: 1px solid var(--border); background: linear-gradient(145deg, #292428, #211e21); }
@@ -69,7 +69,8 @@
 .seat-count-picker { display: grid; grid-template-columns: repeat(9, minmax(0, 1fr)); gap: 4px; }
 .seat-count-picker button { min-height: 44px; border: 1px solid var(--border); border-radius: 8px; color: var(--text-dim); background: transparent; cursor: pointer; font-variant-numeric: tabular-nums; }
 .seat-count-picker button[aria-pressed=true] { color: var(--bg-dark); background: var(--gold); border-color: var(--gold); font-weight: 800; }
-.join-context>span { display: block; color: var(--gold); font-size: 5rem; margin: 36px 0; }
+.join-context>span { display: block; color: var(--gold); font-size: 5rem; margin: 36px 0; line-height: 1; }
+.join-context .ui-icon { stroke-width: 1.2; }
 .join-context h2 { font-size: 1.4rem; }
 .join-context p { color: var(--text-dim); line-height: 1.9; font-size: .85rem; }
 
@@ -81,12 +82,23 @@
 .editable-value svg { width: 13px; height: 13px; stroke: var(--text-dim); stroke-width: 1.6; fill: none; flex: 0 0 auto; opacity: .65; }
 .editable-value:hover { border-bottom-color: var(--gold); color: var(--gold); }
 .editable-value:hover svg { stroke: var(--gold); opacity: 1; }
-.editable-input { min-height: 44px; padding: 7px 8px; font-size: 16px; }
+.editable-empty>span { color: var(--text-dim); font-weight: 400; }
+/* 編集中も表示と同じ下線の見た目にし、数字の位置を動かさない。フォーカスは下線の色で示す。 */
+.input.editable-input, .session-fields .input { min-height: 44px; padding: 7px 0; border: 0; border-bottom: 1px solid var(--border); border-radius: 0; background: transparent; color: var(--text); font-size: 1.04rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+.input.editable-input { border-bottom-color: var(--gold); }
+.input.editable-input:focus, .session-fields .input:focus { outline: none; border-bottom-color: var(--gold); }
+.session-fields .input::placeholder { color: var(--text-dim); font-weight: 400; }
+.session-fields .input-code { text-align: left; font-size: 1.04rem; letter-spacing: .3em; }
+.editable-input[type=number] { appearance: textfield; -moz-appearance: textfield; }
+.editable-input::-webkit-inner-spin-button, .editable-input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
 .table-stakes { display: grid; grid-template-columns: minmax(0, 1.3fr) repeat(3, minmax(0, 1fr)); gap: 14px; }
-.table-stakes .editable-value { font-size: clamp(1.1rem, 1.6vw, 1.55rem); }
+.table-stakes .editable-value, .table-stakes .input.editable-input { font-size: clamp(1.1rem, 1.6vw, 1.55rem); }
 .table-stakes .field-label { white-space: nowrap; font-size: .65rem; }
 .deck-card-editor { margin: 16px 0; min-width: 0; }
-.deck-card-editor>summary { cursor: pointer; color: var(--text-dim); padding: 10px 0; font-size: .8rem; }
+.deck-card-editor>summary { cursor: pointer; color: var(--text-dim); padding: 10px 0; font-size: .8rem; list-style: none; }
+.deck-card-editor>summary::-webkit-details-marker { display: none; }
+.deck-card-editor>summary::before { content: ''; display: inline-block; width: .42em; height: .42em; margin: 0 .6em 0 .2em; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: translateY(-.12em) rotate(-45deg); transition: transform .15s ease; }
+.deck-card-editor[open]>summary::before { transform: translateY(-.25em) rotate(45deg); }
 .deck-kind-scroll { max-width: 100%; overflow-x: auto; padding: 4px 0 8px; }
 .deck-kind-grid { display: grid; gap: 4px; min-width: min-content; }
 .deck-kind { border: 1px solid var(--border); border-radius: 8px; background: #302c30; color: var(--text); min-height: 53px; padding: 6px 2px; display: grid; place-items: center; cursor: pointer; }
@@ -113,7 +125,7 @@
 @media (max-width: 400px) {
   .table-stakes { gap: 8px; }
   .table-stakes .field-label { font-size: .56rem; }
-  .table-stakes .editable-value { font-size: 1rem; }
+  .table-stakes .editable-value, .table-stakes .input.editable-input { font-size: 1rem; }
   .table-stakes .editable-value svg { display: none; }
   .deck-card-count { flex-wrap: wrap; }
 }
@@ -271,7 +283,7 @@
   .session-tabs .tab { font-size: 1rem; padding: 16px 10px; }
   .session-fields .field-label { font-size: .85rem; }
   .session-fields .segment { font-size: .9rem; padding: 14px 10px; }
-  .editable-value { font-size: 1.2rem; min-height: 50px; }
+  .editable-value, .input.editable-input, .session-fields .input { font-size: 1.2rem; min-height: 50px; }
   .seat-count-picker button { min-height: 52px; font-size: 1.05rem; }
   .rules-shell .editor-workspace { grid-template-columns: 170px minmax(0, 1fr) 270px; }
   .rules-shell .editor-content>.panel { padding: 32px; }
@@ -304,10 +316,10 @@
   .session-tabs .tab { font-size: .76rem; padding: 10px 4px; }
   .session-fields { gap: 22px; padding: 3px; }
   .session-fields .field-label { font-size: .68rem; margin-bottom: 8px; }
-  .editable-value { min-height: 38px; font-size: .95rem; }
-  .editable-input { min-height: 38px; }
+  /* 16px 未満の入力欄は iOS がフォーカス時に拡大するので、表示側も 1rem に揃える */
+  .editable-value, .input.editable-input, .session-fields .input { min-height: 38px; font-size: 1rem; }
   .table-stakes { gap: 16px; }
-  .table-stakes .editable-value { font-size: 1.2rem; }
+  .table-stakes .editable-value, .table-stakes .input.editable-input { font-size: 1.2rem; }
   .session-fields .segment { min-height: 38px; padding: 8px 5px; font-size: .76rem; }
   .seat-count-picker { gap: 3px; }
   .seat-count-picker button { min-height: 40px; font-size: .85rem; border-radius: 6px; }
@@ -317,7 +329,8 @@
   .setup-footer { flex-basis: 32px; font-size: .55rem; }
   .setup-footer>span:last-child { font-size: .5rem; }
   .join-context>span { display: none; }
-  .join-context { padding: 14px 18px; border: 1px solid var(--border); border-radius: 12px; }
+  /* ルール選択（.rule-select-trigger）と同じ高さにして、参加するに切り替えても下の段が動かないようにする */
+  .join-context { box-sizing: border-box; min-height: 100px; display: flex; flex-direction: column; justify-content: center; padding: 14px 18px; border: 1px solid var(--border); border-radius: 12px; }
   .join-context h2 { margin: 8px 0; font-size: 1rem; }
   .join-context p { font-size: .7rem; margin: 0; }
 }
@@ -365,13 +378,13 @@
   .setup-shell { padding-bottom: 8px; }
   .setup-header { flex-basis: 50px; }
   .setup-desk { gap: 10px; margin-top: 4px; }
-  .rule-select-trigger { min-height: 96px; }
+  .rule-select-trigger, .join-context { min-height: 96px; }
   .selected-rule-title strong { font-size: .85rem; }
   .session-tabs { margin-bottom: 8px; }
   .session-tabs .tab { padding-block: 8px; min-height: 36px; }
   .session-fields { gap: 12px; }
   .session-fields .field-label { font-size: .63rem; margin-bottom: 5px; }
-  .editable-value, .editable-input { min-height: 34px; }
+  .editable-value, .input.editable-input, .session-fields .input { min-height: 34px; }
   .seat-count-picker button { min-height: 36px; }
   .session-fields .segment { min-height: 34px; padding-block: 6px; }
   .session-fields .session-note { font-size: .69rem; line-height: 1.5; }
@@ -397,7 +410,7 @@
   .session-fields>.field>.field-label { flex: 0 0 66px; margin: 0; font-size: .58rem; }
   .session-fields>.field>.field-label small { display: none; }
   .session-fields>.field>:last-child { flex: 1; min-width: 0; }
-  .session-fields .input { padding: 6px 8px; min-height: 30px; }
+  .session-fields .input, .session-fields .input.editable-input { padding: 6px 0; min-height: 30px; }
   .session-fields .session-note { display: none; }
   .session-fields .table-stakes { gap: 12px; }
   .session-fields .field-label { font-size: .62rem; margin-bottom: 2px; }

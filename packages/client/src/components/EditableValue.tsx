@@ -36,14 +36,14 @@ function EditableValue({ label, value, onChange, min, max, maxLength, suffix, pl
     <span className="field-label">{label}</span>
     {editing ? <input className="input editable-input" aria-label={label}
       type={number ? 'number' : 'text'} inputMode={number ? 'numeric' : undefined}
-      min={min} max={max} step={number ? 1 : undefined} maxLength={maxLength}
+      min={min} max={max} step={number ? 1 : undefined} maxLength={maxLength} placeholder={placeholder}
       value={draft} ref={element => { if (element && document.activeElement !== element) { element.focus(); element.select(); } }}
       onChange={event => setDraft(event.target.value)} onBlur={commit}
       onKeyDown={event => {
         if (event.nativeEvent.isComposing || event.keyCode === 229) return;
         if (event.key === 'Escape') { event.preventDefault(); cancelled.current = true; restoreFocus.current = true; setEditing(false); }
         if (event.key === 'Enter') { event.preventDefault(); restoreFocus.current = true; commit(); }
-      }} /> : <button type="button" className="editable-value" aria-label={`${label}を編集`} aria-describedby={valueId}
+      }} /> : <button type="button" className={`editable-value ${!number && !value ? 'editable-empty' : ''}`} aria-label={`${label}を編集`} aria-describedby={valueId}
       ref={element => { if (element && restoreFocus.current) { restoreFocus.current = false; element.focus(); } }}
       onClick={() => { cancelled.current = false; setDraft(String(value)); setError(''); setEditing(true); }}>
       <span id={valueId}>{number ? value.toLocaleString() : value || placeholder || '未設定'}{suffix && <small>{suffix}</small>}</span>

@@ -1,6 +1,7 @@
 import { chromium } from 'playwright';
 import { mkdir } from 'node:fs/promises';
 import assert from 'node:assert/strict';
+import { editValue } from './setup-helpers.mjs';
 
 const url = process.env.WILDCARD_URL ?? 'http://127.0.0.1:5173/';
 const out = process.env.WILDCARD_SHOTS ?? 'shots-setup-options';
@@ -62,7 +63,7 @@ try {
       await page.locator('.session-fields .segmented').getByRole('button', { name: '部屋を作る', exact: true }).click();
       await fits(page, `${width}-${connection === 'P2P' ? 'p2p' : 'server'}-host`);
       if (connection === 'サーバー') {
-        await page.getByRole('textbox', { name: 'あなたの名前', exact: true }).fill('接続確認');
+        await editValue(page, 'あなたの名前', '接続確認');
         await page.getByRole('button', { name: 'サーバー接続設定', exact: true }).click();
         await page.getByLabel('作成キー', { exact: true }).fill('');
         await page.screenshot({ path: `${out}/${width}-server-settings.png` });

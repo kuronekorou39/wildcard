@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { RANKS, SUITS, deckSize, maxPlayersFor, requiredCards, validateVariant, type Variant } from '@wildcard/engine';
 import { Brand } from '../Brand.js';
+import { Icon } from '../Icon.js';
 import { RuleSheet } from '../RulePicker.js';
 import { BannerEditor } from '../RuleBanner.js';
 import { EditableNumber, EditableText } from '../EditableValue.js';
@@ -81,16 +82,16 @@ export function RuleEditor({ source, onClose, onPlay }: RuleEditorProps) {
         <div className="editor-inspector"><span className="section-kicker">構成</span><strong>{cards}<small>枚のデッキ</small></strong><dl><div><dt>手札</dt><dd>{draft.structure.holeCards} 枚</dd></div><div><dt>役の枚数</dt><dd>{draft.structure.handSize} 枚</dd></div><div><dt>最大人数</dt><dd>{seats === null ? '—' : Number.isFinite(seats) ? `${seats} 人` : '制限なし'}</dd></div></dl>
           <EditableNumber label="想定人数" value={players} min={2} max={10} suffix="人" onChange={setPlayers} />
           <p className="editor-figures">{need !== null ? `必要 ${need} 枚 / 残り ${cards - need} 枚` : '構成を確認してください'}</p>
-          <button type="button" className={`validation-status ${ready ? '' : 'validation-bad'}`} onClick={() => select('check')}>{ready ? '✓' : '!'} {status} <span>↗</span></button>
+          <button type="button" className={`validation-status ${ready ? '' : 'validation-bad'}`} onClick={() => select('check')}>{ready ? <Icon kind="check" /> : '!'} {status} <span><Icon kind="external" /></span></button>
           <p className="hint">ルールはこのブラウザに保存されます。</p>
         </div>
       </aside>
     </div>
     <footer className="editor-actions">
-      <button type="button" className={`editor-status-button ${ready ? '' : 'hint-warn'}`} onClick={() => select('check')}>{ready ? '✓' : '!'} {status}</button>
+      <button type="button" className={`editor-status-button ${ready ? '' : 'hint-warn'}`} onClick={() => select('check')}>{ready ? <Icon kind="check" /> : '!'} {status}</button>
       {error && <p className="editor-save-error hint-warn" role="alert">{error}</p>}
       <button type="button" className="btn editor-save" disabled={!ready || bannerBusy} onClick={save}>{saved ? '保存しました' : '保存する'}</button>
-      <button type="button" className="btn btn-primary" disabled={!ready || bannerBusy} onClick={() => { if (save()) onPlay(draft.id); }}>保存して卓に戻る <span aria-hidden="true">→</span></button>
+      <button type="button" className="btn btn-primary" disabled={!ready || bannerBusy} onClick={() => { if (save()) onPlay(draft.id); }}>保存して卓に戻る<Icon kind="arrow-right" /></button>
     </footer>
   </div>;
 }

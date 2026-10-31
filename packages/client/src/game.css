@@ -280,6 +280,7 @@
 .game-dialog-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 17px 20px; border-bottom: 1px solid var(--border); }
 .game-dialog-head h2 { margin: 0; font-size: 1rem; }
 .game-dialog-head .btn { min-height: 36px; }
+.game-dialog-actions { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
 .game-dialog-body { min-height: 0; overflow: auto; overscroll-behavior: contain; padding: 0 20px 20px; }
 .table-info-tabs { display: flex; position: sticky; z-index: 1; top: 0; background: var(--surface); border-bottom: 1px solid var(--border); margin: 0 0 18px; }
 .table-info-tabs button { flex: 1; background: none; border: 0; color: var(--text-dim); padding: 14px 6px; min-height: 44px; font-size: .8rem; cursor: pointer; }

@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
-import { EditableNumber, TableStakes } from './EditableValue.js';
+import { EditableNumber, EditableText, TableStakes } from './EditableValue.js';
 import { GameDialog } from './GameDialog.js';
+import { Icon } from './Icon.js';
 import { resolveVariant } from '../rules/customVariants.js';
 import { connectionToken, createServerTable, defaultServerUrl, invitedTable, loadConnection,
   normalizeServerUrl, saveConnection, saveServerUrl, serverRequest, tableIdFrom, type ServerSettings } from '../serverConnection.js';
@@ -57,7 +58,7 @@ export function ServerPanel({ variantId, role, onRoleChange, onStart }: {
   return <div className="session-config server-session">
     <div className="session-fields">
       <div className="segmented"><button type="button" className={`segment ${role === 'host' ? 'segment-active' : ''}`} onClick={() => onRoleChange('host')}>部屋を作る</button><button type="button" className={`segment ${role === 'guest' ? 'segment-active' : ''}`} onClick={() => onRoleChange('guest')}>参加する</button></div>
-      <label className="field"><span className="field-label">あなたの名前</span><input className="input" value={name} maxLength={24} placeholder={previous?.name ?? '名前を入力'} onChange={event => setName(event.target.value)} /></label>
+      <EditableText label="あなたの名前" value={name} onChange={setName} maxLength={24} placeholder={previous?.name ?? '名前を入力'} />
       {role === 'host' ? <><TableStakes chips={chips} smallBlind={smallBlind} bigBlind={bigBlind} ante={ante} onAnte={setAnte} onChips={setChips} onSmallBlind={setSmallBlind} onBigBlind={setBigBlind} />
         <div className="server-seats"><EditableNumber label="席数" value={seats} min={2} max={10} onChange={setSeats} /><label className="checkline"><input type="checkbox" checked={play} onChange={event => setPlay(event.target.checked)} />自分も席に着く</label></div></> : <>
         <label className="field"><span className="field-label">招待リンク / 卓ID</span><input className="input" value={invite} onChange={event => setInvite(event.target.value)} placeholder="招待リンクを貼り付け" /></label>
@@ -66,8 +67,8 @@ export function ServerPanel({ variantId, role, onRoleChange, onStart }: {
       {problem && <p className="hint hint-warn" role="alert">{problem}</p>}
     </div>
     <div className="session-launch">
-      <button className="server-endpoint" type="button" aria-label="サーバー接続設定" onClick={() => setConfigOpen(true)}><span>サーバー接続 <span aria-hidden="true">↗</span></span><small>{!server ? '接続先を設定' : role === 'host' ? createKey ? '作成キー入力済み' : '作成キーが必要' : '招待で参加・キー不要'}</small></button>
-      <button type="button" className="btn btn-primary btn-large btn-block" disabled={busy || !ready} onClick={() => { void launch(); }}>{busy ? '接続しています…' : role === 'host' ? '卓を作る' : previous ? '卓に戻る' : '参加する'}<span aria-hidden="true">→</span></button>
+      <button className="server-endpoint" type="button" aria-label="サーバー接続設定" onClick={() => setConfigOpen(true)}><span>サーバー接続 <Icon kind="external" /></span><small>{!server ? '接続先を設定' : role === 'host' ? createKey ? '作成キー入力済み' : '作成キーが必要' : '招待で参加・キー不要'}</small></button>
+      <button type="button" className="btn btn-primary btn-large btn-block" disabled={busy || !ready} onClick={() => { void launch(); }}>{busy ? '接続しています…' : role === 'host' ? '卓を作る' : previous ? '卓に戻る' : '参加する'}<Icon kind="arrow-right" /></button>
     </div>
     {configOpen && <GameDialog title="サーバー接続" className="server-connection-dialog" onClose={() => setConfigOpen(false)}>
       <p className="server-access-note">作成：作成キーが必要 ／ 参加：招待リンクのみ</p>

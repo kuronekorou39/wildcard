@@ -1,3 +1,4 @@
+import { Icon } from '../Icon.js';
 import {
   blockSize,
   fromBlocks,
@@ -141,7 +142,7 @@ export function PatternEditor({ pattern, handSize, ranks, onChange }: PatternEdi
         className="btn btn-ghost"
         onClick={() => emit([...blocks, { kind: 'sameRank', count: 2 }])}
       >
-        ＋ まとまりを足す
+        <Icon kind="plus" />まとまりを足す
       </button>
 
       <p className={`block-total ${used > handSize ? 'block-total-bad' : ''}`}>

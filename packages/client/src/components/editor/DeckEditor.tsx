@@ -1,5 +1,6 @@
 import { EditableNumber } from '../EditableValue.js';
 import { DeckCards } from './DeckCards.js';
+import { Icon } from '../Icon.js';
 import { useState } from 'react';
 import { MAX_DECK_SIZE, deckSize, type DeckRules, type Rank, type Suit } from '@wildcard/engine';
 
@@ -96,7 +97,7 @@ export function DeckEditor({ deck, allRanks, allSuits, onChange }: DeckEditorPro
 
       <div className="field">
         <span className="field-label">強さの順（左が弱い）</span>
-        {!editingOrder ? <button type="button" className="rank-order-preview" aria-label="ランクの強さを編集" onClick={() => setEditingOrder(true)}>{deck.ranks.map(rank => <span key={rank}>{rank}</span>)}<small>編集 ↗</small></button> : <>
+        {!editingOrder ? <button type="button" className="rank-order-preview" aria-label="ランクの強さを編集" onClick={() => setEditingOrder(true)}>{deck.ranks.map(rank => <span key={rank}>{rank}</span>)}<small>編集 <Icon kind="external" /></small></button> : <>
         <div className="rank-order">
           {deck.ranks.map((rank, i) => (
             <div key={rank} className="rank-order-item">
@@ -117,7 +118,7 @@ export function DeckEditor({ deck, allRanks, allSuits, onChange }: DeckEditorPro
                 disabled={i === deck.ranks.length - 1}
                 onClick={() => moveRank(i, 1)}
               >
-                ›
+                <Icon kind="chevron-right" />
               </button>
             </div>
           ))}
