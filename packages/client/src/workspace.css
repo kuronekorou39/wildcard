@@ -53,9 +53,23 @@
 .session-identity { flex: 0 0 auto; margin-bottom: 20px; padding: 0 3px; }
 .session-identity .field { margin: 0; }
 .session-identity .field-label { font-size: .73rem; margin-bottom: 8px; }
-.session-tabs { flex: 0 0 auto; padding: 4px; gap: 4px; border: 1px solid var(--border); background: var(--bg-dark); border-radius: 12px; margin-bottom: 24px; }
-.session-tabs .tab { padding: 12px 6px; font-size: .86rem; border-radius: 8px; white-space: nowrap; }
-.session-tabs .tab-active { background: #423338; color: var(--text); box-shadow: inset 0 0 0 1px #72545c; }
+/* 選択中の背景は .tab-indicator が1枚だけ持ち、タブの間を滑って移動する */
+.session-tabs { --tab-pad: 4px; position: relative; flex: 0 0 auto; padding: var(--tab-pad); gap: 4px; border: 1px solid var(--border); background: var(--bg-dark); border-radius: 12px; margin-bottom: 24px; }
+.session-tabs .tab { position: relative; z-index: 1; padding: 12px 6px; font-size: .86rem; border-radius: 8px; white-space: nowrap; background: transparent; transition: color .2s ease; }
+.session-tabs .tab-active { color: var(--text); }
+.tab-indicator { position: absolute; z-index: 0; top: var(--tab-pad); bottom: var(--tab-pad); left: var(--tab-pad); width: calc((100% - var(--tab-pad) * 2 - 4px) / 2); border-radius: 8px; background: #423338; box-shadow: inset 0 0 0 1px #72545c; transition: transform .28s cubic-bezier(.4, 0, .2, 1); pointer-events: none; }
+/* 切り替わった中身も、わずかに下から入れて変化を見せる */
+@keyframes panel-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+.setup-session-pane>[role=tabpanel]:not([hidden]) { animation: panel-in .22s ease-out; }
+@media (prefers-reduced-motion: reduce) {
+  .tab-indicator { transition: none; }
+  .setup-session-pane>[role=tabpanel]:not([hidden]) { animation: none; }
+}
+/* CPU の打ち方：慎重・標準・強気 ｜ 混在 */
+.cpu-style-picker { align-items: stretch; }
+.cpu-style-picker .segment { display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+.cpu-style-picker .ui-icon { font-size: 1.15em; opacity: .85; }
+.segment-divider { flex: 0 0 1px; align-self: stretch; margin: 6px 3px; background: var(--border); }
 .setup-session-pane>[role=tabpanel] { flex: 1; min-height: 0; display: flex; }
 .session-config { flex: 1; display: flex; flex-direction: column; min-width: 0; min-height: 0; }
 .session-fields { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; display: grid; align-content: start; gap: clamp(12px, 2.4dvh, 24px); padding: 2px 3px; }
@@ -127,14 +141,7 @@
 .deck-contents-overlap .deck-contents-row { flex-direction: column; gap: 6px; }
 .deck-contents-line { display: flex; }
 .deck-contents-fan { position: relative; display: block; }
-.deck-contents-fan .deck-contents-card { position: absolute; transform-origin: 50% 115%; }
-.deck-appearance { display: grid; gap: 8px; margin-bottom: 12px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px; }
-.deck-appearance-row { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; }
-.deck-appearance-row>span:first-child { flex: 0 0 2.4em; color: var(--text-dim); font-size: .72rem; }
-.deck-appearance-row .chip { padding: 5px 8px; font-size: .66rem; }
-.deck-appearance-back { margin-left: auto; }
-.deck-appearance .hint { margin: 0; font-size: .66rem; }
-.deck-pagination { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: .7rem; margin-top: 8px; }
+.deck-contents-fan .deck-contents-card { position: absolute; transform-origin: 50% 115%; }.deck-pagination { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: .7rem; margin-top: 8px; }
 @media (max-width: 400px) {
   .table-stakes { gap: 8px; }
   .table-stakes .field-label { font-size: .56rem; }
@@ -327,7 +334,7 @@
   .setup-session-pane { padding: 0; flex: 1; min-height: 0; }
   .session-identity { margin-bottom: 14px; }
   .session-identity .field-label { font-size: .68rem; margin-bottom: 6px; }
-  .session-tabs { margin-bottom: 14px; padding: 3px; border-radius: 10px; }
+  .session-tabs { --tab-pad: 3px; margin-bottom: 14px; border-radius: 10px; }
   .session-tabs .tab { font-size: .76rem; padding: 10px 4px; }
   .session-fields { gap: 22px; padding: 3px; }
   .session-fields .field-label { font-size: .68rem; margin-bottom: 8px; }

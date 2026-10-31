@@ -43,6 +43,7 @@ export function SetupScreen({ mode, onModeChange, variantId, onVariantChange, on
       <section className="setup-session-pane" aria-label="卓の設定">
         <div className="session-identity"><EditableText label="あなたの名前" value={name} onChange={changeName} maxLength={PLAYER_NAME_MAX} placeholder="名前を入力" /></div>
         <nav className="tabs session-tabs" role="tablist" aria-label="プレイ方法">
+          <span className="tab-indicator" aria-hidden="true" style={{ transform: `translateX(${mode === 'solo' ? '0' : 'calc(100% + 4px)'})` }} />
           {([['solo', 'ソロ'], ['online', 'オンライン']] as const).map(([id, name]) =>
             <button key={id} type="button" role="tab" id={`mode-${id}`} aria-selected={mode === id} aria-controls={`panel-${id}`} className={`tab ${mode === id ? 'tab-active' : ''}`} onClick={() => onModeChange(id)}>{name}</button>)}
         </nav>

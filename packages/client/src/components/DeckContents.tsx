@@ -1,7 +1,6 @@
 import { useCallback, useRef, useState } from 'react';
 import { buildDeck, deckSize, MAX_DECK_SIZE, SUITS, type Card, type DeckRules } from '@wildcard/engine';
 import { PlayingCard } from './PlayingCard.js';
-import { BACK_STYLES, FACE_STYLES, useCardAppearance } from '../cardAppearance.js';
 
 const VIEWS = [['grid', '一覧'], ['overlap', '重ね'], ['arc', '扇形']] as const;
 type View = (typeof VIEWS)[number][0];
@@ -57,9 +56,7 @@ function useWidth() {
 export function DeckContents({ deck }: { readonly deck: DeckRules }) {
   const [view, setView] = useState<View>('grid');
   const [page, setPage] = useState(0);
-  const [styling, setStyling] = useState(false);
   const [area, width] = useWidth();
-  const { appearance, updateAppearance } = useCardAppearance();
   const size = deckSize(deck);
   if (!Number.isFinite(size) || size > MAX_DECK_SIZE) return <p className="hint hint-warn">一覧は {MAX_DECK_SIZE} 枚以内で表示できます。</p>;
   const sorted = sortStrongestFirst(buildDeck(deck), deck);
@@ -71,17 +68,8 @@ export function DeckContents({ deck }: { readonly deck: DeckRules }) {
   return <section className="deck-contents" aria-label="デッキの構成">
     <div className="deck-contents-toolbar"><strong>{size} 枚</strong>
       <div className="chips" aria-label="カード一覧の並べ方">{VIEWS.map(([id, label]) => <button type="button" key={id}
-        className={`chip ${view === id ? 'chip-on' : ''}`} aria-pressed={view === id} onClick={() => setView(id)}>{label}</button>)}
-        <button type="button" className={`chip deck-styling-toggle ${styling ? 'chip-on' : ''}`} aria-pressed={styling} aria-controls="deck-appearance" onClick={() => setStyling(!styling)}>見た目</button></div>
+        className={`chip ${view === id ? 'chip-on' : ''}`} aria-pressed={view === id} onClick={() => setView(id)}>{label}</button>)}</div>
     </div>
-    {styling && <div className="deck-appearance" id="deck-appearance" role="group" aria-label="カードの見た目">
-      <div className="deck-appearance-row"><span>表面</span><div className="chips" role="radiogroup" aria-label="表面">{FACE_STYLES.map(style =>
-        <button type="button" key={style.id} role="radio" className={`chip ${appearance.face === style.id ? 'chip-on' : ''}`} aria-checked={appearance.face === style.id} onClick={() => updateAppearance({ face: style.id })}>{style.name}</button>)}</div></div>
-      <div className="deck-appearance-row"><span>裏面</span><div className="chips" role="radiogroup" aria-label="裏面">{BACK_STYLES.map(style =>
-        <button type="button" key={style.id} role="radio" className={`chip ${appearance.back === style.id ? 'chip-on' : ''}`} aria-checked={appearance.back === style.id} onClick={() => updateAppearance({ back: style.id })}>{style.name}</button>)}</div>
-        <span className="deck-appearance-back deck-contents-card" aria-hidden="true"><PlayingCard card={null} size="sm" /></span></div>
-      <p className="hint">選ぶとすぐ反映し、このブラウザに保存します。対局中は卓の情報 → 見た目でも変えられます。</p>
-    </div>}
     <div className="deck-contents-scroll" tabIndex={0} aria-label="カード一覧">
       <div ref={area} className={`deck-contents-cards deck-contents-${view}`}>
         {rows.map((row, r) => <DeckRow key={row[0]?.card.joker !== undefined ? 'joker' : view === 'arc' ? 'all' : row[0]?.card.suit ?? r} view={view} entries={row} width={width} />)}
