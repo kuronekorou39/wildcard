@@ -753,3 +753,8 @@ button.stepper-value:hover { border-bottom-color: var(--gold); color: var(--gold
   .rules-shell .editor-nav { display: flex; flex-direction: column; overflow-y: auto; gap: 3px; }
   .editor-nav button { min-height: 32px; font-size: .64rem; }
 }
+.share-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 8px; }
+.share-feedback { font-size: .72rem; }
+.share-hint { margin: 8px 0 0; font-size: .7rem; }
+.share-error { margin-top: 10px; }
+.share-error > p { margin: 0 0 4px; color: #ffb3b0; font-size: .78rem; font-weight: 700; }

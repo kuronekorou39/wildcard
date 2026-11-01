@@ -2,7 +2,6 @@ import { useSyncExternalStore } from 'react';
 import {
   VARIANT_PRESETS,
   parseVariant,
-  validateVariant,
   variantToJson,
   type Variant,
 } from '@wildcard/engine';
@@ -140,33 +139,27 @@ export const newCustomId = (): string =>
     .padStart(3, '0')}`;
 
 /**
- * 貼り付けられたルールを取り込む。
+ * 貼り付けられたルールを読む。保存はしない。
  *
  * 他人が作ったルールは id がぶつかりうるし、プリセットの id を名乗ることも
  * できてしまう。**必ず新しい id を振り直す。**
+ *
+ * 読めない（JSON でない・形が違う）ときだけ断る。人数とデッキが合わないといった
+ * 矛盾は、編集画面で開いてから直せばよいので通す（保存するときに検査される）。
  */
-export function importVariant(
+export function readSharedVariant(
   text: string,
-  players = 2,
 ): { readonly ok: true; readonly variant: Variant } | { readonly ok: false; readonly problems: readonly string[] } {
   let data: unknown;
   try {
     data = JSON.parse(text);
-  } catch (error) {
-    return { ok: false, problems: [`JSON として読めない: ${(error as Error).message}`] };
+  } catch {
+    return { ok: false, problems: ['ルールの文字列として読めません。書き出した文字列を、欠けないようにそのまま貼り付けてください。'] };
   }
 
   const parsed = parseVariant(data);
   if (!parsed.ok) return parsed;
-
-  const problems = validateVariant(parsed.variant, players);
-  if (problems.length > 0) {
-    return { ok: false, problems: problems.map((p) => `${p.field}: ${p.message}`) };
-  }
-
-  const variant: Variant = { ...parsed.variant, id: newCustomId() };
-  if (!saveCustomVariant(variant)) return { ok: false, problems: ['ルールを保存できませんでした。ブラウザの保存容量・設定を確認してください。'] };
-  return { ok: true, variant };
+  return { ok: true, variant: { ...parsed.variant, id: newCustomId() } };
 }
 
 /** 書き出し。貼り付けて渡せる形。 */

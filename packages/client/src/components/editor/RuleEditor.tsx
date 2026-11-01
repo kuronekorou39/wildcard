@@ -13,7 +13,7 @@ import { BettingEditor } from './BettingEditor.js';
 import { RankingEditor } from './RankingEditor.js';
 import { OptionsEditor } from './OptionsEditor.js';
 import { ShareBox } from './ShareBox.js';
-import { deleteCustomVariant, isCustomVariant, newCustomId, resolveVariant, saveCustomVariant } from '../../rules/customVariants.js';
+import { deleteCustomVariant, isCustomVariant, newCustomId, saveCustomVariant } from '../../rules/customVariants.js';
 import { ruleBanner, saveRuleBanner, type RuleBannerStyle } from '../../rules/ruleBanners.js';
 
 interface RuleEditorProps {
@@ -93,7 +93,7 @@ export function RuleEditor({ source, onClose }: RuleEditorProps) {
     <header ref={header} className="setup-header editor-head">
       <Brand />
       <div className="editor-head-actions">
-        {isCustomVariant(source.id) && <button type="button" className="btn btn-ghost editor-delete" onClick={() => setLeaving('delete')}>削除</button>}
+        {persisted && <button type="button" className="btn btn-ghost editor-delete" onClick={() => setLeaving('delete')}>削除</button>}
         <button type="button" className="btn btn-ghost btn-back" onClick={back}><Icon kind="arrow-left" />戻る</button>
         <button type="button" className="btn btn-primary editor-save" disabled={!canSave} onClick={save}>{persisted && !dirty ? '保存済み' : '保存'}</button>
       </div>
@@ -123,11 +123,9 @@ export function RuleEditor({ source, onClose }: RuleEditorProps) {
         {section === 'betting' && <BettingEditor betting={draft.betting} structure={draft.structure} onChange={betting => update({ betting })} />}
         {section === 'ranking' && <RankingEditor variant={draft} onChange={ranking => update({ ranking })} />}
         {section === 'options' && <OptionsEditor options={draft.options} onChange={options => update({ options })} />}
-        {section === 'share' && <ShareBox variant={draft} onImported={id => {
-          const imported = resolveVariant(id);
-          if (!imported) return;
-          const importedBanner = ruleBanner(id);
-          setDraft(imported); setBanner(importedBanner); setBaseline({ variant: imported, banner: importedBanner }); setPersisted(true); setSection('info');
+        {section === 'share' && <ShareBox variant={draft} dirty={dirty} onImport={imported => {
+          // 新しいルールとして開くだけで、保存はしない。baseline は変えないので、保存せずに戻ろうとすれば確かめられる。
+          setDraft(imported); setBanner(ruleBanner(imported.id)); setPersisted(false); setError(''); setSection('info');
         }} />}
       </main>
       <aside className="editor-sidebar" aria-label="ルールの検証">{inspector}</aside>

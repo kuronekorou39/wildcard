@@ -1,12 +1,20 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { Variant } from '@wildcard/engine';
-import { exportVariant, importVariant } from '../../rules/customVariants.js';
+import { exportVariant, readSharedVariant } from '../../rules/customVariants.js';
+import { GameDialog } from '../GameDialog.js';
 
 interface ShareBoxProps {
   readonly variant: Variant;
-  /** 取り込んだルールを開く。渡さなければ取り込み欄を出さない。 */
-  readonly onImported?: (variantId: string) => void;
+  /** 保存していない変更があるか。あれば取り込む前に確かめる。 */
+  readonly dirty: boolean;
+  /** 読めたルールを編集中のルールとして開く。渡さなければ取り込み欄を出さない。 */
+  readonly onImport?: (variant: Variant) => void;
 }
+
+/** 「コピーしました」を出しておく時間。 */
+const COPY_FEEDBACK_MS = 2000;
+
+type CopyState = 'idle' | 'copied' | 'failed';
 
 /**
  * ルールの受け渡し。
@@ -14,31 +22,48 @@ interface ShareBoxProps {
  * サーバーを持たないので、共有はテキストを渡すだけ。
  * 取り込む側では **id を必ず振り直す**（→ customVariants.ts）。
  * 他人のルールがプリセットの id を名乗って上書きできてしまうのを防ぐ。
+ *
+ * 取り込んだルールはすぐには保存しない。編集中のルールとして開き、
+ * 矛盾があれば検証欄に出す。保存はほかの編集と同じく「保存」で行う。
  */
-export function ShareBox({ variant, onImported }: ShareBoxProps) {
+export function ShareBox({ variant, dirty, onImport }: ShareBoxProps) {
   const [text, setText] = useState('');
   const [problems, setProblems] = useState<readonly string[]>([]);
-  const [copied, setCopied] = useState(false);
+  const [copy, setCopy] = useState<CopyState>('idle');
+  const [pending, setPending] = useState<Variant | null>(null);
+  const exported = exportVariant(variant);
 
-  const copy = async () => {
+  useEffect(() => {
+    if (copy === 'idle') return;
+    const timer = window.setTimeout(() => setCopy('idle'), COPY_FEEDBACK_MS);
+    return () => window.clearTimeout(timer);
+  }, [copy]);
+
+  const copyText = async () => {
     try {
-      await navigator.clipboard.writeText(exportVariant(variant));
-      setCopied(true);
+      await navigator.clipboard.writeText(exported);
+      setCopy('copied');
     } catch {
-      // クリップボードは許可されないことがある。その場合は下の欄から手で取れる。
-      setCopied(false);
+      // クリップボードは許可されないことがある。その場合は欄から手で取ってもらう。
+      setCopy('failed');
     }
   };
 
+  const open = (next: Variant) => {
+    setPending(null);
+    setProblems([]);
+    setText('');
+    onImport?.(next);
+  };
+
   const load = () => {
-    const result = importVariant(text);
+    const result = readSharedVariant(text);
     if (!result.ok) {
       setProblems(result.problems);
       return;
     }
-    setProblems([]);
-    setText('');
-    onImported?.(result.variant.id);
+    if (dirty) setPending(result.variant);
+    else open(result.variant);
   };
 
   return (
@@ -51,15 +76,18 @@ export function ShareBox({ variant, onImported }: ShareBoxProps) {
           className="input share-text"
           readOnly
           rows={4}
-          value={exportVariant(variant)}
+          value={exported}
           onFocus={(e) => e.currentTarget.select()}
         />
-        <button type="button" className="btn btn-ghost" onClick={copy}>
-          {copied ? 'コピーしました' : 'コピー'}
-        </button>
+        <div className="share-actions">
+          <button type="button" className="btn btn-ghost" onClick={() => { void copyText(); }}>
+            {copy === 'copied' ? 'コピーしました' : 'コピー'}
+          </button>
+          {copy === 'failed' && <span className="share-feedback hint-warn" role="alert">コピーできませんでした。欄を選んで手でコピーしてください。</span>}
+        </div>
       </div>
 
-      {onImported !== undefined && (
+      {onImport !== undefined && (
         <div className="field">
           <span className="field-label">もらったルールを取り込む</span>
           <textarea
@@ -67,19 +95,35 @@ export function ShareBox({ variant, onImported }: ShareBoxProps) {
             rows={4}
             value={text}
             placeholder="ここに貼り付け"
-            onChange={(e) => setText(e.target.value)}
+            onChange={(e) => { setText(e.target.value); setProblems([]); }}
           />
-          <button type="button" className="btn btn-ghost" disabled={text.trim() === ''} onClick={load}>
-            取り込む
-          </button>
+          <div className="share-actions">
+            <button type="button" className="btn btn-ghost" disabled={text.trim() === ''} onClick={load}>
+              取り込む
+            </button>
+          </div>
+          <p className="hint share-hint">取り込んだルールは編集中のルールとして開きます。保存するまで一覧には入りません。</p>
           {problems.length > 0 && (
-            <ul className="editor-problems">
-              {problems.map((problem, i) => (
-                <li key={i}>{problem}</li>
-              ))}
-            </ul>
+            <div className="share-error" role="alert">
+              <p>このルールは読めませんでした。</p>
+              <ul className="editor-problems">
+                {problems.map((problem, i) => (
+                  <li key={i}>{problem}</li>
+                ))}
+              </ul>
+            </div>
           )}
         </div>
+      )}
+
+      {pending && (
+        <GameDialog title="取り込みますか" className="editor-leave-dialog" onClose={() => setPending(null)}>
+          <p className="hint">「{variant.name || '名前のないルール'}」の保存していない変更は消えます。</p>
+          <div className="editor-leave-actions">
+            <button type="button" className="btn btn-danger" onClick={() => open(pending)}>変更を捨てて取り込む</button>
+            <button type="button" className="btn btn-ghost" onClick={() => setPending(null)}>やめる</button>
+          </div>
+        </GameDialog>
       )}
     </section>
   );

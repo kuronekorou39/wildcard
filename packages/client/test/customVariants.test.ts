@@ -1,12 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { STANDARD_VARIANT, VARIANT_PRESETS, variantToJson, type Variant } from '@wildcard/engine';
+import { STANDARD_VARIANT, VARIANT_PRESETS, validateVariant, variantToJson, type Variant } from '@wildcard/engine';
 import {
   CUSTOM_PREFIX,
   allVariants,
   customVariants,
   deleteCustomVariant,
   exportVariant,
-  importVariant,
+  readSharedVariant,
   isCustomVariant,
   newCustomId,
   refreshVariants,
@@ -147,25 +147,23 @@ describe('壊れた保存でも遊べなくならない', () => {
 });
 
 describe('受け渡し', () => {
-  it('保存できなければ取り込み成功と報告しない', () => {
-    vi.spyOn(console, 'warn').mockImplementation(() => {});
-    store.throwOnWrite = true;
-    const result = importVariant(exportVariant(STANDARD_VARIANT));
-    expect(result.ok).toBe(false);
-    expect(customVariants()).toEqual([]);
-  });
-  it('書き出して取り込める', () => {
-    const result = importVariant(exportVariant(STANDARD_VARIANT));
+  it('書き出して読み直せる', () => {
+    const result = readSharedVariant(exportVariant(STANDARD_VARIANT));
     expect(result.ok, result.ok ? '' : result.problems.join(' / ')).toBe(true);
     if (!result.ok) return;
     expect(result.variant.ranking).toEqual(STANDARD_VARIANT.ranking);
-    refreshVariants();
-    expect(customVariants()).toHaveLength(1);
   });
 
-  it('取り込むと id を振り直す', () => {
+  it('読むだけでは保存しない', () => {
+    // 保存は編集画面の「保存」で行う。読んだだけで一覧に増えてはいけない。
+    readSharedVariant(exportVariant(STANDARD_VARIANT));
+    refreshVariants();
+    expect(customVariants()).toEqual([]);
+  });
+
+  it('読むと id を振り直す', () => {
     // プリセットの id を名乗るルールを渡されても、上書きできてはいけない。
-    const result = importVariant(variantToJson({ ...STANDARD_VARIANT, name: 'なりすまし' }));
+    const result = readSharedVariant(variantToJson({ ...STANDARD_VARIANT, name: 'なりすまし' }));
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.variant.id).not.toBe('standard');
@@ -173,40 +171,36 @@ describe('受け渡し', () => {
     expect(resolveVariant('standard')).toEqual(STANDARD_VARIANT);
   });
 
-  it('同じものを2回取り込むと2つになる', () => {
-    // id を振り直す以上、こうなるのが筋。片方を消せばよい。
-    importVariant(exportVariant(STANDARD_VARIANT));
-    importVariant(exportVariant(STANDARD_VARIANT));
-    refreshVariants();
-    expect(customVariants()).toHaveLength(2);
+  it('同じものを2回読むと別の id になる', () => {
+    const a = readSharedVariant(exportVariant(STANDARD_VARIANT));
+    const b = readSharedVariant(exportVariant(STANDARD_VARIANT));
+    expect(a.ok && b.ok && a.variant.id !== b.variant.id).toBe(true);
   });
 
-  it('形が壊れていれば取り込まない', () => {
-    const result = importVariant('{"id":"x"}');
+  it('形が壊れていれば読まない', () => {
+    const result = readSharedVariant('{"id":"x"}');
     expect(result.ok).toBe(false);
     if (result.ok) return;
     expect(result.problems.length).toBeGreaterThan(0);
-    refreshVariants();
-    expect(customVariants()).toEqual([]);
   });
 
-  it('形は正しくても遊べないものは取り込まない', () => {
-    // 2人で配りきれないデッキ。形の検査（parseVariant）では通る。
+  it('形が正しければ、遊べない矛盾があっても読む', () => {
+    // 2人で配りきれないデッキ。矛盾は編集画面で開いてから直す。
     const tiny = variantToJson({
       ...STANDARD_VARIANT,
       deck: { suits: ['spades'], ranks: ['A'] },
     });
-    const result = importVariant(tiny);
-    expect(result.ok).toBe(false);
-    if (result.ok) return;
-    expect(result.problems.join(' ')).toContain('枚');
+    const result = readSharedVariant(tiny);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(validateVariant(result.variant, 2).length).toBeGreaterThan(0);
   });
 
   it('JSON でなければ理由を返す', () => {
-    const result = importVariant('これはルールではない');
+    const result = readSharedVariant('これはルールではない');
     expect(result.ok).toBe(false);
     if (result.ok) return;
-    expect(result.problems[0]).toContain('JSON');
+    expect(result.problems[0]).toContain('読めません');
   });
 });
 
