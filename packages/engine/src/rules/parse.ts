@@ -486,7 +486,9 @@ function parseOptions(value: unknown, path: string, p: Problems): TableOptions |
 
   return {
     ...num('exposedCardChance'),
-    ...num('misdealChance'),
+    ...bool('misdeal'),
+    // 前の版の「ミスディールの確率」。0 より大きければ「2枚目もありうる」として読む。
+    ...(typeof options['misdealChance'] === 'number' && options['misdealChance'] > 0 && options['misdeal'] === undefined ? { misdeal: true } : {}),
     ...bool('exposedCardBecomesBurn'),
     ...bool('rabbitHunt'),
     ...optional('runItTwice', parseRuns(options['runItTwice'], `${path}.runItTwice`, p)),

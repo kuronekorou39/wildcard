@@ -38,7 +38,7 @@ function Choice<T extends string | number>({ label, value, options, onChange }: 
  * ミスディールではなく、回収して引き直す手順になる（→ docs/variants.md）。
  *
  * 「ディーラーのミス」「オールインのあと」「手札の公開」の3つに分けて並べる。
- * 露出した札をバーンに使うかは、露出が起きるとき（0% より大きいとき）だけ意味があるので、その枠の中にだけ出す。
+ * 露出した札をバーンに使うか・2枚目（ミスディール）がありうるかは、露出が起きるとき（0% より大きいとき）だけ意味があるので、そのときだけ出す。
  */
 export function OptionsEditor({ options, onChange }: OptionsEditorProps) {
   const set = (patch: Partial<TableOptions>) => onChange({ ...options, ...patch });
@@ -50,8 +50,8 @@ export function OptionsEditor({ options, onChange }: OptionsEditorProps) {
       <p className="options-group-title">ディーラーのミス</p>
       <div className="options-group">
         <Stepper
-          label="1枚だけ表にしてしまう"
-          info={<InfoTip label="1枚だけ表にしてしまう">配るときに1枚だけ表になってしまう確率です。ミスディールではなく、表になった札を回収して山札の上から引き直します。手札は割れません。</InfoTip>}
+          label="札を表にしてしまう"
+          info={<InfoTip label="札を表にしてしまう">配るときにディーラーが札を1枚表にしてしまう確率です（1ハンドあたり）。ミスディールではなく、表になった札を回収して山札の上から引き直します。手札は割れません。</InfoTip>}
           suffix="%"
           step={PERCENT_STEP}
           value={exposed}
@@ -59,23 +59,22 @@ export function OptionsEditor({ options, onChange }: OptionsEditorProps) {
           max={100}
           onChange={(value) => set({ exposedCardChance: value / 100 })}
         />
-        {exposed > 0 && <div className="field checkline-field options-dependent">
-          <label className="checkline">
-            <input type="checkbox" checked={options?.exposedCardBecomesBurn ?? false} onChange={(e) => set({ exposedCardBecomesBurn: e.target.checked })} />
-            <span>表になった札をバーンに使う</span>
-          </label>
-          <InfoTip label="表になった札をバーンに使う">外すと、表になった札とは別にバーンを取ります（ハウスによって流儀が違うところ）。必要なデッキ枚数が1枚増えます。</InfoTip>
-        </div>}
-        <Stepper
-          label="ミスディール"
-          info={<InfoTip label="ミスディール">2枚以上表になってしまう確率です。手札を回収して最初から配り直します。</InfoTip>}
-          suffix="%"
-          step={PERCENT_STEP}
-          value={percent(options?.misdealChance)}
-          min={0}
-          max={100}
-          onChange={(value) => set({ misdealChance: value / 100 })}
-        />
+        {exposed > 0 && <>
+          <div className="field checkline-field options-dependent">
+            <label className="checkline">
+              <input type="checkbox" checked={options?.exposedCardBecomesBurn ?? true} onChange={(e) => set({ exposedCardBecomesBurn: e.target.checked })} />
+              <span>表になった札をバーンに使う</span>
+            </label>
+            <InfoTip label="表になった札をバーンに使う">外すと、表になった札とは別にバーンを取ります（ハウスによって流儀が違うところ）。必要なデッキ枚数が1枚増えます。</InfoTip>
+          </div>
+          <div className="field checkline-field options-dependent">
+            <label className="checkline">
+              <input type="checkbox" checked={options?.misdeal ?? false} onChange={(e) => set({ misdeal: e.target.checked })} />
+              <span>2枚目もありうる（ミスディール）</span>
+            </label>
+            <InfoTip label="2枚目もありうる">1枚目を表にしたあと、同じ確率で2枚目も表にしてしまいます。そのときはミスディールとして手札を回収し、最初から配り直します。外すと、ミスは1枚までです。</InfoTip>
+          </div>
+        </>}
       </div>
 
       <p className="options-group-title">オールインのあと</p>

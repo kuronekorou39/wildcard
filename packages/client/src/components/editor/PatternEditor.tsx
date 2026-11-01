@@ -155,7 +155,7 @@ export function PatternEditor({ pattern, handSize, ranks, onChange }: PatternEdi
               className="input block-kind"
               value={block.kind}
               aria-label={`${i + 1}つめのまとまりの種類`}
-              onChange={(e) => setBlock(i, convert(block, e.target.value as PatternBlock['kind']))}
+              onChange={(e) => setBlock(i, convert(block, e.target.value as PatternBlock['kind'], ranks))}
             >
               {KINDS.map((kind) => (
                 <option key={kind.kind} value={kind.kind}>
@@ -291,6 +291,8 @@ function Chip({ on, onClick, children }: { readonly on: boolean; readonly onClic
  * 並びはデッキの画面と同じく左が強い。
  *
  * 「範囲」を押してから2つのランクを押すと、その間をまとめて選ぶ（J〜K で J・Q・K）。
+ *
+ * 最後の1つは外せない。ランクが空のまとまりは役の形から消えてしまう。
  */
 function RankChips({
   ranks,
@@ -313,6 +315,7 @@ function RankChips({
       setRange('off');
       return;
     }
+    if (selected.includes(rank) && selected.length === 1) return;
     onChange(selected.includes(rank) ? selected.filter((r) => r !== rank) : ordered(new Set([...selected, rank])));
   };
   return (
@@ -333,15 +336,21 @@ function RankChips({
         onClick={() => setRange(range === 'off' ? 'start' : 'off')}>
         {range === 'off' ? '範囲' : range === 'start' ? '始めを選ぶ' : '終わりを選ぶ'}
       </button>
-      {selected.length > 0 && <button type="button" className="chip chip-sm chip-range" onClick={() => onChange([])}>解除</button>}
     </div>
   );
 }
 
-/** 種類を変えても、枚数・候補・スートはできるだけ引き継ぐ。 */
-function convert(block: PatternBlock, kind: PatternBlock['kind']): PatternBlock {
+/**
+ * 種類を変えても、枚数・候補・スートはできるだけ引き継ぐ。
+ *
+ * ランクを選ぶ種類へ変えるとき、引き継ぐランクが無ければ強いほうから枚数ぶん選んでおく。
+ * ランクが空のまとまりは0枚になり、役の形から消えてしまう（行ごと無くなる）。
+ */
+function convert(block: PatternBlock, kind: PatternBlock['kind'], deckRanks: readonly Rank[]): PatternBlock {
   const count = blockSize(block);
   const suit = block.suit ? { suit: block.suit } : {};
+  const picked = block.kind === 'fixed' || block.kind === 'oneOf' ? block.ranks : [];
+  const ranks = picked.length > 0 ? [...picked] : deckRanks.slice(-Math.max(1, count));
   switch (kind) {
     case 'sameRank':
       return { kind: 'sameRank', count, ...suit };
@@ -350,9 +359,9 @@ function convert(block: PatternBlock, kind: PatternBlock['kind']): PatternBlock 
     case 'any':
       return { kind: 'any', count, ...suit };
     case 'fixed':
-      return { kind: 'fixed', ranks: block.kind === 'oneOf' ? [...block.ranks] : [], ...suit };
+      return { kind: 'fixed', ranks, ...suit };
     case 'oneOf':
-      return { kind: 'oneOf', ranks: block.kind === 'fixed' ? [...block.ranks] : [], count, ...suit };
+      return { kind: 'oneOf', ranks, count, ...suit };
   }
 }
 

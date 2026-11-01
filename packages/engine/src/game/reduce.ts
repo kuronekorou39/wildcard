@@ -21,7 +21,6 @@ import {
   exposedCardChanceOf,
   extraCardsFor,
   maxRunsOf,
-  misdealChanceOf,
   rabbitCards,
   rabbitHuntEnabled,
   requiredCards,
@@ -558,7 +557,8 @@ const MAX_MISDEALS = 5;
  * 手は通常どおり続行するので、**本人の手札が公開されるわけではない**。
  * 全員が知るのは「その札はもう出ない」という情報だけ。
  *
- * **2枚以上表にして初めてミスディール**で、手札を回収して最初から配り直す。
+ * **2枚目も表にして初めてミスディール**で、手札を回収して最初から配り直す。
+ * 2枚目が起きうるのは options.misdeal のときだけで、確率は1枚目と同じ。
  *
  * 引き直しで1枚多く引き、そのぶんフロップのバーンを山札から取らないので、
  * 1ハンドで消える枚数は露出が無かった場合と変わらない。デッキの検算が狂わない。
@@ -573,7 +573,7 @@ function dealHand(
   seed: number,
   entropy?: readonly number[],
 ): DealResult {
-  const misdealChance = misdealChanceOf(variant);
+  const misdeal = variant.options?.misdeal ?? false;
   const exposedChance = exposedCardChanceOf(variant);
   let attemptSeed = seed;
   const supplied = entropy === undefined ? null : entropySource(entropy);
@@ -591,8 +591,9 @@ function dealHand(
 
     const rng = supplied?.next ?? createRng((attemptSeed ^ 0x7f4a7c15) >>> 0);
 
-    // 2枚以上表にしてしまった＝ミスディール。最初から配り直す。
-    if (misdeals < MAX_MISDEALS && rng() < misdealChance) {
+    // 1枚目を表にしたか、続けて2枚目も表にしたか（＝ミスディール。最初から配り直す）。
+    const exposed = rng() < exposedChance;
+    if (exposed && misdeal && misdeals < MAX_MISDEALS && rng() < exposedChance) {
       attemptSeed = (attemptSeed * 1664525 + 1013904223) >>> 0;
       continue;
     }
@@ -603,7 +604,7 @@ function dealHand(
 
     // 1枚だけ表にしてしまった。回収して引き直す（ミスディールではない）。
     const exposedCards: Card[] = [];
-    if (rng() < exposedChance) {
+    if (exposed) {
       const dealtTo = players.filter((p) => p.inHand && p.holeCards.length > 0);
       const replacement = deck[cursor];
       if (dealtTo.length > 0 && replacement !== undefined) {

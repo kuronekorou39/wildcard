@@ -230,7 +230,7 @@ interface WildRule {
 ```ts
 interface TableOptions {
   exposedCardChance?: number          // 札を1枚表にしてしまう確率（ミスディールではない）
-  misdealChance?: number              // 2枚以上表にして配り直しになる確率
+  misdeal?: boolean                   // 2枚目も表にしうる（同じ確率で起き、起きたら配り直し）
   rabbitHunt?: boolean                // 流れた後、配られるはずだった札を見せる
   showCards?: 'none' | 'one' | 'any'  // 自分の手札を見せられるか
   runItTwice?: { max: number }        // オールイン決着で複数回配る（未実装）

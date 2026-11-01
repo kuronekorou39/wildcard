@@ -3,6 +3,7 @@ import { createGame, reduce, validate } from '../src/game/reduce.js';
 import { project } from '../src/game/project.js';
 import { STANDARD_VARIANT } from '../src/rules/presets.js';
 import { extraCardsFor, rabbitCards } from '../src/variant.js';
+import { parseVariant, variantToJson } from '../src/rules/parse.js';
 import type { Action, GameState, TableOptions, Variant } from '../src/types.js';
 
 function withOptions(options: TableOptions): Variant {
@@ -261,7 +262,7 @@ describe('ミスディール（配り直し）', () => {
   });
 
   it('起きた回数が記録される', () => {
-    const variant = withOptions({ misdealChance: 1 });
+    const variant = withOptions({ exposedCardChance: 1, misdeal: true });
     const state = reduce(tableOf(3, variant), { type: 'startHand', seed: 1 });
     // 上限まで配り直したうえで、最後は配られる（無限に回らない）
     expect(state.misdeals).toBeGreaterThan(0);
@@ -271,7 +272,7 @@ describe('ミスディール（配り直し）', () => {
 
   it('配り直すと配牌が変わる', () => {
     const plain = reduce(tableOf(3, STANDARD_VARIANT), { type: 'startHand', seed: 1 });
-    const redealt = reduce(tableOf(3, withOptions({ misdealChance: 1 })), {
+    const redealt = reduce(tableOf(3, withOptions({ exposedCardChance: 1, misdeal: true })), {
       type: 'startHand',
       seed: 1,
     });
@@ -280,8 +281,22 @@ describe('ミスディール（配り直し）', () => {
     );
   });
 
+  it('オフならミスは1枚までで、配り直さない', () => {
+    const variant = withOptions({ exposedCardChance: 1 });
+    for (let seed = 0; seed < 10; seed++) {
+      const state = reduce(tableOf(3, variant), { type: 'startHand', seed });
+      expect(state.misdeals).toBe(0);
+      expect(state.exposedCards).toHaveLength(1);
+    }
+  });
+
+  it('前の版の確率の指定は「2枚目もありうる」として読む', () => {
+    const parsed = parseVariant({ ...JSON.parse(variantToJson(STANDARD_VARIANT)), options: { exposedCardChance: 0.1, misdealChance: 0.05 } });
+    expect(parsed.ok && parsed.variant.options?.misdeal).toBe(true);
+  });
+
   it('配り直しも seed から再現される', () => {
-    const variant = withOptions({ misdealChance: 0.5 });
+    const variant = withOptions({ exposedCardChance: 0.5, misdeal: true });
     for (let seed = 0; seed < 15; seed++) {
       const a = reduce(tableOf(3, variant), { type: 'startHand', seed });
       const b = reduce(tableOf(3, variant), { type: 'startHand', seed });

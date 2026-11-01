@@ -448,10 +448,10 @@ export const CLUMSY_DEALER: Variant = {
   description:
     '4回に1回くらい、ディーラーが札を1枚表にしてしまう。実際の手順どおり' +
     'その札は回収して引き直し、フロップのバーンに使われる（手札は公開されない）。' +
-    'まれに2枚以上で配り直しになる。ラビットハントと手札公開も有効。',
+    'まれに2枚目も表にして配り直しになる。ラビットハントと手札公開も有効。',
   options: {
     exposedCardChance: 0.25,
-    misdealChance: 0.05,
+    misdeal: true,
     rabbitHunt: true,
     showCards: 'any',
   },

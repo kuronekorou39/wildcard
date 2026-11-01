@@ -301,11 +301,12 @@ export interface TableOptions {
    */
   readonly exposedCardChance?: number;
   /**
-   * 2枚以上表にしてしまい、**配り直し**になる確率（1ハンドあたり、0〜1）。
+   * 2枚目も表にしてしまうことがあるか。既定 false（ミスは1枚まで）。
    *
-   * こちらが本来の「ミスディール」。手札を回収して最初から配り直す。
+   * true なら、1枚目を表にしたあと同じ確率（exposedCardChance）で2枚目も表にし、
+   * そのときは本来の「ミスディール」として手札を回収し、最初から配り直す。
    */
-  readonly misdealChance?: number;
+  readonly misdeal?: boolean;
   /**
    * 表にしてしまった札を、最初のバーンカードとして使うか。既定 true。
    *

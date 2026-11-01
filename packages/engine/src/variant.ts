@@ -198,10 +198,6 @@ export const exposedCardChanceOf = (variant: Variant): number =>
 export const exposedCardBecomesBurnOf = (variant: Variant): boolean =>
   variant.options?.exposedCardBecomesBurn ?? true;
 
-/** 配り直し（ミスディール）になる確率。既定は0。 */
-export const misdealChanceOf = (variant: Variant): number =>
-  Math.min(1, Math.max(0, variant.options?.misdealChance ?? 0));
-
 /** 流れた後に配られるはずだった札を見せるか。 */
 export const rabbitHuntEnabled = (variant: Variant): boolean =>
   variant.options?.rabbitHunt ?? false;

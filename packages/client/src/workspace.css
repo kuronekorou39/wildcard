@@ -458,7 +458,8 @@ button.stepper-value:hover { border-bottom-color: var(--gold); color: var(--gold
 .rules-shell .ranking-edit { display: inline-flex; align-items: center; gap: 4px; }
 .rules-shell .ranking-edit .ui-icon { font-size: .85rem; }
 /* 役の枠の中なので、条件の欄に別の背景は付けない */
-.rules-shell .ranking-editor { padding: 8px 4px 14px; background: transparent; }
+.rules-shell .ranking-editor { padding: 10px 20px 18px; background: transparent; }
+@media (max-width: 640px) { .rules-shell .ranking-editor { padding: 8px 12px 16px; } }
 /* 行にマウスが乗るとハイライトし、そのときだけ「削除」を見せる（場所は常に取ってある） */
 .rules-shell .ranking-item { border-radius: 10px; transition: background-color .15s ease; }
 .rules-shell .ranking-item:hover, .rules-shell .ranking-item:focus-within, .rules-shell .ranking-item[data-editing=true] { background: #ffffff08; }
