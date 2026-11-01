@@ -1,4 +1,5 @@
 import { Icon } from '../Icon.js';
+import { Stepper } from '../Stepper.js';
 import {
   blockSize,
   fromBlocks,
@@ -101,20 +102,15 @@ export function PatternEditor({ pattern, handSize, ranks, onChange }: PatternEdi
                 onChange={(next) => setBlock(i, { kind: 'fixed', ranks: next })}
               />
             ) : (
-              <label className="block-count">
-                <input
-                  className="input"
-                  type="number"
-                  min={1}
-                  max={handSize}
-                  value={block.count}
-                  aria-label={`${i + 1}つめのまとまりの枚数`}
-                  onChange={(e) =>
-                    setBlock(i, { ...block, count: clamp(e.target.value, 1, handSize) })
-                  }
-                />
-                <span>枚</span>
-              </label>
+              <Stepper
+                hideLabel
+                label={`${i + 1}つめのまとまりの枚数`}
+                suffix="枚"
+                value={block.count}
+                min={1}
+                max={handSize}
+                onChange={(count) => setBlock(i, { ...block, count })}
+              />
             )}
 
             <button
@@ -179,27 +175,20 @@ export function PatternEditor({ pattern, handSize, ranks, onChange }: PatternEdi
       </div>
 
       {suitCount?.type === 'suitCount' && (
-        <label className="block-count">
-          <input
-            className="input"
-            type="number"
-            min={2}
-            max={handSize}
-            value={suitCount.count}
-            aria-label="同じスートの枚数"
-            onChange={(e) =>
-              emit(
-                blocks,
-                pattern.global.map((g) =>
-                  g.type === 'suitCount'
-                    ? { type: 'suitCount', count: clamp(e.target.value, 2, handSize) }
-                    : g,
-                ),
-              )
-            }
-          />
-          <span>枚以上</span>
-        </label>
+        <Stepper
+          hideLabel
+          label="同じスートの枚数"
+          suffix="枚"
+          value={suitCount.count}
+          min={2}
+          max={handSize}
+          onChange={(count) =>
+            emit(
+              blocks,
+              pattern.global.map((g) => (g.type === 'suitCount' ? { type: 'suitCount', count } : g)),
+            )
+          }
+        />
       )}
     </div>
   );
@@ -255,8 +244,3 @@ function convert(block: PatternBlock, kind: PatternBlock['kind']): PatternBlock 
   }
 }
 
-function clamp(value: string, min: number, max: number): number {
-  const n = Math.floor(Number(value));
-  if (!Number.isFinite(n)) return min;
-  return Math.min(max, Math.max(min, n));
-}

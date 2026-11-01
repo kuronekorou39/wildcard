@@ -62,7 +62,8 @@ export function DeckContents({ deck, onChange }: { readonly deck: DeckRules; rea
   const kind = (card: Card, count: number, target: Selection, custom: boolean, column: number, columns: number) => {
     const label = `${cardLabel(card)} ${count}枚`;
     const body = <>
-      <PlayingCard card={card} size="sm" dimmed={count === 0} />
+      {/* 構成の一覧はスートを数えやすい4色で見せる（卓の見た目の設定とは別） */}
+      <PlayingCard card={card} size="sm" dimmed={count === 0} faceStyle="four-color" />
       {count > 1 && <b className="deck-count" aria-hidden="true">×{count}</b>}
     </>;
     if (!editable) return <span key={label} className="deck-contents-card" data-empty={count === 0} role="img" aria-label={label}>{body}</span>;

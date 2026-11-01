@@ -11,7 +11,6 @@ const SUIT_LABEL: Record<Suit, string> = {
   diamonds: '♦',
   clubs: '♣',
 };
-const isRed = (suit: Suit) => suit === 'hearts' || suit === 'diamonds';
 const sameOrder = <T,>(a: readonly T[], b: readonly T[]) => a.length === b.length && a.every((x, i) => x === b[i]);
 
 interface DeckEditorProps {
@@ -85,24 +84,28 @@ export function DeckEditor({ deck, allRanks, allSuits, onChange }: DeckEditorPro
       <div className="field">
         <div className="field-head">
           <span className="field-head-start">
-            <span className="field-label">スート<span className="label-note" aria-hidden={deck.suitRanking === undefined} data-hidden={deck.suitRanking === undefined}>（左が強い）</span></span>
+            {/* 2つのラベルを重ねて置き、幅の広いほうに合わせる。切り替えてもチェックの位置が動かない */}
+            <span className="field-label label-swap">
+              <span data-hidden={deck.suitRanking === undefined} aria-hidden={deck.suitRanking === undefined}>スート（左が強い）</span>
+              <span data-hidden={deck.suitRanking !== undefined} aria-hidden={deck.suitRanking !== undefined}>スート（強弱なし）</span>
+            </span>
             <label className="checkline">
               <input
                 type="checkbox"
                 checked={deck.suitRanking !== undefined}
                 onChange={(e) => { setOrderingSuits(false); onChange(e.target.checked ? { ...deck, suitRanking: [...allSuits] } : omit(deck, 'suitRanking')); }}
               />
-              <span>強弱をつける</span>
+              <span>強弱</span>
             </label>
             <InfoTip label="スートの強弱">同じランクで並んだときの決着に使います。</InfoTip>
           </span>
           {deck.suitRanking !== undefined && <span className="field-tools">
-            {!sameOrder(suitOrder, allSuits) && <button type="button" className="order-toggle" onClick={() => onChange({ ...deck, suitRanking: [...allSuits] })}>デフォルトに戻す</button>}
+            {!sameOrder(suitOrder, allSuits) && <button type="button" className="order-toggle" onClick={() => onChange({ ...deck, suitRanking: [...allSuits] })}>元に戻す</button>}
             <button type="button" className="order-toggle" aria-pressed={orderingSuits} onClick={() => setOrderingSuits(!orderingSuits)}><Icon kind={orderingSuits ? 'check' : 'reorder'} />{orderingSuits ? '並べ替えを完了' : '並べ替え'}</button>
           </span>}
         </div>
         <OrderRow
-          items={suitOrder.map((suit) => ({ key: suit, label: SUIT_LABEL[suit], on: deck.suits.includes(suit), red: isRed(suit), name: SUIT_LABEL[suit] }))}
+          items={suitOrder.map((suit) => ({ key: suit, label: SUIT_LABEL[suit], on: deck.suits.includes(suit), suit, name: SUIT_LABEL[suit] }))}
           ordering={orderingSuits && deck.suitRanking !== undefined}
           onToggle={(key) => toggleSuit(key as Suit)}
           onMove={(key, by) => moveSuit(key as Suit, by)}
@@ -113,7 +116,7 @@ export function DeckEditor({ deck, allRanks, allSuits, onChange }: DeckEditorPro
         <div className="field-head">
           <span className="field-label">ランク（左が強い）<InfoTip label="ランクの並び">並びが決めるのは強さだけで、ストレートの連続は本来の順で判定します。</InfoTip></span>
           <span className="field-tools">
-            {!sameOrder(layout, fullDefault) && <button type="button" className="order-toggle" onClick={() => applyRanks(fullDefault, (r) => deck.ranks.includes(r))}>デフォルトに戻す</button>}
+            {!sameOrder(layout, fullDefault) && <button type="button" className="order-toggle" onClick={() => applyRanks(fullDefault, (r) => deck.ranks.includes(r))}>元に戻す</button>}
             <button type="button" className="order-toggle" aria-pressed={orderingRanks} onClick={() => setOrderingRanks(!orderingRanks)}><Icon kind={orderingRanks ? 'check' : 'reorder'} />{orderingRanks ? '並べ替えを完了' : '並べ替え'}</button>
           </span>
         </div>
@@ -140,7 +143,7 @@ export function DeckEditor({ deck, allRanks, allSuits, onChange }: DeckEditorPro
   );
 }
 
-interface OrderItem { readonly key: string; readonly label: string; readonly name: string; readonly on: boolean; readonly red?: boolean }
+interface OrderItem { readonly key: string; readonly label: string; readonly name: string; readonly on: boolean; readonly suit?: Suit }
 
 /**
  * 「使う／使わない」と「強さの順」を1列で。
@@ -177,7 +180,7 @@ function OrderRow({ items, ordering, onToggle, onMove }: {
       const movable = ordering;
       return <span key={item.key} className={`order-item ${movable ? 'order-item-active' : ''}`} ref={(node) => { if (node) nodes.current.set(item.key, node); else nodes.current.delete(item.key); }}>
         <button type="button" className="rank-order-arrow" tabIndex={movable ? 0 : -1} aria-hidden={!movable} aria-label={`${item.name} を強くする`} disabled={!movable || at === 0} onClick={() => onMove(item.key, -1)}>‹</button>
-        <button type="button" className={`chip ${item.on ? 'chip-on' : 'chip-off'} ${item.red ? 'chip-red' : ''}`} aria-pressed={item.on}
+        <button type="button" className={`chip ${item.on ? 'chip-on' : 'chip-off'} ${item.suit ? `chip-suit chip-suit-${item.suit}` : ''}`} aria-pressed={item.on}
           aria-label={`${item.name}${item.on ? '' : '（使わない）'}`} onClick={() => onToggle(item.key)}>{item.label}</button>
         <button type="button" className="rank-order-arrow" tabIndex={movable ? 0 : -1} aria-hidden={!movable} aria-label={`${item.name} を弱くする`} disabled={!movable || at === items.length - 1} onClick={() => onMove(item.key, 1)}><Icon kind="chevron-right" /></button>
       </span>;

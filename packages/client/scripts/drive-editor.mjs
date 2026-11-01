@@ -10,6 +10,13 @@ import { chromium } from 'playwright';
 import { mkdir } from 'node:fs/promises';
 import { editValue } from './setup-helpers.mjs';
 
+/** −／＋ の数字を押して直接入力する。 */
+async function setNumber(page, label, value) {
+  await page.getByRole('button', { name: new RegExp(`^${label}を入力`) }).click();
+  await page.getByRole('spinbutton', { name: label, exact: true }).fill(String(value));
+  await page.keyboard.press('Enter');
+}
+
 const URL = process.env.WILDCARD_URL ?? 'http://localhost:5173/';
 const SHOTS = process.env.WILDCARD_SHOTS ?? 'shots';
 
@@ -55,9 +62,9 @@ console.log(`  クラブを抜いた: ${deckLine.trim()}`);
 
 // ---- 配り方: フロップを6枚に ----
 await page.getByRole('tab', { name: /配り方/ }).click();
-const flop = page.locator('.street-row').first();
-await flop.getByRole('button', { name: '開くを編集', exact: true }).click();
-await flop.getByRole('spinbutton').fill('6');
+await page.locator('.street-details>summary').click();
+await page.getByRole('button', { name: /^フロップで開く枚数を入力/ }).click();
+await page.getByRole('spinbutton', { name: 'フロップで開く枚数' }).fill('6');
 await page.keyboard.press('Enter');
 console.log('  フロップを6枚にした');
 
@@ -72,7 +79,7 @@ await editor.getByRole('textbox').first().fill('スリーカード＋ペア（�
 await editor.getByRole('button', { name: 'まとまりを足す' }).click();
 const second = editor.locator('.block-row').nth(1);
 await second.locator('select').selectOption('run');
-await second.locator('input[type=number]').fill('3');
+await setNumber(page, '2つめのまとまりの枚数', 3);
 console.log(`  条件: ${(await editor.locator('.block-total').innerText()).trim()}`);
 
 const exampleOf = async () =>
@@ -97,11 +104,11 @@ await shot('10-editor');
 // ---- 矛盾の表示を確かめる ----
 // 手札10枚 × 6人 ＝ 60枚。クラブを抜いた39枚では配りきれない。
 await page.getByRole('tab', { name: /配り方/ }).click();
-await editValue(page, '手札', '10');
+await setNumber(page, '手札', 10);
 const bad = await problems();
 console.log(`--- わざと壊す（手札10枚） --- 矛盾 ${bad.length}件`);
 for (const line of bad) console.log(`  ${line.replace(/\s+/g, ' ').trim()}`);
-await editValue(page, '手札', '2');
+await setNumber(page, '手札', 2);
 console.log(`  戻したら ${(await problems()).length}件`);
 
 // ---- 順位表で確かめる ----

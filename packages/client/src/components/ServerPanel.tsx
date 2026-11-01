@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
-import { EditableNumber, TableStakes } from './EditableValue.js';
+import { TableStakes } from './EditableValue.js';
+import { Stepper } from './Stepper.js';
 import { GameDialog } from './GameDialog.js';
 import { Icon } from './Icon.js';
 import { resolveVariant } from '../rules/customVariants.js';
@@ -58,7 +59,7 @@ export function ServerPanel({ variantId, name, role, onRoleChange, onStart }: {
     <div className="session-fields">
       <div className="segmented"><button type="button" className={`segment ${role === 'host' ? 'segment-active' : ''}`} onClick={() => onRoleChange('host')}>部屋を作る</button><button type="button" className={`segment ${role === 'guest' ? 'segment-active' : ''}`} onClick={() => onRoleChange('guest')}>参加する</button></div>
       {role === 'host' ? <><TableStakes chips={chips} smallBlind={smallBlind} bigBlind={bigBlind} ante={ante} onAnte={setAnte} onChips={setChips} onSmallBlind={setSmallBlind} onBigBlind={setBigBlind} />
-        <div className="server-seats"><EditableNumber label="席数" value={seats} min={2} max={10} onChange={setSeats} /><label className="checkline"><input type="checkbox" checked={play} onChange={event => setPlay(event.target.checked)} />自分も席に着く</label></div></> : <>
+        <div className="server-seats"><Stepper label="席数" value={seats} min={2} max={10} onChange={setSeats} /><label className="checkline"><input type="checkbox" checked={play} onChange={event => setPlay(event.target.checked)} />自分も席に着く</label></div></> : <>
         <label className="field"><span className="field-label">招待リンク / 卓ID</span><input className="input" value={invite} onChange={event => setInvite(event.target.value)} placeholder="招待リンクを貼り付け" /></label>
         {!previous && <label className="checkline"><input type="checkbox" checked={play} onChange={event => setPlay(event.target.checked)} />席に着く（オフで観戦）</label>}
       </>}

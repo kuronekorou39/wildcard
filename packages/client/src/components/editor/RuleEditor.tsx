@@ -4,7 +4,8 @@ import { Brand } from '../Brand.js';
 import { Icon } from '../Icon.js';
 import { RuleSheet } from '../RulePicker.js';
 import { BannerEditor } from '../RuleBanner.js';
-import { EditableNumber, EditableText } from '../EditableValue.js';
+import { EditableText } from '../EditableValue.js';
+import { Stepper } from '../Stepper.js';
 import { GameDialog } from '../GameDialog.js';
 import { DeckEditor } from './DeckEditor.js';
 import { StructureEditor } from './StructureEditor.js';
@@ -166,7 +167,7 @@ function Inspector({ cards, draft, players, onPlayers, need, seats, problems, re
     <span className="section-kicker">構成</span>
     <strong>{cards}<small>枚のデッキ</small></strong>
     <dl><div><dt>手札</dt><dd>{draft.structure.holeCards} 枚</dd></div><div><dt>場</dt><dd>{boardSize(draft.structure)} 枚</dd></div><div><dt>役の枚数</dt><dd>{draft.structure.handSize} 枚</dd></div><div><dt>最大人数</dt><dd>{seats === null ? '—' : Number.isFinite(seats) ? `${seats} 人` : '制限なし'}</dd></div></dl>
-    <EditableNumber label="想定人数" value={players} min={2} max={10} suffix="人" onChange={onPlayers} />
+    <Stepper label="想定人数" value={players} min={2} max={10} suffix="人" onChange={onPlayers} />
     <p className="editor-figures">{need !== null ? `必要 ${need} 枚 / 残り ${cards - need} 枚` : '構成を確認してください'}</p>
     {evaluations > HEAVY_EVALUATIONS && <p className="editor-figures editor-figures-bad">役の判定が1手 {evaluations.toLocaleString()} 通り。CPU の判断が遅くなります。</p>}
     <p className={`validation-status ${ready ? '' : 'validation-bad'}`} role="status">{ready ? <Icon kind="check" /> : '!'} {status}</p>
