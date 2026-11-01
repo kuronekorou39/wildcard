@@ -145,19 +145,23 @@ function OrderRow({ items, ordering, onToggle, onMove }: {
 }) {
   const active = items.filter((item) => item.on);
   const nodes = useRef(new Map<string, HTMLElement>());
-  const previous = useRef(new Map<string, DOMRect>());
+  const previous = useRef<{ readonly order: string; readonly at: Map<string, { x: number; y: number }> } | null>(null);
+  const order = items.map((item) => item.key).join(',');
+  // 動かすのは並び順が変わったときだけ。位置は行の中で測る。
+  // 画面上の位置で比べると、スクロールや上の欄の伸び縮みでも「動いた」ことになり、全部が滑ってしまう。
   useLayoutEffect(() => {
     const reduce = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const current = new Map<string, DOMRect>();
-    for (const [key, node] of nodes.current) {
-      const rect = node.getBoundingClientRect();
-      current.set(key, rect);
-      const before = previous.current.get(key);
-      if (!reduce && before && (before.left !== rect.left || before.top !== rect.top) && typeof node.animate === 'function') {
-        node.animate([{ transform: `translate(${before.left - rect.left}px, ${before.top - rect.top}px)` }, { transform: 'none' }], { duration: 180, easing: 'ease-out' });
+    const at = new Map<string, { x: number; y: number }>();
+    for (const [key, node] of nodes.current) at.set(key, { x: node.offsetLeft, y: node.offsetTop });
+    const before = previous.current;
+    if (!reduce && before && before.order !== order) {
+      for (const [key, node] of nodes.current) {
+        const from = before.at.get(key), to = at.get(key)!;
+        if (!from || (from.x === to.x && from.y === to.y) || typeof node.animate !== 'function') continue;
+        node.animate([{ transform: `translate(${from.x - to.x}px, ${from.y - to.y}px)` }, { transform: 'none' }], { duration: 180, easing: 'ease-out' });
       }
     }
-    previous.current = current;
+    previous.current = { order, at };
   });
   return <div className="chips order-row">
     {items.map((item) => {

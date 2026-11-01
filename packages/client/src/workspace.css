@@ -153,7 +153,7 @@
 .order-toggle { padding: 5px 10px; border: 1px solid var(--border); border-radius: 8px; background: transparent; color: var(--gold); font-size: .68rem; cursor: pointer; }
 .order-toggle[aria-pressed=true] { border-color: var(--gold); background: #ffffff10; }
 /* 矢印の場所は最初から確保。並べ替え中だけ見せるので、モードを切り替えても札は動かない */
-.order-row { gap: 4px; margin-bottom: 10px; }
+.order-row { position: relative; gap: 4px; margin-bottom: 10px; }
 .order-item { display: inline-flex; align-items: center; gap: 0; padding: 2px; border: 1px solid transparent; border-radius: 10px; }
 .order-item-active { border-color: #6a5c61; border-style: dashed; }
 .order-item .rank-order-arrow { width: 18px; min-width: 0; height: 30px; min-height: 0; padding: 0; display: grid; place-items: center; visibility: hidden; font-size: 1rem; }
