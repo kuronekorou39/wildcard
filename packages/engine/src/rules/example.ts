@@ -1,4 +1,5 @@
-import type { Card, HandPattern, Rank, Suit, Variant } from '../types.js';
+import { COLOR_SUITS, type Card, type CardColor, type HandPattern, type Rank, type Suit, type Variant } from '../types.js';
+import { describeBlock, toBlocks } from './blocks.js';
 import { buildDeck, cardKey, rankStep, rankValue, sequenceOf } from '../deck.js';
 import { createRng } from '../rng.js';
 import { type HandResult, evaluateExact } from './evaluate.js';
@@ -141,13 +142,13 @@ function buildCandidate(
 
     // 相対指定は連続の順（既定は 2…A）で数える。基準から offset ぶん上の札が
     // すべてデッキにある位置だけを候補にする（5 を抜けば 3-4-5 は組めない）。
-    const offsets = pattern.cards
-      .filter((c) => c.rank.type === 'variable' && c.rank.name === name)
-      .map((c) => (c.rank.type === 'variable' ? (c.rank.offset ?? 0) : 0));
+    const same = pattern.cards.filter((c) => c.rank.type === 'variable' && c.rank.name === name);
+    const offsets = same.map((c) => (c.rank.type === 'variable' ? (c.rank.offset ?? 0) : 0));
+    const wrap = same.some((c) => c.rank.type === 'variable' && c.rank.wrap === true);
     const candidates = sequence
       .map((_, i) => i)
       .filter((i) => !usedBases.has(i) && offsets.every((o) => {
-        const rank = sequence[i + o];
+        const rank = sequence[wrap ? (i + o) % sequence.length : i + o];
         return rank !== undefined && ranks.includes(rank);
       }));
     const base = pick(candidates, rng);
@@ -160,13 +161,31 @@ function buildCandidate(
 
   // 同一スート条件があるなら、全部そのスートで揃える。
   const sameSuit = pattern.global.some((g) => g.type === 'allSameSuit');
-  const lockedSuit = sameSuit ? pick(suits, rng) : undefined;
+  // 色の条件があるなら、使えるスートをその色に絞る。「同じ色」なら色を1つ選ぶ。
+  const colorRule = pattern.global.find((g) => g.type === 'color');
+  const sameColor = pattern.global.some((g) => g.type === 'allSameColor');
+  const color: CardColor | undefined = colorRule?.type === 'color' ? colorRule.color : sameColor ? pick(['red', 'black'] as const, rng) : undefined;
+  const colorSuits = color === undefined ? suits : suits.filter((s) => COLOR_SUITS[color].includes(s));
+  const lockedSuit = sameSuit ? pick(colorSuits, rng) : undefined;
+  // 「赤が N 枚以上」は、先頭から N 枚をその色にする。
+  const colorCount = pattern.global.find((g) => g.type === 'colorCount');
+  // スートのまとまりは、まとまりごとに違うスートを1つずつ選ぶ。
+  const groupSuits = new Map<string, Suit>();
+  const groupSuit = (group: string, allowed: readonly Suit[]): Suit | undefined => {
+    const existing = groupSuits.get(group);
+    if (existing !== undefined) return existing;
+    const taken = new Set(groupSuits.values());
+    const suit = pick(allowed.filter((s) => !taken.has(s)), rng);
+    if (suit !== undefined) groupSuits.set(group, suit);
+    return suit;
+  };
 
   // スートが結果に関わらない役では、散らしたほうが読みやすい。
   // ストレートの例が 10♣ J♣ Q♥ K♣ A♦ だと、フラッシュに見えてしまう。
   // 逆に「同じスートが3枚以上」のような条件がある役で散らすと
   // 成立しなくなるので、スートを見る役では触らない。
-  const spreadSuits = !patternUsesSuits(pattern);
+  // 「スートが N 種類以上」は散らすほど成立しやすいので、散らす。
+  const spreadSuits = !patternUsesSuits(pattern) || pattern.global.some((g) => g.type === 'suitKinds');
 
   const used = new Map<string, number>();
   const take = (card: Card): boolean => {
@@ -180,8 +199,14 @@ function buildCandidate(
 
   const hand: Card[] = [];
 
-  for (const cond of pattern.cards) {
-    const allowedSuits = cond.suits.length > 0 ? cond.suits : suits;
+  for (const [index, cond] of pattern.cards.entries()) {
+    let allowedSuits: readonly Suit[] = (cond.suits.length > 0 ? cond.suits : suits).filter((s) => colorSuits.includes(s));
+    if (colorCount?.type === 'colorCount' && index < colorCount.count) allowedSuits = allowedSuits.filter((s) => COLOR_SUITS[colorCount.color].includes(s));
+    if (cond.suitGroup !== undefined) {
+      const suit = groupSuit(cond.suitGroup, allowedSuits);
+      if (suit === undefined) return null;
+      allowedSuits = [suit];
+    }
     if (allowedSuits.length === 0) return null;
     if (lockedSuit !== undefined && !allowedSuits.includes(lockedSuit)) return null;
 
@@ -202,7 +227,8 @@ function buildCandidate(
       case 'variable': {
         const base = resolveBase(cond.rank.name, cond.rank.offset ?? 0);
         if (base === null) return null;
-        const resolved = sequence[base + (cond.rank.offset ?? 0)];
+        const at = base + (cond.rank.offset ?? 0);
+        const resolved = sequence[cond.rank.wrap ? at % sequence.length : at];
         // 同じ変数は同じランクを指すので、ここは代案を出せない。
         rankOrder = resolved === undefined ? [] : [resolved];
         break;
@@ -419,6 +445,49 @@ export function wildResolutions(result: HandResult, variant: Variant): WildResol
 export function describePattern(pattern: HandPattern): string {
   const parts: string[] = [];
 
+  // まとまりで言い表せるなら、その言い方を使う（スート・飛ばし・回り込みまで書ける）。
+  const blocks = toBlocks(pattern);
+  if (blocks) parts.push(...blocks.map(describeBlock));
+  else describeCards(pattern, parts);
+
+  for (const global of pattern.global) {
+    switch (global.type) {
+      case 'allSameSuit':
+        parts.push('すべて同じスート');
+        break;
+      case 'allDifferentSuit':
+        parts.push('すべて違うスート');
+        break;
+      case 'suitCount':
+        parts.push(`同じスートが${global.count}枚以上`);
+        break;
+      case 'consecutive':
+        parts.push(global.wrap ? 'ランクが連続（回り込みあり）' : 'ランクが連続');
+        break;
+      case 'allDifferentRank':
+        parts.push('すべて違うランク');
+        break;
+      case 'allSameColor':
+        parts.push('すべて同じ色');
+        break;
+      case 'color':
+        parts.push(global.color === 'red' ? 'すべて赤' : 'すべて黒');
+        break;
+      case 'colorCount':
+        parts.push(`${global.color === 'red' ? '赤' : '黒'}が${global.count}枚以上`);
+        break;
+      case 'suitKinds':
+        parts.push(global.count >= 4 ? '4つのスートがそろう' : `スートが${global.count}種類以上`);
+        break;
+    }
+  }
+
+  return parts.length > 0 ? parts.join('、') : '条件なし';
+}
+
+/** まとまりで言い表せない役は、条件の種類ごとに数えて言う。 */
+function describeCards(pattern: HandPattern, parts: string[]): void {
+
   // 同じ変数名のまとまりごとにまとめる。X,X,X なら「同じランクが3枚」。
   const groups = new Map<string, number[]>();
   const fixedRanks: Rank[] = [];
@@ -462,28 +531,6 @@ export function describePattern(pattern: HandPattern): string {
     parts.push(`${unique.join(' / ')} から${oneOfParts.length}枚`);
   }
   if (anyCount > 0) parts.push(`任意の${anyCount}枚`);
-
-  for (const global of pattern.global) {
-    switch (global.type) {
-      case 'allSameSuit':
-        parts.push('すべて同じスート');
-        break;
-      case 'allDifferentSuit':
-        parts.push('すべて違うスート');
-        break;
-      case 'suitCount':
-        parts.push(`同じスートが${global.count}枚以上`);
-        break;
-      case 'consecutive':
-        parts.push('ランクが連続');
-        break;
-      case 'allDifferentRank':
-        parts.push('すべて違うランク');
-        break;
-    }
-  }
-
-  return parts.length > 0 ? parts.join('、') : '条件なし';
 }
 
 /**

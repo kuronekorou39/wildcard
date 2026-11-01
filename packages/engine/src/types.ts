@@ -187,14 +187,36 @@ export interface BettingRules {
 export type RankSpec =
   | { readonly type: 'fixed'; readonly value: Rank }
   | { readonly type: 'oneOf'; readonly values: readonly Rank[] }
-  | { readonly type: 'variable'; readonly name: string; readonly offset?: number }
+  | {
+      readonly type: 'variable';
+      readonly name: string;
+      readonly offset?: number;
+      /**
+       * 連続の順の端で回り込むか（Q K A 2 3 を連続とみなす）。
+       * 同じ変数の条件すべてに同じ値を付ける。
+       */
+      readonly wrap?: boolean;
+    }
   | { readonly type: 'any' };
 
 export interface CardCondition {
   readonly rank: RankSpec;
   /** 許容するスート。空配列は「任意のスート」を意味する。 */
   readonly suits: readonly Suit[];
+  /**
+   * スートのまとまり。同じ名前の札は同じスート、違う名前の札は違うスートになる
+   * （ランクの変数と同じ決まり）。ストレートフラッシュハウスの「3枚はこのスート、残り2枚は別のスート」に使う。
+   */
+  readonly suitGroup?: string;
 }
+
+/** 札の色。ハートとダイヤが赤、スペードとクラブが黒。 */
+export type CardColor = 'red' | 'black';
+export const COLOR_SUITS: Readonly<Record<CardColor, readonly Suit[]>> = {
+  red: ['hearts', 'diamonds'],
+  black: ['spades', 'clubs'],
+};
+export const colorOf = (suit: Suit): CardColor => (suit === 'hearts' || suit === 'diamonds' ? 'red' : 'black');
 
 /** 手札全体に課す条件。 */
 export type GlobalCondition =
@@ -204,10 +226,18 @@ export type GlobalCondition =
   | { readonly type: 'allDifferentSuit' }
   /** 同一スートが n 枚以上 */
   | { readonly type: 'suitCount'; readonly count: number }
-  /** ランクが連続している */
-  | { readonly type: 'consecutive' }
+  /** ランクが連続している。wrap なら端で回り込む（Q K A 2 3） */
+  | { readonly type: 'consecutive'; readonly wrap?: boolean }
   /** 全枚数が相異なるランク */
-  | { readonly type: 'allDifferentRank' };
+  | { readonly type: 'allDifferentRank' }
+  /** 全枚数が同じ色 */
+  | { readonly type: 'allSameColor' }
+  /** 全枚数がその色 */
+  | { readonly type: 'color'; readonly color: CardColor }
+  /** その色が n 枚以上 */
+  | { readonly type: 'colorCount'; readonly color: CardColor; readonly count: number }
+  /** スートが n 種類以上（4種類なら全スートがそろう） */
+  | { readonly type: 'suitKinds'; readonly count: number };
 
 export interface HandPattern {
   /** 条件を課すカード。 */

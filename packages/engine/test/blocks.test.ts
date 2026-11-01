@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { blockSize, describeBlock, fromBlocks, toBlocks } from '../src/rules/blocks.js';
+import { blockSize, describeBlock, fromBlocks, toBlocks, type PatternBlock } from '../src/rules/blocks.js';
 import { describePattern } from '../src/rules/example.js';
 import { STANDARD_VARIANT } from '../src/rules/presets.js';
 import { VARIANT_PRESETS } from '../src/rules/variants.js';
@@ -60,20 +60,25 @@ describe('まとまりへの行き帰り', () => {
 });
 
 describe('まとまりで表せない形', () => {
-  it('1枚ずつスートを指定した役', () => {
+  it('同じまとまりの中で札ごとにスートが違う役', () => {
+    // 同じ変数の 2枚が別々のスートを指定している。まとまり単位のスートでは言えない。
     const pattern: HandPattern = {
-      cards: [{ rank: { type: 'any' }, suits: ['spades'] }],
+      cards: [
+        { rank: { type: 'variable', name: 'X' }, suits: ['spades'] },
+        { rank: { type: 'variable', name: 'X' }, suits: ['hearts'] },
+      ],
       global: [],
     };
     expect(toBlocks(pattern)).toBeNull();
   });
 
-  it('飛び石の相対指定', () => {
-    // X, X+2 は作れるが、「連続する」でも「同じランク」でもない。
+  it('等間隔でない相対指定', () => {
+    // X, X+1, X+3 は「連続」でも「飛ばし」でもない。
     const pattern: HandPattern = {
       cards: [
         { rank: { type: 'variable', name: 'X' }, suits: [] },
-        { rank: { type: 'variable', name: 'X', offset: 2 }, suits: [] },
+        { rank: { type: 'variable', name: 'X', offset: 1 }, suits: [] },
+        { rank: { type: 'variable', name: 'X', offset: 3 }, suits: [] },
       ],
       global: [],
     };
@@ -114,5 +119,31 @@ describe('まとまりの説明', () => {
   it('枚数を数える', () => {
     expect(blockSize({ kind: 'sameRank', count: 3 })).toBe(3);
     expect(blockSize({ kind: 'fixed', ranks: ['10', 'J', 'Q', 'K', 'A'] })).toBe(5);
+  });
+});
+
+describe('スート・飛ばし・回り込み・続き', () => {
+  const roundTrip = (blocks: PatternBlock[]) => expect(toBlocks(fromBlocks(blocks))).toEqual(blocks);
+
+  it('まとまりごとのスートを行き来できる', () => {
+    roundTrip([{ kind: 'sameRank', count: 3, suit: { kind: 'same' } }, { kind: 'sameRank', count: 2, suit: { kind: 'same' } }]);
+    roundTrip([{ kind: 'fixed', ranks: ['A'], suit: { kind: 'in', suits: ['spades'] } }, { kind: 'any', count: 4 }]);
+    roundTrip([{ kind: 'any', count: 5, suit: { kind: 'in', suits: ['hearts', 'diamonds'] } }]);
+  });
+
+  it('1つ飛ばし・回り込み・続きを行き来できる', () => {
+    roundTrip([{ kind: 'run', count: 5, step: 2 }]);
+    roundTrip([{ kind: 'run', count: 5, wrap: true }]);
+    roundTrip([
+      { kind: 'run', count: 3, suit: { kind: 'same' } },
+      { kind: 'run', count: 2, continues: true, suit: { kind: 'same' } },
+    ]);
+  });
+
+  it('説明にスートと飛ばしが入る', () => {
+    expect(describeBlock({ kind: 'run', count: 5, step: 2 })).toBe('1つ飛ばしで連続する5枚');
+    expect(describeBlock({ kind: 'run', count: 5, wrap: true })).toBe('連続する5枚（回り込みあり）');
+    expect(describeBlock({ kind: 'any', count: 5, suit: { kind: 'in', suits: ['hearts', 'diamonds'] } })).toBe('任意の5枚、赤');
+    expect(describeBlock({ kind: 'sameRank', count: 3, suit: { kind: 'same' } })).toBe('同じランクが3枚、同じスート');
   });
 });

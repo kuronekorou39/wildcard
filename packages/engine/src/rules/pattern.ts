@@ -1,4 +1,4 @@
-import type { Card, CardCondition, DeckRules, GlobalCondition, HandPattern, Suit } from '../types.js';
+import { colorOf, type Card, type CardCondition, type DeckRules, type GlobalCondition, type HandPattern, type Suit } from '../types.js';
 import { rankStep, rankValue, sequenceOf, suitValue } from '../deck.js';
 
 export interface PatternMatch {
@@ -44,6 +44,8 @@ export function matchPattern(
   const used = new Array<boolean>(hand.length).fill(false);
   /** 変数名 -> 基準ランクの index */
   const bindings = new Map<string, number>();
+  /** スートのまとまり -> スート。違うまとまりは違うスートになる */
+  const suitGroups = new Map<string, Suit>();
   let suitLock: Suit | null = null;
   let best: PatternMatch | null = null;
 
@@ -72,9 +74,21 @@ export function matchPattern(
       const lockedHere = requireSameSuit && suitLock === null;
       if (requireSameSuit && suitLock !== null && card.suit !== suitLock) continue;
 
+      let groupAdded: string | null = null;
+      if (cond.suitGroup !== undefined) {
+        const existing = suitGroups.get(cond.suitGroup);
+        if (existing !== undefined) {
+          if (existing !== card.suit) continue;
+        } else {
+          if ([...suitGroups.values()].includes(card.suit)) continue;
+          groupAdded = cond.suitGroup;
+        }
+      }
+
       const bound = bindRank(cond, card, deck, bindings);
       if (bound === null) continue;
 
+      if (groupAdded !== null) suitGroups.set(groupAdded, card.suit);
       if (lockedHere) suitLock = card.suit;
       used[h] = true;
       assigned[ci] = h;
@@ -85,6 +99,7 @@ export function matchPattern(
       used[h] = false;
       if (lockedHere) suitLock = null;
       if (bound.added) bindings.delete(bound.added);
+      if (groupAdded !== null) suitGroups.delete(groupAdded);
     }
   };
 
@@ -104,7 +119,7 @@ export function compareTiebreak(a: readonly number[], b: readonly number[]): num
 
 /** ランクもスートも問わない条件か。こうした条件は互いに交換可能になる。 */
 function isFree(cond: CardCondition): boolean {
-  return cond.rank.type === 'any' && cond.suits.length === 0;
+  return cond.rank.type === 'any' && cond.suits.length === 0 && cond.suitGroup === undefined;
 }
 
 /**
@@ -128,7 +143,7 @@ function conditionOrder(conditions: readonly CardCondition[]): number[] {
       const bucket = byVariable.get(cond.rank.name);
       if (bucket) bucket.push(i);
       else byVariable.set(cond.rank.name, [i]);
-    } else if (cond.suits.length > 0) {
+    } else if (cond.suits.length > 0 || cond.suitGroup !== undefined) {
       // スート指定があるなら無制約ではない。固定ランクの次に絞り込める。
       fixed.push(i);
     } else {
@@ -168,8 +183,11 @@ function bindRank(
       return spec.values.includes(card.rank) ? { added: null } : null;
 
     case 'variable': {
-      const base = rankStep(card.rank, deck) - (spec.offset ?? 0);
-      if (base < 0 || base >= sequenceOf(deck).length) return null;
+      const length = sequenceOf(deck).length;
+      let base = rankStep(card.rank, deck) - (spec.offset ?? 0);
+      // 回り込みありなら、連続の順の端をまたいでもよい（Q K A 2 3）。
+      if (spec.wrap) base = ((base % length) + length) % length;
+      if (base < 0 || base >= length) return null;
 
       const existing = bindings.get(spec.name);
       if (existing !== undefined) return existing === base ? { added: null } : null;
@@ -222,11 +240,32 @@ function satisfiesGlobal(cards: readonly Card[], global: GlobalCondition, deck: 
     case 'consecutive': {
       // 連続は本来の順で見る。デッキの並べ替え（強さ）では変わらない。
       const values = cards.map((c) => rankStep(c.rank, deck)).sort((a, b) => a - b);
-      return values.every((v, i) => i === 0 || v === values[i - 1]! + 1);
+      if (!global.wrap) return values.every((v, i) => i === 0 || v === values[i - 1]! + 1);
+      // 回り込みあり: 輪にしたとき、隙間が1か所以下なら連続。
+      if (new Set(values).size !== values.length) return false;
+      const length = sequenceOf(deck).length;
+      let gaps = 0;
+      for (let i = 0; i < values.length; i++) {
+        const next = i + 1 < values.length ? values[i + 1]! : values[0]! + length;
+        if (next - values[i]! !== 1) gaps++;
+      }
+      return values.length === length ? true : gaps <= 1;
     }
 
     case 'allDifferentRank':
       return new Set(cards.map((c) => c.rank)).size === cards.length;
+
+    case 'allSameColor':
+      return cards.every((c) => colorOf(c.suit) === colorOf(cards[0]!.suit));
+
+    case 'color':
+      return cards.every((c) => colorOf(c.suit) === global.color);
+
+    case 'colorCount':
+      return cards.filter((c) => colorOf(c.suit) === global.color).length >= global.count;
+
+    case 'suitKinds':
+      return new Set(cards.map((c) => c.suit)).size >= global.count;
   }
 }
 

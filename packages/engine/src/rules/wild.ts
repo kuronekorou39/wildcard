@@ -120,9 +120,11 @@ function rankCandidates(pattern: HandPattern, allRanks: readonly Rank[]): Rank[]
  * ランクだけ書けばよい。
  */
 export function patternUsesSuits(pattern: HandPattern): boolean {
-  if (pattern.cards.some((cond) => cond.suits.length > 0)) return true;
+  if (pattern.cards.some((cond) => cond.suits.length > 0 || cond.suitGroup !== undefined)) return true;
   return pattern.global.some(
-    (g) => g.type === 'allSameSuit' || g.type === 'allDifferentSuit' || g.type === 'suitCount',
+    (g) =>
+      g.type === 'allSameSuit' || g.type === 'allDifferentSuit' || g.type === 'suitCount' ||
+      g.type === 'allSameColor' || g.type === 'color' || g.type === 'colorCount' || g.type === 'suitKinds',
   );
 }
 

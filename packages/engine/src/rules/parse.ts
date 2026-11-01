@@ -2,6 +2,7 @@ import {
   RANKS,
   SUITS,
   type BettingRules,
+  type CardColor,
   type CardCondition,
   type CardCount,
   type DeckRules,
@@ -327,7 +328,12 @@ function parseCondition(value: unknown, path: string, p: Problems): CardConditio
   if (!cond) return undefined;
   const spec = parseRankSpec(cond['rank'], `${path}.rank`, p);
   if (!spec) return undefined;
-  return { rank: spec, suits: p.each(cond['suits'] ?? [], `${path}.suits`, suit(p)) };
+  const suitGroup = cond['suitGroup'] === undefined ? undefined : p.string(cond['suitGroup'], `${path}.suitGroup`);
+  return {
+    rank: spec,
+    suits: p.each(cond['suits'] ?? [], `${path}.suits`, suit(p)),
+    ...optional('suitGroup', suitGroup),
+  };
 }
 
 function parseRankSpec(value: unknown, path: string, p: Problems): RankSpec | undefined {
@@ -348,6 +354,7 @@ function parseRankSpec(value: unknown, path: string, p: Problems): RankSpec | un
         type: 'variable',
         name,
         ...optional('offset', p.optionalNumber(spec['offset'], `${path}.offset`)),
+        ...optional('wrap', p.optionalBoolean(spec['wrap'], `${path}.wrap`) || undefined),
       };
     }
     case 'any':
@@ -367,9 +374,24 @@ function parseGlobal(value: unknown, path: string, p: Problems): GlobalCondition
     case 'allDifferentSuit':
       return { type: 'allDifferentSuit' };
     case 'consecutive':
-      return { type: 'consecutive' };
+      return p.optionalBoolean(global['wrap'], `${path}.wrap`) ? { type: 'consecutive', wrap: true } : { type: 'consecutive' };
     case 'allDifferentRank':
       return { type: 'allDifferentRank' };
+    case 'allSameColor':
+      return { type: 'allSameColor' };
+    case 'color': {
+      const color = parseColor(global['color'], `${path}.color`, p);
+      return color === undefined ? undefined : { type: 'color', color };
+    }
+    case 'colorCount': {
+      const color = parseColor(global['color'], `${path}.color`, p);
+      const count = p.number(global['count'], `${path}.count`);
+      return color === undefined || count === undefined ? undefined : { type: 'colorCount', color, count };
+    }
+    case 'suitKinds': {
+      const count = p.number(global['count'], `${path}.count`);
+      return count === undefined ? undefined : { type: 'suitKinds', count };
+    }
     case 'suitCount': {
       const count = p.number(global['count'], `${path}.count`);
       return count === undefined ? undefined : { type: 'suitCount', count };
@@ -377,6 +399,12 @@ function parseGlobal(value: unknown, path: string, p: Problems): GlobalCondition
     default:
       return p.at(`${path}.type`, '知らない条件');
   }
+}
+
+function parseColor(value: unknown, path: string, p: Problems): CardColor | undefined {
+  if (value === 'red' || value === 'black') return value;
+  p.at(path, 'red か black ではない');
+  return undefined;
 }
 
 function parseWild(value: unknown, path: string, p: Problems): WildRule | undefined {
