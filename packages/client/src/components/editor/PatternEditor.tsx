@@ -1,3 +1,4 @@
+import { useRef, useState } from 'react';
 import { Icon } from '../Icon.js';
 import { Stepper } from '../Stepper.js';
 import { withExcluded } from './DeckEditor.js';
@@ -44,6 +45,13 @@ const GLOBALS: readonly { readonly type: GlobalCondition['type']; readonly label
  */
 export function PatternEditor({ pattern, handSize, ranks, onChange }: PatternEditorProps) {
   const blocks = toBlocks(pattern);
+  // まとまりの追加・削除を動かして見せるため、まとまりごとに変わらない鍵を持つ。
+  // 外から形が変わった（数が合わない）ときは振り直す。
+  const keys = useRef<number[]>([]);
+  const nextKey = useRef(0);
+  const [leaving, setLeaving] = useState<number | null>(null);
+  const [entering, setEntering] = useState<number | null>(null);
+  if (blocks && keys.current.length !== blocks.length) keys.current = blocks.map(() => nextKey.current++);
 
   if (!blocks) {
     // 戻せない形。黙って近い形に直すと、開いただけで役が変わってしまう。
@@ -92,7 +100,12 @@ export function PatternEditor({ pattern, handSize, ranks, onChange }: PatternEdi
       {blocks.length > 0 && <div className="block-columns" aria-hidden="true"><span>まとまり</span><span>枚数</span><span>ランク</span><span /></div>}
       <ul className="block-list">
         {blocks.map((block, i) => (
-          <li key={i} className="block-row">
+          <li key={keys.current[i]} className={`block-row ${leaving === keys.current[i] ? 'block-row-leaving' : ''} ${entering === keys.current[i] ? 'block-row-entering' : ''}`}
+            onAnimationEnd={(event) => {
+              if (event.target !== event.currentTarget) return;
+              if (event.animationName === 'block-leave') { keys.current.splice(i, 1); setLeaving(null); emit(blocks.filter((_, at) => at !== i)); }
+              if (event.animationName === 'block-enter') setEntering(null);
+            }}>
             <select
               className="input block-kind"
               value={block.kind}
@@ -132,7 +145,12 @@ export function PatternEditor({ pattern, handSize, ranks, onChange }: PatternEdi
               type="button"
               className="btn btn-ghost block-remove"
               aria-label={`${i + 1}つめのまとまりを消す`}
-              onClick={() => emit(blocks.filter((_, at) => at !== i))}
+              disabled={leaving !== null}
+              onClick={() => {
+                // 動きを止める設定なら、すぐ消す
+                if (matchMedia('(prefers-reduced-motion: reduce)').matches) { keys.current.splice(i, 1); emit(blocks.filter((_, at) => at !== i)); }
+                else setLeaving(keys.current[i]!);
+              }}
             >
               ×
             </button>
@@ -143,7 +161,12 @@ export function PatternEditor({ pattern, handSize, ranks, onChange }: PatternEdi
       <button
         type="button"
         className="btn btn-ghost"
-        onClick={() => emit([...blocks, { kind: 'sameRank', count: 2 }])}
+        onClick={() => {
+          const key = nextKey.current++;
+          keys.current = [...keys.current, key];
+          setEntering(key);
+          emit([...blocks, { kind: 'sameRank', count: 2 }]);
+        }}
       >
         <Icon kind="plus" />まとまりを足す
       </button>

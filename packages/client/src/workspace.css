@@ -183,7 +183,7 @@
 .field-head-start .checkline input { margin-top: 0; }
 .field-head-start .info-tip { margin-left: -10px; }
 /* 2つのラベルを同じ場所に重ね、幅は広いほうで取る */
-.label-swap { display: inline-grid; }
+.label-swap, .rules-shell .editor-content .field-label.label-swap { display: inline-grid; }
 .label-swap>span { grid-area: 1 / 1; }
 .label-swap>span[data-hidden=true] { visibility: hidden; }
 /* スートの4色（構成の一覧の4カラーと揃える） */
@@ -252,6 +252,11 @@ button.stepper-value:hover { border-bottom-color: var(--gold); color: var(--gold
 .block-ranks-free { color: var(--text-dim); font-size: .72rem; }
 .rules-shell .block-row .block-remove { width: 32px; min-width: 0; height: 32px; min-height: 0; padding: 0; }
 .pattern-globals { align-items: center; }
+/* まとまりの出入りは高さごと動かす */
+@keyframes block-enter { from { max-height: 0; opacity: 0; padding-block: 0; } to { max-height: 240px; opacity: 1; } }
+@keyframes block-leave { from { max-height: 240px; opacity: 1; } to { max-height: 0; opacity: 0; padding-block: 0; border-top-width: 0; } }
+.rules-shell .block-row-entering { overflow: hidden; animation: block-enter .22s ease-out; }
+.rules-shell .block-row-leaving { overflow: hidden; animation: block-leave .2s ease-in forwards; }
 .pattern-suit-count { display: inline-flex; align-items: center; gap: 8px; }
 /* 「i」の説明 */
 .info-tip { position: relative; display: inline-flex; vertical-align: middle; }
@@ -426,12 +431,14 @@ button.stepper-value:hover { border-bottom-color: var(--gold); color: var(--gold
 /* 役の行: 編集は鉛筆つき、消すは控えめに右下 */
 .rules-shell .ranking-edit { display: inline-flex; align-items: center; gap: 4px; }
 .rules-shell .ranking-edit .ui-icon { font-size: .85rem; }
-.rules-shell .ranking-editor { padding: 14px; }
+/* 役の枠の中なので、条件の欄に別の背景は付けない */
+.rules-shell .ranking-editor { padding: 8px 4px 14px; background: transparent; }
 /* 行にマウスが乗るとハイライトし、そのときだけ「削除」を見せる（場所は常に取ってある） */
 .rules-shell .ranking-item { border-radius: 10px; transition: background-color .15s ease; }
 .rules-shell .ranking-item:hover, .rules-shell .ranking-item:focus-within, .rules-shell .ranking-item[data-editing=true] { background: #ffffff08; }
 .ranking-actions { display: flex; flex-direction: column; align-items: stretch; gap: 4px; }
-.rules-shell .ranking-actions .btn { display: inline-flex; align-items: center; justify-content: center; gap: 4px; min-width: 64px; padding: 5px 8px; font-size: .72rem; }
+/* 「条件」と「閉じる」で幅が変わらないよう、ボタンの幅を固定する */
+.rules-shell .ranking-actions .btn { display: inline-flex; align-items: center; justify-content: center; gap: 4px; width: 76px; min-width: 0; padding: 5px 4px; font-size: .72rem; white-space: nowrap; }
 .rules-shell .ranking-delete { color: var(--danger); background: transparent; visibility: hidden; }
 .rules-shell .ranking-delete .ui-icon { font-size: .8rem; }
 .rules-shell .ranking-item:hover .ranking-delete, .rules-shell .ranking-item:focus-within .ranking-delete, .rules-shell .ranking-item[data-editing=true] .ranking-delete { visibility: visible; }
