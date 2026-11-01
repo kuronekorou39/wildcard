@@ -490,6 +490,11 @@ button.stepper-value:hover { border-bottom-color: var(--gold); color: var(--gold
 .rules-shell .editor-content .betting-group .field:last-child { margin-bottom: 0; }
 .betting-dependent { margin-top: 14px; padding-top: 14px; border-top: 1px dashed var(--border); }
 .betting-common-title { margin: 0 0 12px; color: var(--text-dim); font-size: .7rem; letter-spacing: .08em; }
+/* 卓の作法: 3つの枠に分けて並べる */
+.options-group-title { margin: 0 0 8px; color: var(--text-dim); font-size: .7rem; letter-spacing: .08em; }
+.options-group { display: grid; gap: 14px; margin-bottom: 20px; padding: 14px 16px; border: 1px solid var(--border); border-radius: 12px; background: #18171966; }
+.rules-shell .editor-content .options-group .field { margin: 0; }
+.options-dependent { margin-top: -6px; padding-left: 12px; border-left: 2px solid var(--border); }
 .rules-shell .editor-content .field-label { display: flex; align-items: center; gap: 4px; }
 .choice { display: inline-flex; flex-wrap: wrap; gap: 4px; }
 .choice button { min-width: 40px; padding: 7px 12px; border: 1px solid var(--border); border-radius: 8px; background: transparent; color: var(--text-dim); font-size: .74rem; cursor: pointer; }
