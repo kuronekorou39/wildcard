@@ -122,8 +122,6 @@
 .deck-card-editor>summary::-webkit-details-marker { display: none; }
 .deck-card-editor>summary::before { content: ''; display: inline-block; width: .42em; height: .42em; margin: 0 .6em 0 .2em; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: translateY(-.12em) rotate(-45deg); transition: transform .15s ease; }
 .deck-card-editor[open]>summary::before { transform: translateY(-.25em) rotate(45deg); }
-.deck-card-count { display: flex; align-items: end; gap: 16px; padding: 12px 0; }
-.deck-card-count .editable-field { flex: 1; margin: 0; }
 .deck-contents { min-width: 0; margin: 12px 0; padding: 12px; border: 1px solid var(--border); border-radius: 14px; background: #18171966; }
 .deck-contents-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
 .deck-contents-toolbar strong { white-space: nowrap; font-size: .8rem; }
@@ -138,7 +136,6 @@
   .table-stakes .field-label { font-size: .56rem; }
   .table-stakes .editable-value, .table-stakes .input.editable-input { font-size: 1rem; }
   .table-stakes .editable-value svg { display: none; }
-  .deck-card-count { flex-wrap: wrap; }
 }
 .editable-field .hint-warn { display: block; font-size: .68rem; }
 .editable-compact>.field-label { display: none !important; }
@@ -149,14 +146,36 @@
 .usage-controls .editable-field { flex: 1; }
 .usage-mode { width: 88px; flex: 0 0 88px; padding: 8px 2px; font-size: .8rem; background: transparent; border: 0; border-radius: 0; border-bottom: 1px solid var(--border); }
 .usage-mode option { background: var(--surface); }
-.field-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 6px; }
+/* ラベル行は道具（並べ替え・デフォルトに戻す）が出入りしても高さを変えない */
+.field-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 32px; margin-bottom: 6px; }
 .field-head .field-label { margin: 0; }
+.field-tools { display: flex; align-items: center; gap: 6px; }
 .order-toggle { padding: 5px 10px; border: 1px solid var(--border); border-radius: 8px; background: transparent; color: var(--gold); font-size: .68rem; cursor: pointer; }
 .order-toggle[aria-pressed=true] { border-color: var(--gold); background: #ffffff10; }
-.order-row { gap: 6px; margin-bottom: 10px; }
-.order-item { display: inline-flex; align-items: center; gap: 2px; }
-.order-item-active { padding: 2px; border: 1px dashed #6a5c61; border-radius: 10px; }
+/* 矢印の場所は最初から確保。並べ替え中だけ見せるので、モードを切り替えても札は動かない */
+.order-row { gap: 4px; margin-bottom: 10px; }
+.order-item { display: inline-flex; align-items: center; gap: 0; padding: 2px; border: 1px solid transparent; border-radius: 10px; }
+.order-item-active { border-color: #6a5c61; border-style: dashed; }
+.order-item .rank-order-arrow { width: 18px; min-width: 0; height: 30px; min-height: 0; padding: 0; display: grid; place-items: center; visibility: hidden; font-size: 1rem; }
+.order-item .rank-order-arrow .ui-icon { font-size: .8rem; }
+.order-item-active .rank-order-arrow { visibility: visible; }
+.order-item .chip { min-width: 36px; }
 .chip-off { opacity: .45; border-style: dashed; }
+/* −／＋ で動かす枚数 */
+.stepper-controls { display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 4px 0; border-bottom: 1px solid var(--border); }
+.stepper-controls strong { min-width: 2.2em; text-align: center; font-size: 1.04rem; font-variant-numeric: tabular-nums; }
+.stepper-controls button, .deck-card-popover button { display: grid; place-items: center; width: 32px; height: 32px; border: 1px solid var(--border); border-radius: 50%; background: transparent; color: var(--text); cursor: pointer; }
+.stepper-controls button:hover, .deck-card-popover button:hover { border-color: var(--gold); color: var(--gold); }
+.stepper-controls button:disabled, .deck-card-popover button:disabled { opacity: .3; cursor: default; }
+.stepper-controls .ui-icon, .deck-card-popover .ui-icon { font-size: .9rem; }
+/* 札の下に出る −／＋ */
+.deck-contents-pick { display: block; width: 100%; padding: 0; border: 0; background: transparent; color: inherit; cursor: pointer; border-radius: 7px; }
+.deck-card-popover { position: absolute; top: calc(100% + 6px); z-index: 6; display: flex; align-items: center; gap: 6px; padding: 4px 6px; background: var(--surface-raised); border: 1px solid var(--gold); border-radius: 12px; box-shadow: 0 6px 18px #0009; }
+.deck-card-popover[data-align=center] { left: 50%; transform: translateX(-50%); }
+.deck-card-popover[data-align=start] { left: 0; }
+.deck-card-popover[data-align=end] { right: 0; }
+.deck-card-popover strong { min-width: 1.6em; text-align: center; font-size: .9rem; font-variant-numeric: tabular-nums; }
+.deck-contents-card[data-selected=true] { z-index: 5; }
 .deck-contents-toolbar strong small { margin-left: 6px; color: var(--text-dim); font-size: .66rem; font-weight: 400; }
 .deck-contents-toolbar strong.editor-figures-bad { color: #ffb3b0; }
 .editor-note { font-size: .65rem; margin-top: 10px; color: var(--text-dim); }
@@ -319,9 +338,8 @@
 .ranking-example-none { display: block; margin-top: 6px; color: var(--text-dim); font-size: .62rem; }
 /* デッキの構成: 種類ごとに1枚。0枚は薄く、2枚以上は右上に枚数。 */
 .deck-contents-card { position: relative; display: block; width: 44px; padding: 0; border: 0; background: transparent; color: inherit; }
-button.deck-contents-card { cursor: pointer; border-radius: 7px; }
-button.deck-contents-card:hover .card, button.deck-contents-card:focus-visible .card { outline: 2px solid var(--gold); outline-offset: 1px; }
-.deck-contents-card[aria-pressed=true] .card { outline: 2px solid var(--gold); outline-offset: 1px; box-shadow: 0 0 0 4px #dbc5a633; }
+.deck-contents-pick:hover .card, .deck-contents-pick:focus-visible .card { outline: 2px solid var(--gold); outline-offset: 1px; }
+.deck-contents-pick[aria-pressed=true] .card { outline: 2px solid var(--gold); outline-offset: 1px; box-shadow: 0 0 0 4px #dbc5a633; }
 .deck-contents-card[data-custom=true]::after { content: ''; position: absolute; left: 4px; bottom: 4px; width: 6px; height: 6px; border-radius: 50%; background: var(--gold); }
 .deck-contents-card[data-empty=true] .card { opacity: .28; filter: grayscale(1); }
 .deck-contents-card .deck-count { position: absolute; top: -6px; right: -6px; min-width: 20px; padding: 2px 5px; border-radius: 10px; background: var(--gold); color: #2a2024; font-size: .62rem; font-weight: 700; text-align: center; line-height: 1.3; box-shadow: 0 1px 3px #0008; }
@@ -423,6 +441,9 @@ button.deck-contents-card:hover .card, button.deck-contents-card:focus-visible .
   .rules-shell #rules-info .editable-value, .rules-shell #rules-info .input.editable-input { min-height: 46px; font-size: 1.25rem; }
   .rules-shell .ranking-row { gap: 6px; }
   .rules-shell .ranking-edit { min-width: 48px; padding-inline: 6px; }
+  .order-row { gap: 2px; }
+  .order-item .rank-order-arrow { width: 14px; }
+  .order-item .chip { min-width: 32px; padding-inline: 6px; }
   /* 13枚が2行に収まる大きさ */
   .deck-contents-row { gap: 5px; }
   .deck-contents-card { width: 34px; }

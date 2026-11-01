@@ -1,7 +1,7 @@
-import { useState } from 'react';
-import { EditableNumber } from '../EditableValue.js';
+import { useLayoutEffect, useRef, useState } from 'react';
 import { DeckContents } from '../DeckContents.js';
 import { Icon } from '../Icon.js';
+import { Stepper } from '../Stepper.js';
 import { type DeckRules, type Rank, type Suit } from '@wildcard/engine';
 
 const SUIT_LABEL: Record<Suit, string> = {
@@ -11,6 +11,7 @@ const SUIT_LABEL: Record<Suit, string> = {
   clubs: '♣',
 };
 const isRed = (suit: Suit) => suit === 'hearts' || suit === 'diamonds';
+const sameOrder = <T,>(a: readonly T[], b: readonly T[]) => a.length === b.length && a.every((x, i) => x === b[i]);
 
 interface DeckEditorProps {
   readonly deck: DeckRules;
@@ -28,6 +29,7 @@ interface DeckEditorProps {
  * - ランクの並びがそのまま強さになる。並べ替えると「TT が AA より強い」が作れる。
  *   ストレートの連続は本来の順（2…A）で見るので、並べ替えても変わらない。
  * - 外したランクは、戻したときに入る位置に薄く置いておく。何が抜けているかが一目で分かる。
+ * - 並べ替えの矢印の場所は最初から確保してある。モードを切り替えても札の位置は動かない。
  */
 export function DeckEditor({ deck, allRanks, allSuits, onChange }: DeckEditorProps) {
   const [orderingSuits, setOrderingSuits] = useState(false);
@@ -53,6 +55,7 @@ export function DeckEditor({ deck, allRanks, allSuits, onChange }: DeckEditorPro
   // ---- ランク（画面は強い順） ----
   const strongFirst = [...deck.ranks].reverse();
   const display = withExcluded(strongFirst, allRanks);
+  const canonical = [...allRanks].reverse().filter((rank) => deck.ranks.includes(rank));
   const toggleRank = (rank: Rank) => {
     const on = deck.ranks.includes(rank);
     // 外すときは個別指定も消す。戻すときは薄く見せていた位置にそのまま入る。
@@ -74,7 +77,10 @@ export function DeckEditor({ deck, allRanks, allSuits, onChange }: DeckEditorPro
       <div className="field">
         <div className="field-head">
           <span className="field-label">スート{deck.suitRanking !== undefined && '（左が強い）'}</span>
-          {deck.suitRanking !== undefined && <button type="button" className="order-toggle" aria-pressed={orderingSuits} onClick={() => setOrderingSuits(!orderingSuits)}>{orderingSuits ? '並べ替えを完了' : '並べ替え'}</button>}
+          {deck.suitRanking !== undefined && <span className="field-tools">
+            {!sameOrder(suitOrder, allSuits) && <button type="button" className="order-toggle" onClick={() => onChange({ ...deck, suitRanking: [...allSuits] })}>デフォルトに戻す</button>}
+            <button type="button" className="order-toggle" aria-pressed={orderingSuits} onClick={() => setOrderingSuits(!orderingSuits)}>{orderingSuits ? '並べ替えを完了' : '並べ替え'}</button>
+          </span>}
         </div>
         <OrderRow
           items={suitOrder.map((suit) => ({ key: suit, label: SUIT_LABEL[suit], on: deck.suits.includes(suit), red: isRed(suit), name: SUIT_LABEL[suit] }))}
@@ -90,7 +96,7 @@ export function DeckEditor({ deck, allRanks, allSuits, onChange }: DeckEditorPro
           />
           <span>
             スートに強弱をつける
-            <small className="checkline-note">同じランクで並んだときの決着に使います。付けないと引き分け（チョップ）。</small>
+            <small className="checkline-note">同じランクで並んだときの決着に使います。</small>
           </span>
         </label>
       </div>
@@ -98,7 +104,10 @@ export function DeckEditor({ deck, allRanks, allSuits, onChange }: DeckEditorPro
       <div className="field">
         <div className="field-head">
           <span className="field-label">ランク（左が強い）</span>
-          <button type="button" className="order-toggle" aria-pressed={orderingRanks} onClick={() => setOrderingRanks(!orderingRanks)}>{orderingRanks ? '並べ替えを完了' : '並べ替え'}</button>
+          <span className="field-tools">
+            {!sameOrder(strongFirst, canonical) && <button type="button" className="order-toggle" onClick={() => onChange({ ...deck, ranks: [...canonical].reverse() })}>デフォルトに戻す</button>}
+            <button type="button" className="order-toggle" aria-pressed={orderingRanks} onClick={() => setOrderingRanks(!orderingRanks)}>{orderingRanks ? '並べ替えを完了' : '並べ替え'}</button>
+          </span>
         </div>
         <OrderRow
           items={display.map((rank) => ({ key: rank, label: rank, on: deck.ranks.includes(rank), name: rank }))}
@@ -106,12 +115,12 @@ export function DeckEditor({ deck, allRanks, allSuits, onChange }: DeckEditorPro
           onToggle={(key) => toggleRank(key as Rank)}
           onMove={(key, by) => moveRank(key as Rank, by)}
         />
-        <p className="hint">押すと使う・使わないを切り替えます。並びが決めるのは強さだけで、ストレートの連続は 2…A の本来の順で判定します。</p>
+        <p className="hint">並びが決めるのは強さだけで、ストレートの連続は本来の順で判定します。</p>
       </div>
 
       <div className="field-row">
-        <EditableNumber label="各カードの枚数" value={deck.copies ?? 1} min={0} max={99} onChange={copies => onChange({ ...deck, copies })} />
-        <EditableNumber label="ジョーカー" value={deck.jokers ?? 0} min={0} max={99} onChange={jokers => onChange({ ...deck, jokers })} />
+        <Stepper label="各カードの枚数" value={deck.copies ?? 1} min={0} max={99} onChange={copies => onChange({ ...deck, copies })} />
+        <Stepper label="ジョーカー" value={deck.jokers ?? 0} min={0} max={99} onChange={jokers => onChange({ ...deck, jokers })} />
       </div>
 
       <div className="field">
@@ -126,23 +135,39 @@ interface OrderItem { readonly key: string; readonly label: string; readonly nam
 
 /**
  * 「使う／使わない」と「強さの順」を1列で。
- * 並べ替え中は、使っている札の両脇に ‹ ›（強くする／弱くする）が出る。
+ *
+ * 矢印（強くする／弱くする）の場所は常に確保し、並べ替え中だけ見せる。
+ * 入れ替わりは前の位置から滑らせる（FLIP）。
  */
 function OrderRow({ items, ordering, onToggle, onMove }: {
   readonly items: readonly OrderItem[]; readonly ordering: boolean;
   readonly onToggle: (key: string) => void; readonly onMove: (key: string, by: -1 | 1) => void;
 }) {
   const active = items.filter((item) => item.on);
+  const nodes = useRef(new Map<string, HTMLElement>());
+  const previous = useRef(new Map<string, DOMRect>());
+  useLayoutEffect(() => {
+    const reduce = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const current = new Map<string, DOMRect>();
+    for (const [key, node] of nodes.current) {
+      const rect = node.getBoundingClientRect();
+      current.set(key, rect);
+      const before = previous.current.get(key);
+      if (!reduce && before && (before.left !== rect.left || before.top !== rect.top) && typeof node.animate === 'function') {
+        node.animate([{ transform: `translate(${before.left - rect.left}px, ${before.top - rect.top}px)` }, { transform: 'none' }], { duration: 180, easing: 'ease-out' });
+      }
+    }
+    previous.current = current;
+  });
   return <div className="chips order-row">
     {items.map((item) => {
       const at = active.indexOf(item);
-      const chip = <button type="button" className={`chip ${item.on ? 'chip-on' : 'chip-off'} ${item.red ? 'chip-red' : ''}`} aria-pressed={item.on}
-        aria-label={`${item.name}${item.on ? '' : '（使わない）'}`} onClick={() => onToggle(item.key)}>{item.label}</button>;
-      if (!ordering || !item.on) return <span key={item.key} className="order-item">{chip}</span>;
-      return <span key={item.key} className="order-item order-item-active">
-        <button type="button" className="rank-order-arrow" aria-label={`${item.name} を強くする`} disabled={at === 0} onClick={() => onMove(item.key, -1)}>‹</button>
-        {chip}
-        <button type="button" className="rank-order-arrow" aria-label={`${item.name} を弱くする`} disabled={at === active.length - 1} onClick={() => onMove(item.key, 1)}><Icon kind="chevron-right" /></button>
+      const movable = ordering && item.on;
+      return <span key={item.key} className={`order-item ${movable ? 'order-item-active' : ''}`} ref={(node) => { if (node) nodes.current.set(item.key, node); else nodes.current.delete(item.key); }}>
+        <button type="button" className="rank-order-arrow" tabIndex={movable ? 0 : -1} aria-hidden={!movable} aria-label={`${item.name} を強くする`} disabled={!movable || at === 0} onClick={() => onMove(item.key, -1)}>‹</button>
+        <button type="button" className={`chip ${item.on ? 'chip-on' : 'chip-off'} ${item.red ? 'chip-red' : ''}`} aria-pressed={item.on}
+          aria-label={`${item.name}${item.on ? '' : '（使わない）'}`} onClick={() => onToggle(item.key)}>{item.label}</button>
+        <button type="button" className="rank-order-arrow" tabIndex={movable ? 0 : -1} aria-hidden={!movable} aria-label={`${item.name} を弱くする`} disabled={!movable || at === active.length - 1} onClick={() => onMove(item.key, 1)}><Icon kind="chevron-right" /></button>
       </span>;
     })}
   </div>;

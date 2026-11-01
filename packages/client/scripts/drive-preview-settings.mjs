@@ -8,6 +8,11 @@ const out = process.env.WILDCARD_SHOTS ?? 'shots-preview-settings';
 await mkdir(out, { recursive: true });
 const browser = await chromium.launch();
 const errors = [];
+/** −／＋ を delta 回押す。枚数は数字を打たず、ボタンで動かす。 */
+const step = async (page, label, delta) => {
+  const name = `${label}を${delta > 0 ? '増やす' : '減らす'}`;
+  for (let i = 0; i < Math.abs(delta); i++) await page.getByRole('button', { name, exact: true }).click();
+};
 const fit = async page => {
   const size = await page.evaluate(() => [document.documentElement.scrollWidth - innerWidth, document.documentElement.scrollHeight - innerHeight]);
   assert.ok(size.every(n => n <= 1), `page overflow ${size}`);
@@ -24,24 +29,25 @@ try {
     await editValue(page, '名前', '9♥ が3枚');
     await page.getByRole('tab', { name: /デッキ/ }).click();
     await page.getByRole('button', { name: '9♥ 1枚', exact: true }).click();
-    await editValue(page, '9♥ の枚数', 3);
+    await step(page, '9♥', 2);
+    await page.keyboard.press('Escape');
     assert.equal(await page.getByRole('button', { name: '9♥ 3枚', exact: true }).count(), 1);
     const preview = page.getByRole('region', { name: 'デッキの構成' });
     assert.match(await preview.innerText(), /54 枚/);
     // 種類ごとに1枚で、枚数は札の右上
     assert.equal(await preview.locator('button[aria-label="9♥ 3枚"] .deck-count').innerText(), '×3');
     if (width === 1920) {
-      await editValue(page, '各カードの枚数', 19);
-      await editValue(page, 'ジョーカー', 28);
+      await step(page, '各カードの枚数', 18);
+      await step(page, 'ジョーカー', 28);
       // 9♥ だけ3枚なので 52×19 − 19 + 3 + 28 = ちょうど 1000 枚。上限ぴったりは通る。
       assert.match(await preview.innerText(), /1000 枚/);
       assert.equal(await preview.locator('.hint-warn').count(), 0);
       assert.equal(await preview.locator('button[aria-label="JOKER 28枚"] .deck-count').innerText(), '×28');
-      await editValue(page, '各カードの枚数', 99);
+      await step(page, '各カードの枚数', 1);
       assert.match(await preview.innerText(), /1000 枚を超えています/);
       assert.equal(await page.getByRole('button', { name: '保存', exact: true }).isDisabled(), true);
-      await editValue(page, '各カードの枚数', 1);
-      await editValue(page, 'ジョーカー', 0);
+      await step(page, '各カードの枚数', -19);
+      await step(page, 'ジョーカー', -28);
       // ジョーカーは0枚なら一覧に出ない
       assert.equal(await preview.locator('button[aria-label^="JOKER"]').count(), 0);
       assert.equal(await page.getByRole('button', { name: '保存', exact: true }).isDisabled(), false);
