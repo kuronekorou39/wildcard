@@ -13,6 +13,7 @@ import { PlayingCard } from '../PlayingCard.js';
 import { PatternEditor } from './PatternEditor.js';
 import { InfoTip } from '../InfoTip.js';
 import { EditableText } from '../EditableValue.js';
+import { WildEditor } from './WildEditor.js';
 
 interface RankingEditorProps {
   readonly variant: Variant;
@@ -180,6 +181,8 @@ export function RankingEditor({ variant, onChange }: RankingEditorProps) {
       <button type="button" className="btn btn-ghost" onClick={add}>
         <Icon kind="plus" />役を足す
       </button>
+
+      <WildEditor variant={variant} onChange={onChange} />
     </section>
   );
 }

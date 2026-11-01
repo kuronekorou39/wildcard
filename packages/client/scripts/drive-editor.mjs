@@ -82,7 +82,7 @@ await page.keyboard.press('Enter');
 // 「ペア＋三連」を組む: 同じランク2枚 ＋ 連続3枚
 await editor.getByRole('button', { name: 'まとまりを足す' }).click();
 const second = editor.locator('.block-row').nth(1);
-await second.locator('select').selectOption('run');
+await second.getByLabel('2つめのまとまりの種類').selectOption('run');
 await setNumber(page, '2つめのまとまりの枚数', 3);
 console.log(`  条件: ${(await editor.locator('.block-total').innerText()).trim()}`);
 
