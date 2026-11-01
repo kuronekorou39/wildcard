@@ -132,7 +132,7 @@ export function DeckEditor({ deck, allRanks, allSuits, onChange }: DeckEditorPro
         <Stepper label="各カードの枚数" value={deck.copies ?? 1} min={0} max={99} onChange={copies => onChange({ ...deck, copies })}
           info={<InfoTip label="各カードの枚数">個別の枚数は共通の枚数より優先されます。</InfoTip>} />
         <Stepper label="ジョーカー" value={deck.jokers ?? 0} min={0} max={99} onChange={jokers => onChange({ ...deck, jokers })}
-          info={<InfoTip label="ジョーカー">何にでも化けるワイルドカード。化け方はルールのワイルド設定で決まり、編集画面ではまだ設定できません。</InfoTip>} />
+          info={<InfoTip label="ジョーカー">何にでも化けるワイルドカードです。役を判定するとき、いちばん強くなる札として数えます。</InfoTip>} />
       </div>
 
       <div className="field">

@@ -234,11 +234,25 @@ button.stepper-value:hover { border-bottom-color: var(--gold); color: var(--gold
 .rules-shell .street-row .street-name .field { margin: 0; }
 .rules-shell .street-row .street-name .editable-value { min-height: 32px; padding-block: 4px; }
 .street-row .street-remove { width: 32px; min-width: 0; height: 32px; min-height: 0; padding: 0; }
-/* 役の条件の1まとまり: 種類・枚数・× を1行に。決まったランクのときだけ札の列が次の行へ回る */
-.block-row .block-kind { flex: 1 1 120px; min-width: 0; max-width: 200px; }
-.block-row .stepper { margin: 0; }
-.block-row .block-remove { margin-left: auto; }
-.block-row .chips-ranks { order: 3; }
+/* 役の条件: 「場に開く段階」と同じ表の形。列の見出しは1回だけ */
+.pattern-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
+.pattern-head .field-label { margin: 0; }
+.pattern-head .block-total { margin: 0; font-size: .68rem; }
+.block-columns, .rules-shell .block-row { display: grid; grid-template-columns: 9.5em 124px minmax(0, 1fr) 32px; align-items: center; gap: 10px 16px; }
+.block-columns { color: var(--text-dim); font-size: .65rem; margin-bottom: 4px; }
+.block-columns>span:nth-child(2) { text-align: center; }
+.rules-shell .block-row { margin: 0; padding: 8px 0; border-top: 1px solid var(--border); }
+.rules-shell .block-list { margin: 0 0 10px; border-bottom: 1px solid var(--border); }
+.rules-shell .block-row .block-kind { width: 100%; min-width: 0; padding: 8px 10px; font-size: .8rem; }
+.rules-shell .block-row .stepper { margin: 0; }
+.block-count-cell { display: flex; justify-content: center; }
+.block-count-fixed { font-size: 1.04rem; font-weight: 600; }
+.block-count-fixed small { margin-left: 2px; color: var(--text-dim); font-size: .7em; font-weight: 400; }
+.block-ranks-cell .chips { margin: 0; gap: 4px; }
+.block-ranks-free { color: var(--text-dim); font-size: .72rem; }
+.rules-shell .block-row .block-remove { width: 32px; min-width: 0; height: 32px; min-height: 0; padding: 0; }
+.pattern-globals { align-items: center; }
+.pattern-suit-count { display: inline-flex; align-items: center; gap: 8px; }
 /* 「i」の説明 */
 .info-tip { position: relative; display: inline-flex; vertical-align: middle; }
 .info-tip-button { display: grid; place-items: center; width: 24px; height: 24px; padding: 0; border: 0; border-radius: 50%; background: transparent; color: var(--text-dim); cursor: pointer; }
@@ -413,7 +427,20 @@ button.stepper-value:hover { border-bottom-color: var(--gold); color: var(--gold
 .rules-shell .ranking-edit { display: inline-flex; align-items: center; gap: 4px; }
 .rules-shell .ranking-edit .ui-icon { font-size: .85rem; }
 .rules-shell .ranking-editor { padding: 14px; }
-.ranking-delete { display: flex; margin: 12px 0 0 auto; color: var(--danger); background: transparent; font-size: .74rem; }
+/* 行にマウスが乗るとハイライトし、そのときだけ「削除」を見せる（場所は常に取ってある） */
+.rules-shell .ranking-item { border-radius: 10px; transition: background-color .15s ease; }
+.rules-shell .ranking-item:hover, .rules-shell .ranking-item:focus-within, .rules-shell .ranking-item[data-editing=true] { background: #ffffff08; }
+.ranking-actions { display: flex; flex-direction: column; align-items: stretch; gap: 4px; }
+.rules-shell .ranking-actions .btn { display: inline-flex; align-items: center; justify-content: center; gap: 4px; min-width: 64px; padding: 5px 8px; font-size: .72rem; }
+.rules-shell .ranking-delete { color: var(--danger); background: transparent; visibility: hidden; }
+.rules-shell .ranking-delete .ui-icon { font-size: .8rem; }
+.rules-shell .ranking-item:hover .ranking-delete, .rules-shell .ranking-item:focus-within .ranking-delete, .rules-shell .ranking-item[data-editing=true] .ranking-delete { visibility: visible; }
+.rules-shell .ranking-delete:hover { background: #ff9e9f1a; }
+/* 名前はその場で直す */
+.ranking-name .field { margin: 0; }
+.rules-shell .ranking-name .editable-value { min-height: 30px; padding: 2px 0; font-size: .9rem; font-weight: 700; border-bottom-color: transparent; }
+.rules-shell .ranking-name .editable-value:hover { border-bottom-color: var(--gold); }
+.rules-shell .ranking-name .input.editable-input { min-height: 30px; padding: 2px 0; font-size: .9rem; }
 .pattern-global-label { margin-top: 6px; }
 .ranking-example .card { --card-width: 28px; }
 /* 成立しないときも札の列と同じ高さを取り、行の高さを変えない */
@@ -551,6 +578,15 @@ button.stepper-value:hover { border-bottom-color: var(--gold); color: var(--gold
   .rules-shell #rules-info .editable-value, .rules-shell #rules-info .input.editable-input { min-height: 46px; font-size: 1.25rem; }
   .rules-shell .ranking-row { gap: 6px; }
   .rules-shell .ranking-edit { min-width: 48px; padding-inline: 6px; }
+  /* 条件の行: 種類と ×、その下に枚数・ランク */
+  .block-columns { display: none; }
+  .rules-shell .block-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+  .rules-shell .block-row .block-kind { flex: 1 1 calc(100% - 44px); }
+  .rules-shell .block-row .block-remove { order: 1; flex: none; }
+  .rules-shell .block-row .block-count-cell, .rules-shell .block-row .block-ranks-cell { order: 2; display: flex; align-items: center; gap: 6px; }
+  .rules-shell .block-row .block-ranks-cell { flex: 1 1 100%; }
+  .block-count-cell::before, .block-ranks-cell::before { content: attr(data-label); color: var(--text-dim); font-size: .66rem; white-space: nowrap; }
+  .rules-shell .block-row .block-ranks-none { display: none; }
   .order-row { gap: 2px; }
   .rules-shell .editor-content .segment { padding: 9px 2px; font-size: .66rem; white-space: nowrap; letter-spacing: -.02em; }
   .rules-shell .editor-content .limit-choices .segment small { white-space: normal; font-size: .58rem; }

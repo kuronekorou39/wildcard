@@ -79,9 +79,17 @@ export function PatternEditor({ pattern, handSize, ranks, onChange }: PatternEdi
   const suitCount = pattern.global.find((g) => g.type === 'suitCount');
 
   return (
-    <div className="field">
-      <span className="field-label">条件<InfoTip label="条件">同じランク・連続などのまとまりを組み合わせて役を作ります。条件より役の枚数が多いとき、残りはキッカーです。</InfoTip></span>
+    <div className="pattern-editor">
+      <div className="pattern-head">
+        <span className="field-label">条件<InfoTip label="条件">同じランク・連続などのまとまりを組み合わせて役を作ります。条件より役の枚数が多いとき、残りはキッカーです。</InfoTip></span>
+        <small className={`block-total ${used > handSize ? 'block-total-bad' : ''}`}>
+          {used}枚 / 役は{handSize}枚
+          {used > handSize && '（多すぎて成立しません）'}
+          {used < handSize && `（残り${handSize - used}枚はキッカー）`}
+        </small>
+      </div>
 
+      {blocks.length > 0 && <div className="block-columns" aria-hidden="true"><span>まとまり</span><span>枚数</span><span>ランク</span><span /></div>}
       <ul className="block-list">
         {blocks.map((block, i) => (
           <li key={i} className="block-row">
@@ -98,23 +106,27 @@ export function PatternEditor({ pattern, handSize, ranks, onChange }: PatternEdi
               ))}
             </select>
 
-            {block.kind === 'fixed' ? (
-              <RankChips
-                ranks={ranks}
-                selected={block.ranks}
-                onChange={(next) => setBlock(i, { kind: 'fixed', ranks: next })}
-              />
-            ) : (
-              <Stepper
-                hideLabel
-                label={`${i + 1}つめのまとまりの枚数`}
-                suffix="枚"
-                value={block.count}
-                min={1}
-                max={handSize}
-                onChange={(count) => setBlock(i, { ...block, count })}
-              />
-            )}
+            <div className="block-count-cell" data-label="枚数">
+              {block.kind === 'fixed'
+                // 決まったランクは、選んだランクの数がそのまま枚数
+                ? <span className="block-count-fixed">{block.ranks.length}<small>枚</small></span>
+                : <Stepper
+                  hideLabel
+                  label={`${i + 1}つめのまとまりの枚数`}
+                  suffix="枚"
+                  value={block.count}
+                  min={1}
+                  max={handSize}
+                  onChange={(count) => setBlock(i, { ...block, count })}
+                />}
+            </div>
+
+            {/* ランクを選ばない種類では空にする（狭い画面では列ごと隠す） */}
+            <div className={`block-ranks-cell ${block.kind === 'fixed' || block.kind === 'oneOf' ? '' : 'block-ranks-none'}`} data-label="ランク">
+              {block.kind === 'fixed' || block.kind === 'oneOf'
+                ? <RankChips ranks={ranks} selected={block.ranks} onChange={(next) => setBlock(i, { ...block, ranks: next })} />
+                : <span className="block-ranks-free" aria-hidden="true">—</span>}
+            </div>
 
             <button
               type="button"
@@ -124,14 +136,6 @@ export function PatternEditor({ pattern, handSize, ranks, onChange }: PatternEdi
             >
               ×
             </button>
-
-            {block.kind === 'oneOf' && (
-              <RankChips
-                ranks={ranks}
-                selected={block.ranks}
-                onChange={(next) => setBlock(i, { ...block, ranks: next })}
-              />
-            )}
           </li>
         ))}
       </ul>
@@ -144,56 +148,53 @@ export function PatternEditor({ pattern, handSize, ranks, onChange }: PatternEdi
         <Icon kind="plus" />まとまりを足す
       </button>
 
-      <p className={`block-total ${used > handSize ? 'block-total-bad' : ''}`}>
-        条件 {used}枚 / 役は {handSize}枚
-        {used > handSize && '（条件のほうが多く、成立しません）'}
-        {used < handSize && '（残りはキッカー）'}
-      </p>
-
       <span className="field-label pattern-global-label">全体の条件</span>
-      <div className="chips">
+      <div className="chips pattern-globals">
         {GLOBALS.map((global) => (
           <button
             key={global.type}
             type="button"
+            aria-pressed={pattern.global.some((g) => g.type === global.type)}
             className={`chip ${pattern.global.some((g) => g.type === global.type) ? 'chip-on' : ''}`}
             onClick={() => toggleGlobal(global.type)}
           >
             {global.label}
           </button>
         ))}
-        <button
-          type="button"
-          className={`chip ${suitCount ? 'chip-on' : ''}`}
-          onClick={() =>
-            emit(
-              blocks,
-              suitCount
-                ? pattern.global.filter((g) => g.type !== 'suitCount')
-                : [...pattern.global, { type: 'suitCount', count: 3 }],
-            )
-          }
-        >
-          同じスートがN枚以上
-        </button>
+        <span className="pattern-suit-count">
+          <button
+            type="button"
+            aria-pressed={suitCount !== undefined}
+            className={`chip ${suitCount ? 'chip-on' : ''}`}
+            onClick={() =>
+              emit(
+                blocks,
+                suitCount
+                  ? pattern.global.filter((g) => g.type !== 'suitCount')
+                  : [...pattern.global, { type: 'suitCount', count: 3 }],
+              )
+            }
+          >
+            同じスートが{suitCount?.type === 'suitCount' ? suitCount.count : 'N'}枚以上
+          </button>
+          {suitCount?.type === 'suitCount' && (
+            <Stepper
+              hideLabel
+              label="同じスートの枚数"
+              suffix="枚"
+              value={suitCount.count}
+              min={2}
+              max={handSize}
+              onChange={(count) =>
+                emit(
+                  blocks,
+                  pattern.global.map((g) => (g.type === 'suitCount' ? { type: 'suitCount', count } : g)),
+                )
+              }
+            />
+          )}
+        </span>
       </div>
-
-      {suitCount?.type === 'suitCount' && (
-        <Stepper
-          hideLabel
-          label="同じスートの枚数"
-          suffix="枚"
-          value={suitCount.count}
-          min={2}
-          max={handSize}
-          onChange={(count) =>
-            emit(
-              blocks,
-              pattern.global.map((g) => (g.type === 'suitCount' ? { type: 'suitCount', count } : g)),
-            )
-          }
-        />
-      )}
     </div>
   );
 }

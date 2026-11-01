@@ -90,7 +90,7 @@ export function RankingEditor({ variant, onChange }: RankingEditorProps) {
 
       <ol ref={list} className="ranking-list">
         {hands.map((hand, i) => (
-          <li key={hand.id} className={`ranking-item ${hand.enabled ? '' : 'ranking-item-off'} ${drag?.from === i ? 'ranking-item-dragging' : ''} ${drag && drag.to === i && drag.from !== i ? (drag.to < drag.from ? 'ranking-item-over-before' : 'ranking-item-over-after') : ''}`}>
+          <li key={hand.id} data-editing={editing === hand.id} className={`ranking-item ${hand.enabled ? '' : 'ranking-item-off'} ${drag?.from === i ? 'ranking-item-dragging' : ''} ${drag && drag.to === i && drag.from !== i ? (drag.to < drag.from ? 'ranking-item-over-before' : 'ranking-item-over-after') : ''}`}>
             <div className="ranking-row">
               <button
                 type="button"
@@ -118,7 +118,8 @@ export function RankingEditor({ variant, onChange }: RankingEditorProps) {
               </div>
 
               <div className="ranking-body">
-                <span className="ranking-name">{hand.name}</span>
+                {/* 見えている名前をそのまま押して直す */}
+                <div className="ranking-name"><EditableText compact label={`${i + 1}位の役の名前`} value={hand.name} maxLength={24} placeholder="名前を入力" onChange={(name) => update(hand.id, { name })} /></div>
                 <span className="ranking-pattern">{describePattern(hand.pattern)}</span>
                 <Example hand={examples.get(hand.id) ?? null} compact />
               </div>
@@ -132,19 +133,32 @@ export function RankingEditor({ variant, onChange }: RankingEditorProps) {
                 />
               </label>
 
-              <button
-                type="button"
-                className="btn btn-ghost ranking-edit"
-                aria-expanded={editing === hand.id}
-                onClick={() => setEditing(editing === hand.id ? null : hand.id)}
-              >
-                <Icon kind={editing === hand.id ? 'chevron-up' : 'edit'} />{editing === hand.id ? '閉じる' : '編集'}
-              </button>
+              {/* 削除は行にマウスが乗っているとき（触る端末では編集中）だけ見せる。場所は最初から取ってあり、行の高さは変わらない */}
+              <div className="ranking-actions">
+                <button
+                  type="button"
+                  className="btn btn-ghost ranking-delete"
+                  aria-label={`${hand.name} を消す`}
+                  onClick={() => {
+                    setEditing(null);
+                    replace(hands.filter((h) => h.id !== hand.id));
+                  }}
+                >
+                  <Icon kind="close" />削除
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-ghost ranking-edit"
+                  aria-expanded={editing === hand.id}
+                  onClick={() => setEditing(editing === hand.id ? null : hand.id)}
+                >
+                  <Icon kind={editing === hand.id ? 'chevron-up' : 'edit'} />{editing === hand.id ? '閉じる' : '条件'}
+                </button>
+              </div>
             </div>
 
             <Collapse open={editing === hand.id}>
               <div className="ranking-editor">
-                <EditableText label="名前" value={hand.name} maxLength={24} placeholder="名前を入力" onChange={(name) => update(hand.id, { name })} />
 
                 <PatternEditor
                   pattern={hand.pattern}
@@ -157,16 +171,6 @@ export function RankingEditor({ variant, onChange }: RankingEditorProps) {
                   この条件で成立する手が見つかりません。上の役と重なっているか、デッキに足りない札があります。
                 </p>}
 
-                <button
-                  type="button"
-                  className="btn btn-ghost ranking-delete"
-                  onClick={() => {
-                    setEditing(null);
-                    replace(hands.filter((h) => h.id !== hand.id));
-                  }}
-                >
-                  この役を消す
-                </button>
               </div>
             </Collapse>
           </li>

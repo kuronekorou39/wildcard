@@ -1,4 +1,4 @@
-import { PREFLOP, type BettingRules, type HandStructure, type LimitKind } from '@wildcard/engine';
+import { PREFLOP, STRADDLE_UNLIMITED, type BettingRules, type HandStructure, type LimitKind } from '@wildcard/engine';
 import { InfoTip } from '../InfoTip.js';
 
 interface BettingEditorProps {
@@ -83,11 +83,11 @@ export function BettingEditor({ betting, structure, onChange }: BettingEditorPro
       </div>
 
       <div className="field">
-        <span className="field-label">ストラドル（重ねられる回数）<InfoTip label="ストラドル">BB の左隣が、カードを見ずに倍の賭け金を出せます。出した人がプリフロップで最後に行動するので、順番そのものが変わります。</InfoTip></span>
+        <span className="field-label">ストラドル（重ねられる回数）<InfoTip label="ストラドル">BB の左隣が、カードを見ずに倍の賭け金を出せます。出した人がプリフロップで最後に行動するので、順番そのものが変わります。1回だけが一般的で、重ねる（ダブルストラドル）かは卓によります。無制限でもブラインドの席までで止まります。</InfoTip></span>
         <Choice
           label="ストラドル"
-          value={betting.straddle?.max ?? 0}
-          options={[[0, 'なし'], [1, '1'], [2, '2'], [3, '3']]}
+          value={Math.min(betting.straddle?.max ?? 0, STRADDLE_UNLIMITED)}
+          options={[[0, 'なし'], [1, '1'], [2, '2'], [3, '3'], [STRADDLE_UNLIMITED, '無制限']]}
           onChange={(max) => onChange(max < 1 ? omit(betting, 'straddle') : { ...betting, straddle: { max } })}
         />
       </div>
