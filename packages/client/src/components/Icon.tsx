@@ -1,7 +1,7 @@
 /** 文字記号（⌄ ✓ → など）の代わりに使う線画アイコン。サイズは font-size に追従する。 */
 export function Icon({ kind, className = '' }: {
   readonly kind: 'close' | 'plus' | 'minus' | 'chevron-down' | 'chevron-right' | 'check' | 'info' | 'external' | 'arrow-right' | 'arrow-left'
-    | 'gauge-low' | 'gauge-mid' | 'gauge-high' | 'shuffle';
+    | 'gauge-low' | 'gauge-mid' | 'gauge-high' | 'shuffle' | 'reorder';
   readonly className?: string;
 }) {
   const paths = {
@@ -20,6 +20,8 @@ export function Icon({ kind, className = '' }: {
     'gauge-mid': <><path d="M4 17a8 8 0 0 1 16 0" /><path d="M12 17v-7" /><circle cx="12" cy="17" r="1" /></>,
     'gauge-high': <><path d="M4 17a8 8 0 0 1 16 0" /><path d="m12 17 5.5-4" /><circle cx="12" cy="17" r="1" /></>,
     shuffle: <path d="M4 7h3l10 10h3M4 17h3l2.5-2.5M14 9.5 17 7h3m-3-3 3 3-3 3m0 4 3 3-3 3" />,
+    // 並べ替え：左右に入れ替わる矢印
+    reorder: <path d="M5 8h14m0 0-3-3m3 3-3 3M19 16H5m0 0 3-3m-3 3 3 3" />,
   };
   return <svg className={`ui-icon ${className}`} viewBox="0 0 24 24" aria-hidden="true" focusable="false">{paths[kind]}</svg>;
 }

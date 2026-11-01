@@ -54,43 +54,38 @@ export function DeckEditor({ deck, allRanks, allSuits, onChange }: DeckEditorPro
   };
 
   // ---- ランク（画面は強い順） ----
+  // エンジンが持つのは使うランクだけ。外したランクの位置は画面の側で覚えておき、
+  // 外したままでも並べ替えられるようにする（外した Q を挟んで J を動かしても、並びが崩れない）。
   const strongFirst = [...deck.ranks].reverse();
-  const display = withExcluded(strongFirst, allRanks);
-  const canonical = [...allRanks].reverse().filter((rank) => deck.ranks.includes(rank));
+  const [rankLayout, setRankLayout] = useState<readonly Rank[]>(() => withExcluded(strongFirst, allRanks));
+  // 外から変わった（取り込み・デフォルトに戻す など）ときは並びを作り直す。
+  const layout = sameOrder(rankLayout.filter((rank) => deck.ranks.includes(rank)), strongFirst) ? rankLayout : withExcluded(strongFirst, allRanks);
+  const fullDefault = [...allRanks].reverse();
+  const applyRanks = (nextLayout: readonly Rank[], included: (rank: Rank) => boolean, overrides = deck.overrides) => {
+    setRankLayout(nextLayout);
+    onChange({ ...deck, ranks: nextLayout.filter(included).reverse(), ...(overrides ? { overrides } : {}) });
+  };
   const toggleRank = (rank: Rank) => {
     const on = deck.ranks.includes(rank);
-    // 外すときは個別指定も消す。戻すときは薄く見せていた位置にそのまま入る。
-    const nextStrongFirst = on ? strongFirst.filter((r) => r !== rank) : display.filter((r) => deck.ranks.includes(r) || r === rank);
-    onChange({ ...deck, ranks: [...nextStrongFirst].reverse(), overrides: on ? (deck.overrides ?? []).filter(card => card.rank !== rank) : deck.overrides ?? [] });
+    // 外すときは個別指定も消す。戻すときはいまの位置にそのまま入る。
+    applyRanks(layout, (r) => r === rank ? !on : deck.ranks.includes(r), on ? (deck.overrides ?? []).filter(card => card.rank !== rank) : deck.overrides);
   };
   const moveRank = (rank: Rank, by: -1 | 1) => {
-    const at = strongFirst.indexOf(rank);
+    const at = layout.indexOf(rank);
     const to = at + by;
-    if (at < 0 || to < 0 || to >= strongFirst.length) return;
-    const next = [...strongFirst];
+    if (at < 0 || to < 0 || to >= layout.length) return;
+    const next = [...layout];
     next[at] = next[to]!;
     next[to] = rank;
-    onChange({ ...deck, ranks: next.reverse() });
+    applyRanks(next, (r) => deck.ranks.includes(r));
   };
 
   return (
     <section className="panel" aria-label="デッキ">
       <div className="field">
         <div className="field-head">
-          <span className="field-label">スート{deck.suitRanking !== undefined && '（左が強い）'}</span>
-          {deck.suitRanking !== undefined && <span className="field-tools">
-            {!sameOrder(suitOrder, allSuits) && <button type="button" className="order-toggle" onClick={() => onChange({ ...deck, suitRanking: [...allSuits] })}>デフォルトに戻す</button>}
-            <button type="button" className="order-toggle" aria-pressed={orderingSuits} onClick={() => setOrderingSuits(!orderingSuits)}>{orderingSuits ? '並べ替えを完了' : '並べ替え'}</button>
-          </span>}
-        </div>
-        <div className="suit-line">
-          <OrderRow
-            items={suitOrder.map((suit) => ({ key: suit, label: SUIT_LABEL[suit], on: deck.suits.includes(suit), red: isRed(suit), name: SUIT_LABEL[suit] }))}
-            ordering={orderingSuits && deck.suitRanking !== undefined}
-            onToggle={(key) => toggleSuit(key as Suit)}
-            onMove={(key, by) => moveSuit(key as Suit, by)}
-          />
-          <span className="suit-ranked">
+          <span className="field-head-start">
+            <span className="field-label">スート<span className="label-note" aria-hidden={deck.suitRanking === undefined} data-hidden={deck.suitRanking === undefined}>（左が強い）</span></span>
             <label className="checkline">
               <input
                 type="checkbox"
@@ -101,19 +96,29 @@ export function DeckEditor({ deck, allRanks, allSuits, onChange }: DeckEditorPro
             </label>
             <InfoTip label="スートの強弱">同じランクで並んだときの決着に使います。</InfoTip>
           </span>
+          {deck.suitRanking !== undefined && <span className="field-tools">
+            {!sameOrder(suitOrder, allSuits) && <button type="button" className="order-toggle" onClick={() => onChange({ ...deck, suitRanking: [...allSuits] })}>デフォルトに戻す</button>}
+            <button type="button" className="order-toggle" aria-pressed={orderingSuits} onClick={() => setOrderingSuits(!orderingSuits)}><Icon kind={orderingSuits ? 'check' : 'reorder'} />{orderingSuits ? '並べ替えを完了' : '並べ替え'}</button>
+          </span>}
         </div>
+        <OrderRow
+          items={suitOrder.map((suit) => ({ key: suit, label: SUIT_LABEL[suit], on: deck.suits.includes(suit), red: isRed(suit), name: SUIT_LABEL[suit] }))}
+          ordering={orderingSuits && deck.suitRanking !== undefined}
+          onToggle={(key) => toggleSuit(key as Suit)}
+          onMove={(key, by) => moveSuit(key as Suit, by)}
+        />
       </div>
 
       <div className="field">
         <div className="field-head">
           <span className="field-label">ランク（左が強い）<InfoTip label="ランクの並び">並びが決めるのは強さだけで、ストレートの連続は本来の順で判定します。</InfoTip></span>
           <span className="field-tools">
-            {!sameOrder(strongFirst, canonical) && <button type="button" className="order-toggle" onClick={() => onChange({ ...deck, ranks: [...canonical].reverse() })}>デフォルトに戻す</button>}
-            <button type="button" className="order-toggle" aria-pressed={orderingRanks} onClick={() => setOrderingRanks(!orderingRanks)}>{orderingRanks ? '並べ替えを完了' : '並べ替え'}</button>
+            {!sameOrder(layout, fullDefault) && <button type="button" className="order-toggle" onClick={() => applyRanks(fullDefault, (r) => deck.ranks.includes(r))}>デフォルトに戻す</button>}
+            <button type="button" className="order-toggle" aria-pressed={orderingRanks} onClick={() => setOrderingRanks(!orderingRanks)}><Icon kind={orderingRanks ? 'check' : 'reorder'} />{orderingRanks ? '並べ替えを完了' : '並べ替え'}</button>
           </span>
         </div>
         <OrderRow
-          items={display.map((rank) => ({ key: rank, label: rank, on: deck.ranks.includes(rank), name: rank }))}
+          items={layout.map((rank) => ({ key: rank, label: rank, on: deck.ranks.includes(rank), name: rank }))}
           ordering={orderingRanks}
           onToggle={(key) => toggleRank(key as Rank)}
           onMove={(key, by) => moveRank(key as Rank, by)}
@@ -123,7 +128,8 @@ export function DeckEditor({ deck, allRanks, allSuits, onChange }: DeckEditorPro
       <div className="field-row stepper-row">
         <Stepper label="各カードの枚数" value={deck.copies ?? 1} min={0} max={99} onChange={copies => onChange({ ...deck, copies })}
           info={<InfoTip label="各カードの枚数">個別の枚数は共通の枚数より優先されます。</InfoTip>} />
-        <Stepper label="ジョーカー" value={deck.jokers ?? 0} min={0} max={99} onChange={jokers => onChange({ ...deck, jokers })} />
+        <Stepper label="ジョーカー" value={deck.jokers ?? 0} min={0} max={99} onChange={jokers => onChange({ ...deck, jokers })}
+          info={<InfoTip label="ジョーカー">何にでも化けるワイルドカード。化け方はルールのワイルド設定で決まり、編集画面ではまだ設定できません。</InfoTip>} />
       </div>
 
       <div className="field">
@@ -146,7 +152,6 @@ function OrderRow({ items, ordering, onToggle, onMove }: {
   readonly items: readonly OrderItem[]; readonly ordering: boolean;
   readonly onToggle: (key: string) => void; readonly onMove: (key: string, by: -1 | 1) => void;
 }) {
-  const active = items.filter((item) => item.on);
   const nodes = useRef(new Map<string, HTMLElement>());
   const previous = useRef<{ readonly order: string; readonly at: Map<string, { x: number; y: number }> } | null>(null);
   const order = items.map((item) => item.key).join(',');
@@ -168,13 +173,13 @@ function OrderRow({ items, ordering, onToggle, onMove }: {
   });
   return <div className="chips order-row">
     {items.map((item) => {
-      const at = active.indexOf(item);
-      const movable = ordering && item.on;
+      const at = items.indexOf(item);
+      const movable = ordering;
       return <span key={item.key} className={`order-item ${movable ? 'order-item-active' : ''}`} ref={(node) => { if (node) nodes.current.set(item.key, node); else nodes.current.delete(item.key); }}>
         <button type="button" className="rank-order-arrow" tabIndex={movable ? 0 : -1} aria-hidden={!movable} aria-label={`${item.name} を強くする`} disabled={!movable || at === 0} onClick={() => onMove(item.key, -1)}>‹</button>
         <button type="button" className={`chip ${item.on ? 'chip-on' : 'chip-off'} ${item.red ? 'chip-red' : ''}`} aria-pressed={item.on}
           aria-label={`${item.name}${item.on ? '' : '（使わない）'}`} onClick={() => onToggle(item.key)}>{item.label}</button>
-        <button type="button" className="rank-order-arrow" tabIndex={movable ? 0 : -1} aria-hidden={!movable} aria-label={`${item.name} を弱くする`} disabled={!movable || at === active.length - 1} onClick={() => onMove(item.key, 1)}><Icon kind="chevron-right" /></button>
+        <button type="button" className="rank-order-arrow" tabIndex={movable ? 0 : -1} aria-hidden={!movable} aria-label={`${item.name} を弱くする`} disabled={!movable || at === items.length - 1} onClick={() => onMove(item.key, 1)}><Icon kind="chevron-right" /></button>
       </span>;
     })}
   </div>;

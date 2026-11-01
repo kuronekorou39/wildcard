@@ -63,7 +63,7 @@ export function DeckContents({ deck, onChange }: { readonly deck: DeckRules; rea
     const label = `${cardLabel(card)} ${count}枚`;
     const body = <>
       <PlayingCard card={card} size="sm" dimmed={count === 0} />
-      {count !== 1 && <b className="deck-count" aria-hidden="true">{count === 0 ? '0' : `×${count}`}</b>}
+      {count > 1 && <b className="deck-count" aria-hidden="true">×{count}</b>}
     </>;
     if (!editable) return <span key={label} className="deck-contents-card" data-empty={count === 0} role="img" aria-label={label}>{body}</span>;
     const open = isActive(target);
