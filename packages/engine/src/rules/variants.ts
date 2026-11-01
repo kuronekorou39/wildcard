@@ -2,6 +2,7 @@ import {
   PREFLOP,
   RANKS,
   SUITS,
+  type GlobalCondition,
   type HandRanking,
   type HandStructure,
   type Rank,
@@ -16,6 +17,7 @@ import {
   oneOfRanks,
   variableRank,
 } from './presets.js';
+import { fromBlocks, type PatternBlock } from './blocks.js';
 
 /**
  * バリアントのプリセット。
@@ -458,27 +460,398 @@ export const CLUMSY_DEALER: Variant = {
 };
 
 // ============================================================
+// 別のゲーム（構造・デッキを変えた定番の変種）
+// ============================================================
+
+/** 5枚オマハ。手札が5枚になり、使うのは変わらず2枚。 */
+export const BIG_O: Variant = {
+  ...OMAHA,
+  id: 'big-o',
+  name: '5枚オマハ',
+  description:
+    'オマハの手札を5枚にしたもの。使えるのは手札からちょうど2枚と場からちょうど3枚。' +
+    '組み合わせが増えるぶん、その場で最強の手を誰かが持っていることが多くなる。',
+  structure: { ...OMAHA_STRUCTURE, holeCards: 5 },
+};
+
+/** 6枚オマハ。 */
+export const OMAHA_SIX: Variant = {
+  ...OMAHA,
+  id: 'omaha-6',
+  name: '6枚オマハ',
+  description:
+    '手札6枚のオマハ。使えるのは手札からちょうど2枚と場からちょうど3枚。' +
+    '誰もが何かしら持っている乱戦になる。',
+  structure: { ...OMAHA_STRUCTURE, holeCards: 6 },
+};
+
+/**
+ * マニラ。7〜A の32枚で、場は1枚ずつ5回開く。手札2枚は必ず使う。
+ * 枚数が少ないのでショートデッキと同じくフラッシュがフルハウスより強い。
+ * 最弱のストレートは A-7-8-9-10。
+ */
+const MANILA_RANKINGS = moveBefore(
+  replaceFixed(
+    replaceFixed(STANDARD_HAND_RANKINGS, 'steel_wheel', 'ストレートフラッシュ（A-7-8-9-10）', ['A', '7', '8', '9', '10']),
+    'wheel',
+    'ストレート（A-7-8-9-10）',
+    ['A', '7', '8', '9', '10'],
+  ),
+  'flush',
+  'full_house',
+);
+
+export const MANILA: Variant = {
+  id: 'manila',
+  name: 'マニラ',
+  description:
+    '7〜A の32枚。手札2枚は必ず使い、場から3枚を足す。場は1枚ずつ5回開き、そのたびに賭ける。' +
+    'フラッシュがフルハウスより強く、最弱のストレートは A-7-8-9-10。',
+  deck: { suits: SUITS, ranks: ['7', '8', '9', '10', 'J', 'Q', 'K', 'A'] },
+  structure: {
+    holeCards: 2,
+    streets: [
+      { name: '1枚目', cards: 1, burn: 1 },
+      { name: '2枚目', cards: 1 },
+      { name: '3枚目', cards: 1 },
+      { name: '4枚目', cards: 1 },
+      { name: '5枚目', cards: 1 },
+    ],
+    handSize: 5,
+    holeUsage: { min: 2, max: 2 },
+    boardUsage: { min: 3, max: 3 },
+  },
+  betting: { limit: 'pot-limit' },
+  ranking: { hands: MANILA_RANKINGS },
+};
+
+/**
+ * ロイヤルホールデム。10〜A の20枚。
+ * 5枚同じスートは必ずロイヤルフラッシュになり、ストレートは 10-J-Q-K-A しかない。
+ */
+export const ROYAL_HOLDEM: Variant = {
+  ...STANDARD_VARIANT,
+  id: 'royal-holdem',
+  name: 'ロイヤルホールデム',
+  description:
+    '10〜A だけの20枚。ペアもストレートも出やすく、強い手どうしの勝負になる。' +
+    'ストレートは 10-J-Q-K-A だけで、5枚同じスートなら必ずロイヤルフラッシュになる（フラッシュ・ストレートフラッシュ・ハイカードは無い）。',
+  deck: { suits: SUITS, ranks: ['10', 'J', 'Q', 'K', 'A'] },
+  // 同じスート5枚は必ずロイヤルフラッシュ、ペアの無い5枚は必ずストレートなので、
+  // ストレートフラッシュ・フラッシュ・ハイカードは出ない。7枚あれば必ず何かの役になる。
+  ranking: { hands: disable(STANDARD_HAND_RANKINGS, 'straight_flush', 'steel_wheel', 'flush', 'wheel', 'high_card') },
+};
+
+/** グリーク。手札2枚と場3枚をきっかり使う。 */
+export const GREEK: Variant = {
+  ...STANDARD_VARIANT,
+  id: 'greek',
+  name: 'グリークホールデム',
+  description:
+    'ホールデムと同じ配り方だが、手札2枚を必ず両方使い、場からは3枚だけ使う。' +
+    '場に4枚のフラッシュが出ても、手札に同じスートが2枚なければ成立しない。',
+  structure: { ...HOLDEM_STRUCTURE, holeUsage: { min: 2, max: 2 }, boardUsage: { min: 3, max: 3 } },
+};
+
+/** スーパーホールデム。手札3枚を自由に使う。 */
+export const SUPER_HOLDEM: Variant = {
+  ...STANDARD_VARIANT,
+  id: 'super-holdem',
+  name: 'スーパーホールデム',
+  description: '手札が3枚になり、何枚使ってもよい。ホールデムより手が強くなる。',
+  structure: { ...HOLDEM_STRUCTURE, holeCards: 3 },
+};
+
+/** タホ。手札3枚のうち、使えるのは2枚まで。 */
+export const TAHOE: Variant = {
+  ...STANDARD_VARIANT,
+  id: 'tahoe',
+  name: 'タホ',
+  description:
+    '手札は3枚だが、役に使えるのは2枚まで（使わなくてもよい）。' +
+    'オマハとホールデムの間のような感覚で、どの2枚を活かすかの読みが効く。',
+  structure: { ...HOLDEM_STRUCTURE, holeCards: 3, holeUsage: { min: 0, max: 2 } },
+  betting: { limit: 'pot-limit' },
+};
+
+// ============================================================
+// ローカル役（調べて出てくる非標準の役）
+// ============================================================
+
+/** まとまりで書いた役。 */
+const blockHand = (
+  id: string,
+  name: string,
+  blocks: readonly PatternBlock[],
+  global: readonly GlobalCondition[] = [],
+): HandRanking => ({ id, name, enabled: true, pattern: fromBlocks(blocks, global) });
+
+/** ペアなしで、上と下が決まった5枚（ドッグとキャット）。 */
+const spanHand = (id: string, name: string, top: Rank, bottom: Rank, middle: readonly Rank[]): HandRanking =>
+  blockHand(
+    id,
+    name,
+    [{ kind: 'fixed', ranks: [top, bottom] }, { kind: 'oneOf', ranks: middle, count: 3 }],
+    [{ type: 'allDifferentRank' }],
+  );
+
+const BIG_CAT = spanHand('big_cat', 'ビッグキャット（K〜8）', 'K', '8', ['9', '10', 'J', 'Q']);
+const LITTLE_CAT = spanHand('little_cat', 'リトルキャット（8〜3）', '8', '3', ['4', '5', '6', '7']);
+const BIG_DOG = spanHand('big_dog', 'ビッグドッグ（A〜9）', 'A', '9', ['10', 'J', 'Q', 'K']);
+const LITTLE_DOG = spanHand('little_dog', 'リトルドッグ（7〜2）', '7', '2', ['3', '4', '5', '6']);
+const SKEET = blockHand(
+  'skeet',
+  'スキート（2・5・9＋間の2枚）',
+  [{ kind: 'fixed', ranks: ['9', '5', '2'] }, { kind: 'oneOf', ranks: ['3', '4', '6', '7', '8'], count: 2 }],
+  [{ type: 'allDifferentRank' }],
+);
+
+/**
+ * スキートとドッグ・キャット。どれもペアなしの5枚で、ストレートとフラッシュの間に入る。
+ * 強い順にビッグキャット、リトルキャット、ビッグドッグ、リトルドッグ、スキート。
+ */
+export const SKEETS_AND_DOGS: Variant = {
+  ...STANDARD_VARIANT,
+  id: 'skeets-dogs',
+  name: 'スキートとドッグ',
+  description:
+    'アメリカの家庭ゲームの役を5つ足す。ペアなしで上と下が決まった5枚' +
+    '（ビッグキャット K〜8、リトルキャット 8〜3、ビッグドッグ A〜9、リトルドッグ 7〜2）と、' +
+    '2・5・9 とその間の2枚で作るスキート。どれもストレートより強く、フラッシュより弱い。',
+  ranking: {
+    hands: [BIG_CAT, LITTLE_CAT, BIG_DOG, LITTLE_DOG, SKEET].reduce(
+      (hands, hand) => insertBefore(hands, hand, 'straight'),
+      STANDARD_HAND_RANKINGS as HandRanking[],
+    ),
+  },
+};
+
+/** ブレイズ。5枚すべて絵札。ツーペアより強く、スリーカードより弱い。 */
+export const BLAZE: Variant = {
+  ...STANDARD_VARIANT,
+  id: 'blaze',
+  name: 'ブレイズ',
+  description:
+    '5枚すべてが絵札（J・Q・K）なら「ブレイズ」。ツーペアより強く、スリーカードより弱い。' +
+    '絵札は3種類しかないので、ブレイズは必ずペアを含む。',
+  ranking: {
+    hands: insertBefore(
+      STANDARD_HAND_RANKINGS,
+      blockHand('blaze', 'ブレイズ（絵札5枚）', [{ kind: 'oneOf', ranks: ['J', 'Q', 'K'], count: 5 }]),
+      'three_of_a_kind',
+    ),
+  },
+};
+
+/** 赤と黒。色だけで揃う役を2つ足す。 */
+export const RED_AND_BLACK: Variant = {
+  ...STANDARD_VARIANT,
+  id: 'red-black',
+  name: '赤と黒',
+  description:
+    'スートではなく色で揃える役を足す。同じ色の連続5枚「カラーストレート」はフラッシュより強く、' +
+    '同じ色の5枚「カラーフラッシュ」はワンペアより強くツーペアより弱い。',
+  ranking: {
+    hands: insertBefore(
+      insertBefore(
+        STANDARD_HAND_RANKINGS,
+        blockHand('color_straight', 'カラーストレート（同じ色の連続）', [{ kind: 'run', count: 5 }], [{ type: 'allSameColor' }]),
+        'flush',
+      ),
+      blockHand('color_flush', 'カラーフラッシュ（同じ色5枚）', [{ kind: 'any', count: 5 }], [{ type: 'allSameColor' }]),
+      'one_pair',
+    ),
+  },
+};
+
+const FLUSH_HOUSE = blockHand(
+  'flush_house',
+  'フラッシュハウス',
+  [{ kind: 'sameRank', count: 3 }, { kind: 'sameRank', count: 2 }],
+  [{ type: 'allSameSuit' }],
+);
+
+/**
+ * 3デッキ。同じ札が3枚ずつあるので、同じスートのフルハウス（同じ札3枚＋同じ札2枚）が成立する。
+ * 同じ札5枚（フラッシュファイブ）は5組要るので入れない。
+ */
+export const TRIPLE_DECK: Variant = {
+  ...STANDARD_VARIANT,
+  id: 'flush-house',
+  name: '3デッキ（フラッシュハウス入り）',
+  description:
+    '52枚を3組混ぜた156枚。同じ札が3枚ずつあるので、同じスートのフルハウス「フラッシュハウス」と、' +
+    '同じランク5枚のファイブカードが成立する。強い順にフラッシュハウス、ファイブカード、ロイヤルフラッシュ。',
+  deck: { suits: SUITS, ranks: RANKS, copies: 3 },
+  ranking: { hands: [FLUSH_HOUSE, FIVE_OF_A_KIND, ...STANDARD_HAND_RANKINGS] },
+};
+
+/** ボブテイル。4枚で揃う役。 */
+export const BOBTAIL: Variant = {
+  ...STANDARD_VARIANT,
+  id: 'bobtail',
+  name: 'ボブテイル',
+  description:
+    '4枚で揃う役を足す。4枚のストレートフラッシュ「ビッグボブテイル」はフルハウスより強い。' +
+    '4枚のフラッシュと4枚の連続は、ワンペアより強くツーペアより弱い。',
+  ranking: {
+    hands: insertBefore(
+      insertBefore(
+        insertBefore(
+          STANDARD_HAND_RANKINGS,
+          blockHand('big_bobtail', 'ビッグボブテイル（4枚のストレートフラッシュ）', [{ kind: 'run', count: 4, suit: { kind: 'same' } }]),
+          'full_house',
+        ),
+        blockHand('four_flush', '4枚フラッシュ', [{ kind: 'any', count: 4, suit: { kind: 'same' } }]),
+        'one_pair',
+      ),
+      blockHand('four_straight', '4枚ストレート', [{ kind: 'run', count: 4 }]),
+      'one_pair',
+    ),
+  },
+};
+
+/** 回り込みストレート。Q-K-A-2-3 のように端をまたぐ並びを、普通のストレートの下に足す。 */
+export const WRAPAROUND: Variant = {
+  ...STANDARD_VARIANT,
+  id: 'wraparound',
+  name: '回り込みストレート',
+  description:
+    'K の次に A、A の次に 2 と、端をまたいで並びが続く。Q-K-A-2-3 や K-A-2-3-4 もストレートになる' +
+    '（普通のストレートより弱い）。',
+  ranking: {
+    hands: insertBefore(
+      insertBefore(
+        STANDARD_HAND_RANKINGS,
+        blockHand('wrap_straight', 'ストレート（回り込み）', [{ kind: 'run', count: 5, wrap: true }]),
+        'three_of_a_kind',
+      ),
+      blockHand('wrap_straight_flush', 'ストレートフラッシュ（回り込み）', [{ kind: 'run', count: 5, wrap: true }], [{ type: 'allSameSuit' }]),
+      'four_of_a_kind',
+    ),
+  },
+};
+
+/** 日本の家庭でよく遊ばれる形。ジョーカー1枚、ファイブカード、スートの強弱。 */
+export const JAPANESE_HOME: Variant = {
+  ...STANDARD_VARIANT,
+  id: 'japanese-home',
+  name: '日本の家庭ルール',
+  description:
+    'ジョーカー1枚入りの53枚で、ジョーカーは何にでも化ける。ファイブカードが最強。' +
+    '同じ手ならスートで決める（スペード > ハート > ダイヤ > クラブ）。',
+  deck: { suits: SUITS, ranks: RANKS, jokers: 1, suitRanking: ['spades', 'hearts', 'diamonds', 'clubs'] },
+  ranking: { hands: WITH_FIVE_OF_A_KIND, wilds: [{ cards: { kind: 'joker' } }] },
+};
+
+// ============================================================
+// ワイルド（ランクを指定する家庭ゲーム）
+// ============================================================
+
+/** ベースボール。野球にちなんで 3 と 9 がワイルド。 */
+export const BASEBALL: Variant = {
+  ...STANDARD_VARIANT,
+  id: 'baseball',
+  name: 'ベースボール（3と9がワイルド）',
+  description:
+    '野球の「3アウト」「9イニング」にちなんで、3 と 9 の8枚が何にでも化ける。' +
+    'ワイルドが多いので、ファイブカードもよく出る。',
+  ranking: { hands: WITH_FIVE_OF_A_KIND, wilds: [{ cards: { kind: 'rank', ranks: ['3', '9'] } }] },
+};
+
+/** ドクターペッパー。昔の広告の「10時・2時・4時」にちなむ。 */
+export const DR_PEPPER: Variant = {
+  ...STANDARD_VARIANT,
+  id: 'dr-pepper',
+  name: 'ドクターペッパー（10・2・4がワイルド）',
+  description:
+    '清涼飲料の昔の広告「10時・2時・4時に飲もう」にちなんで、10・2・4 の12枚が何にでも化ける。' +
+    '役はかなり派手になる。',
+  ranking: { hands: WITH_FIVE_OF_A_KIND, wilds: [{ cards: { kind: 'rank', ranks: ['2', '4', '10'] } }] },
+};
+
+/** ジョーカー2枚。 */
+export const TWO_JOKERS: Variant = {
+  ...JOKER_WILD,
+  id: 'two-jokers',
+  name: 'ジョーカー2枚',
+  description: '54枚。2枚のジョーカーが何にでも化ける。ファイブカードが最強。',
+  deck: { suits: SUITS, ranks: RANKS, jokers: 2 },
+};
+
+// ============================================================
+// 賭け方・卓の作法
+// ============================================================
+
+/** ポットリミットのホールデム。 */
+export const POT_LIMIT_HOLDEM: Variant = {
+  ...STANDARD_VARIANT,
+  id: 'pot-limit-holdem',
+  name: 'ポットリミットホールデム',
+  description:
+    '賭けられるのはポットの額まで。一度に全部を入れることはできないので、' +
+    'ノーリミットより勝負が長く続く。',
+  betting: { limit: 'pot-limit' },
+};
+
+/** 3本まで走らせる卓。 */
+export const RUN_IT_THRICE: Variant = {
+  ...STANDARD_VARIANT,
+  id: 'run-it-thrice',
+  name: '3本走らせる卓',
+  description:
+    '全員がオールインしたら、残りの場を最大3回めくってポットを分けられる（全員の同意が要る）。' +
+    '運の偏りがならされるので、大きな勝負に乗りやすい。',
+  options: { runItTwice: { max: 3 }, showCards: 'any' },
+};
+
+// ============================================================
 // 一覧
 // ============================================================
 
 /** 選べるバリアントの一覧。UI はこれを並べる。 */
 export const VARIANT_PRESETS: readonly Variant[] = [
+  // 定番
   STANDARD_VARIANT,
   OMAHA,
+  FIXED_LIMIT,
+  POT_LIMIT_HOLDEM,
+  // 別のゲーム
+  BIG_O,
+  OMAHA_SIX,
   SHORT_DECK,
+  MANILA,
+  ROYAL_HOLDEM,
+  GREEK,
+  SUPER_HOLDEM,
+  TAHOE,
   SIX_CARD_FLOP,
-  FLUSH_OVER_FULL_HOUSE,
   ACE_LOW,
+  // ローカル役
+  FLUSH_OVER_FULL_HOUSE,
   SUIT_RANKED,
   HOUSE_HANDS,
   PRIME_RULES,
+  SKEETS_AND_DOGS,
+  BLAZE,
+  RED_AND_BLACK,
+  TRIPLE_DECK,
+  BOBTAIL,
+  WRAPAROUND,
+  // ワイルド
   JOKER_WILD,
+  TWO_JOKERS,
+  JAPANESE_HOME,
   DEUCES_WILD,
   ONE_EYED_JACKS,
-  FIXED_LIMIT,
+  BASEBALL,
+  DR_PEPPER,
+  // 賭け方
   STRADDLE_TABLE,
   NO_PREFLOP_ALLIN,
+  // 卓の作法
   CASUAL_TABLE,
+  RUN_IT_THRICE,
   CLUMSY_DEALER,
 ];
 

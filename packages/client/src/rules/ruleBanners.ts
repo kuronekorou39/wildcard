@@ -1,8 +1,58 @@
 import { useSyncExternalStore } from 'react';
 
-export const BANNER_TONES = ['wine', 'forest', 'slate', 'copper', 'plum'] as const;
+// 先頭の5色は保存済みのデータが使っているので、名前も順番も変えない。
+export const BANNER_TONES = ['wine', 'forest', 'slate', 'copper', 'plum', 'crimson', 'mustard', 'olive', 'teal', 'navy', 'indigo', 'charcoal'] as const;
 export type BannerTone = typeof BANNER_TONES[number];
-export interface RuleBannerStyle { readonly tone: BannerTone; readonly image?: string }
+export const BANNER_TONE_LABELS: Record<BannerTone, string> = {
+  wine: 'ワイン', forest: 'フォレスト', slate: 'スレート', copper: 'カッパー', plum: 'プラム', crimson: 'クリムゾン',
+  mustard: 'マスタード', olive: 'オリーブ', teal: 'ティール', navy: 'ネイビー', indigo: 'インディゴ', charcoal: 'チャコール',
+};
+export const BANNER_MOTIFS = ['cards', 'chips', 'felt', 'suits', 'deco', 'joker', 'numeral'] as const;
+export type BannerMotif = typeof BANNER_MOTIFS[number];
+export const BANNER_MOTIF_LABELS: Record<BannerMotif, string> = {
+  cards: '札の扇', chips: 'チップの山', felt: 'フェルト', suits: 'スート柄', deco: 'アールデコ', joker: 'ジョーカー', numeral: '大きな数字',
+};
+export interface RuleBannerStyle { readonly tone: BannerTone; readonly motif: BannerMotif; readonly image?: string }
+
+/** 用意したルールの見た目。一覧の並び順に書き、隣り合うものが同じ色にならないようにしてある。 */
+const PRESET_BANNERS: Readonly<Record<string, readonly [BannerTone, BannerMotif]>> = {
+  standard: ['wine', 'cards'],
+  omaha: ['copper', 'cards'],
+  'fixed-limit': ['slate', 'chips'],
+  'pot-limit-holdem': ['mustard', 'chips'],
+  'big-o': ['forest', 'numeral'],
+  'omaha-6': ['plum', 'numeral'],
+  'short-deck': ['navy', 'numeral'],
+  manila: ['copper', 'numeral'],
+  'royal-holdem': ['mustard', 'deco'],
+  greek: ['teal', 'cards'],
+  'super-holdem': ['indigo', 'numeral'],
+  tahoe: ['olive', 'cards'],
+  'six-card-flop': ['forest', 'felt'],
+  'ace-low': ['charcoal', 'deco'],
+  'flush-over-boat': ['slate', 'suits'],
+  'suit-ranked': ['indigo', 'suits'],
+  'house-hands': ['plum', 'deco'],
+  prime: ['navy', 'cards'],
+  'skeets-dogs': ['forest', 'suits'],
+  blaze: ['crimson', 'deco'],
+  'red-black': ['wine', 'suits'],
+  'flush-house': ['copper', 'numeral'],
+  bobtail: ['charcoal', 'suits'],
+  wraparound: ['teal', 'cards'],
+  'joker-wild': ['crimson', 'joker'],
+  'two-jokers': ['navy', 'joker'],
+  'japanese-home': ['wine', 'joker'],
+  'deuces-wild': ['teal', 'joker'],
+  'one-eyed-jacks': ['indigo', 'joker'],
+  baseball: ['forest', 'joker'],
+  'dr-pepper': ['copper', 'joker'],
+  straddle: ['slate', 'chips'],
+  'no-preflop-allin': ['mustard', 'chips'],
+  casual: ['olive', 'felt'],
+  'run-it-thrice': ['indigo', 'felt'],
+  'clumsy-dealer': ['plum', 'felt'],
+};
 const KEY = 'wildcard.rule-banners.v1';
 const listeners = new Set<() => void>();
 let revision = 0;
@@ -22,16 +72,23 @@ function read(): Record<string, unknown> {
     return data !== null && typeof data === 'object' && !Array.isArray(data) ? data as Record<string, unknown> : {};
   } catch { return {}; }
 }
+/** 色を増やす前から決まっていた5色。知らない id の既定色がこれまでと変わらないよう、ハッシュはこの中から選ぶ。 */
+const LEGACY_TONE_COUNT = 5;
 export function defaultRuleBanner(id: string): RuleBannerStyle {
+  const preset = Object.hasOwn(PRESET_BANNERS, id) ? PRESET_BANNERS[id] : undefined;
+  if (preset) return { tone: preset[0], motif: preset[1] };
   let hash = 0;
   for (const char of id) hash = (hash * 31 + char.charCodeAt(0)) >>> 0;
-  return { tone: id === 'standard' ? 'wine' : BANNER_TONES[hash % BANNER_TONES.length]! };
+  return { tone: BANNER_TONES[hash % LEGACY_TONE_COUNT]!, motif: 'cards' };
 }
 export function ruleBanner(id: string): RuleBannerStyle {
-  const raw = read()[id] as Partial<RuleBannerStyle> | undefined;
-  if (!raw || !BANNER_TONES.includes(raw.tone as BannerTone)) return defaultRuleBanner(id);
+  const raw = read()[id] as Partial<Record<keyof RuleBannerStyle, unknown>> | undefined;
+  if (!raw || typeof raw !== 'object' || !BANNER_TONES.includes(raw.tone as BannerTone)) return defaultRuleBanner(id);
+  const tone = raw.tone as BannerTone;
+  // 絵柄を選べるようになる前に保存したもの（{ tone } だけ）は、そのルールの既定の絵柄で描く。
+  const motif = BANNER_MOTIFS.includes(raw.motif as BannerMotif) ? raw.motif as BannerMotif : defaultRuleBanner(id).motif;
   const image = typeof raw.image === 'string' && raw.image.length <= 600_000 && /^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(raw.image) ? raw.image : undefined;
-  return image ? { tone: raw.tone!, image } : { tone: raw.tone! };
+  return image ? { tone, motif, image } : { tone, motif };
 }
 export function saveRuleBanner(id: string, style: RuleBannerStyle): boolean {
   try {

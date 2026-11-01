@@ -17,6 +17,7 @@ import { GameDialog } from './GameDialog.js';
 import { RuleBanner } from './RuleBanner.js';
 import { Icon } from './Icon.js';
 import { EMPTY_RULE_FILTERS, filterVariants, type RuleFilters } from '../rules/filterVariants.js';
+import { groupVariants } from '../rules/ruleCategories.js';
 
 interface RulePickerProps {
   readonly value: string;
@@ -97,12 +98,15 @@ export function RulePicker({ value, onChange, onEdit, detailAnchor }: RulePicker
           else return;
           event.preventDefault(); options[next]?.focus();
         }}>
-          {matches.map(variant => <button type="button" role="option" aria-selected={variant.id === selected.id} data-variant={variant.id} key={variant.id}
-            className="rule-option" onClick={() => { onChange(variant.id); setOpen(false); }}>
-            <RuleBanner variant={variant} compact />
-            <span><strong>{variant.name}</strong><small>{isCustomVariant(variant.id) ? 'カスタム · ' : ''}{deckSize(variant.deck)}枚 · 手札{variant.structure.holeCards}枚</small></span>
-            <span className="rule-option-check" aria-hidden="true">{variant.id === selected.id && <Icon kind="check" />}</span>
-          </button>)}
+          {groupVariants(matches).map(group => <div key={group.category} role="group" aria-labelledby={`rule-group-${group.category}`} className="rule-group">
+            <p className="rule-group-title" id={`rule-group-${group.category}`}>{group.label}<small>{group.variants.length}</small></p>
+            {group.variants.map(variant => <button type="button" role="option" aria-selected={variant.id === selected.id} data-variant={variant.id} key={variant.id}
+              className="rule-option" onClick={() => { onChange(variant.id); setOpen(false); }}>
+              <RuleBanner variant={variant} compact />
+              <span><strong>{variant.name}</strong><small>{deckSize(variant.deck)}枚 · 手札{variant.structure.holeCards}枚</small></span>
+              <span className="rule-option-check" aria-hidden="true">{variant.id === selected.id && <Icon kind="check" />}</span>
+            </button>)}
+          </div>)}
           {matches.length === 0 && <p className="hint">該当するルールはありません。</p>}
         </div>
       </GameDialog>}

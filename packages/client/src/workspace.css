@@ -372,6 +372,10 @@ button.stepper-value:hover { border-bottom-color: var(--gold); color: var(--gold
 .rule-options { overflow-y: auto; overscroll-behavior: contain; min-height: 0; padding: 4px; }
 .rule-option { display: grid; grid-template-columns: 96px minmax(0, 1fr) 18px; align-items: center; gap: 16px; padding: 9px; width: 100%; color: var(--text); border: 1px solid transparent; border-radius: 10px; background: transparent; text-align: left; cursor: pointer; }
 .rule-option+.rule-option { margin-top: 4px; }
+/* 分類の見出し。一覧をスクロールしても見出しが上に残る */
+.rule-group + .rule-group { margin-top: 10px; }
+.rule-group-title { position: sticky; top: -4px; z-index: 1; display: flex; align-items: baseline; gap: 8px; margin: 0; padding: 8px 9px 6px; background: var(--surface); color: var(--gold); font-size: .68rem; font-weight: 700; letter-spacing: .08em; }
+.rule-group-title small { color: var(--text-dim); font-size: .62rem; font-weight: 400; letter-spacing: 0; }
 .rule-option:hover { background: var(--surface-raised); }
 .rule-option[aria-selected=true] { background: #49383c; border-color: #87676e; }
 .rule-option strong { font-size: .88rem; display: block; line-height: 1.5; }

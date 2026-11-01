@@ -1,5 +1,6 @@
 import { deckSize, type Variant } from '@wildcard/engine';
 import { isCustomVariant } from './customVariants.js';
+import { categoryLabel, categoryOf } from './ruleCategories.js';
 
 export interface RuleFilters {
   readonly query: string;
@@ -14,7 +15,8 @@ const normalize = (value: string) => value.normalize('NFKC').toLocaleLowerCase()
 export function filterVariants(variants: readonly Variant[], filters: RuleFilters): readonly Variant[] {
   const words = normalize(filters.query).trim().split(/\s+/).filter(Boolean);
   return variants.filter(variant => {
-    const text = normalize(`${variant.name} ${variant.description ?? ''}`);
+    // 分類の名前（「ワイルド」など）でも引けるようにする。
+    const text = normalize(`${variant.name} ${variant.description ?? ''} ${categoryLabel(categoryOf(variant))}`);
     if (!words.every(word => text.includes(word))) return false;
     if (filters.source !== 'all' && isCustomVariant(variant.id) !== (filters.source === 'custom')) return false;
     if (filters.holeCards && variant.structure.holeCards !== Number(filters.holeCards)) return false;

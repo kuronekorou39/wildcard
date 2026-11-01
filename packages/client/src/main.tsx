@@ -7,6 +7,7 @@ import './layout.css';
 import './cards.css';
 import './game.css';
 import './workspace.css';
+import './banners.css';
 
 const root = document.getElementById('root');
 if (!root) throw new Error('#root が見つからない');
