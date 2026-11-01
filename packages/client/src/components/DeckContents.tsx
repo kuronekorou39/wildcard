@@ -88,6 +88,5 @@ export function DeckContents({ deck, onChange }: { readonly deck: DeckRules; rea
       </div>)}
       {size === 0 && <p className="hint">カードがありません。</p>}
     </div>
-    {editable && <p className="hint">0枚で除外します。個別の枚数は共通の枚数より優先されます。</p>}
   </section>;
 }

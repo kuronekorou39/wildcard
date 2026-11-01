@@ -2,6 +2,7 @@ import { useLayoutEffect, useRef, useState } from 'react';
 import { DeckContents } from '../DeckContents.js';
 import { Icon } from '../Icon.js';
 import { Stepper } from '../Stepper.js';
+import { InfoTip } from '../InfoTip.js';
 import { type DeckRules, type Rank, type Suit } from '@wildcard/engine';
 
 const SUIT_LABEL: Record<Suit, string> = {
@@ -82,28 +83,30 @@ export function DeckEditor({ deck, allRanks, allSuits, onChange }: DeckEditorPro
             <button type="button" className="order-toggle" aria-pressed={orderingSuits} onClick={() => setOrderingSuits(!orderingSuits)}>{orderingSuits ? '並べ替えを完了' : '並べ替え'}</button>
           </span>}
         </div>
-        <OrderRow
-          items={suitOrder.map((suit) => ({ key: suit, label: SUIT_LABEL[suit], on: deck.suits.includes(suit), red: isRed(suit), name: SUIT_LABEL[suit] }))}
-          ordering={orderingSuits && deck.suitRanking !== undefined}
-          onToggle={(key) => toggleSuit(key as Suit)}
-          onMove={(key, by) => moveSuit(key as Suit, by)}
-        />
-        <label className="checkline">
-          <input
-            type="checkbox"
-            checked={deck.suitRanking !== undefined}
-            onChange={(e) => { setOrderingSuits(false); onChange(e.target.checked ? { ...deck, suitRanking: [...allSuits] } : omit(deck, 'suitRanking')); }}
+        <div className="suit-line">
+          <OrderRow
+            items={suitOrder.map((suit) => ({ key: suit, label: SUIT_LABEL[suit], on: deck.suits.includes(suit), red: isRed(suit), name: SUIT_LABEL[suit] }))}
+            ordering={orderingSuits && deck.suitRanking !== undefined}
+            onToggle={(key) => toggleSuit(key as Suit)}
+            onMove={(key, by) => moveSuit(key as Suit, by)}
           />
-          <span>
-            スートに強弱をつける
-            <small className="checkline-note">同じランクで並んだときの決着に使います。</small>
+          <span className="suit-ranked">
+            <label className="checkline">
+              <input
+                type="checkbox"
+                checked={deck.suitRanking !== undefined}
+                onChange={(e) => { setOrderingSuits(false); onChange(e.target.checked ? { ...deck, suitRanking: [...allSuits] } : omit(deck, 'suitRanking')); }}
+              />
+              <span>強弱をつける</span>
+            </label>
+            <InfoTip label="スートの強弱">同じランクで並んだときの決着に使います。</InfoTip>
           </span>
-        </label>
+        </div>
       </div>
 
       <div className="field">
         <div className="field-head">
-          <span className="field-label">ランク（左が強い）</span>
+          <span className="field-label">ランク（左が強い）<InfoTip label="ランクの並び">並びが決めるのは強さだけで、ストレートの連続は本来の順で判定します。</InfoTip></span>
           <span className="field-tools">
             {!sameOrder(strongFirst, canonical) && <button type="button" className="order-toggle" onClick={() => onChange({ ...deck, ranks: [...canonical].reverse() })}>デフォルトに戻す</button>}
             <button type="button" className="order-toggle" aria-pressed={orderingRanks} onClick={() => setOrderingRanks(!orderingRanks)}>{orderingRanks ? '並べ替えを完了' : '並べ替え'}</button>
@@ -115,11 +118,11 @@ export function DeckEditor({ deck, allRanks, allSuits, onChange }: DeckEditorPro
           onToggle={(key) => toggleRank(key as Rank)}
           onMove={(key, by) => moveRank(key as Rank, by)}
         />
-        <p className="hint">並びが決めるのは強さだけで、ストレートの連続は本来の順で判定します。</p>
       </div>
 
-      <div className="field-row">
-        <Stepper label="各カードの枚数" value={deck.copies ?? 1} min={0} max={99} onChange={copies => onChange({ ...deck, copies })} />
+      <div className="field-row stepper-row">
+        <Stepper label="各カードの枚数" value={deck.copies ?? 1} min={0} max={99} onChange={copies => onChange({ ...deck, copies })}
+          info={<InfoTip label="各カードの枚数">個別の枚数は共通の枚数より優先されます。</InfoTip>} />
         <Stepper label="ジョーカー" value={deck.jokers ?? 0} min={0} max={99} onChange={jokers => onChange({ ...deck, jokers })} />
       </div>
 

@@ -161,12 +161,32 @@
 .order-item-active .rank-order-arrow { visibility: visible; }
 .order-item .chip { min-width: 36px; }
 .chip-off { opacity: .45; border-style: dashed; }
-/* −／＋ で動かす枚数 */
-.stepper-controls { display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 4px 0; border-bottom: 1px solid var(--border); }
-.stepper-controls strong { min-width: 2.2em; text-align: center; font-size: 1.04rem; font-variant-numeric: tabular-nums; }
-.stepper-controls button, .deck-card-popover button { display: grid; place-items: center; width: 32px; height: 32px; border: 1px solid var(--border); border-radius: 50%; background: transparent; color: var(--text); cursor: pointer; }
-.stepper-controls button:hover, .deck-card-popover button:hover { border-color: var(--gold); color: var(--gold); }
-.stepper-controls button:disabled, .deck-card-popover button:disabled { opacity: .3; cursor: default; }
+/* −／＋ で動かす枚数。横に伸ばさず、中身の幅で並べる */
+.stepper-row { gap: 32px; }
+.rules-shell .editor-content .stepper-row .field { flex: 0 0 auto; }
+.stepper .field-label { display: flex; align-items: center; gap: 4px; }
+.stepper-controls { display: inline-flex; align-items: center; gap: 6px; }
+.stepper-value { width: 3em; height: 32px; padding: 0; border: 0; border-bottom: 1px solid transparent; border-radius: 0; background: transparent; color: var(--text); font: inherit; font-size: 1.04rem; font-weight: 600; text-align: center; font-variant-numeric: tabular-nums; cursor: text; }
+button.stepper-value:hover { border-bottom-color: var(--gold); color: var(--gold); }
+.stepper-input { border-bottom-color: var(--gold); outline: none; appearance: textfield; -moz-appearance: textfield; }
+.stepper-input::-webkit-inner-spin-button, .stepper-input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+/* スートの行の右端に「強弱をつける」 */
+.suit-line { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.suit-line .order-row { margin-bottom: 0; }
+.suit-ranked { display: flex; align-items: center; gap: 2px; margin-left: auto; }
+.suit-ranked .checkline { margin: 0; align-items: center; font-size: .78rem; }
+.suit-ranked .checkline input { margin-top: 0; }
+/* 「i」の説明 */
+.info-tip { position: relative; display: inline-flex; vertical-align: middle; }
+.info-tip-button { display: grid; place-items: center; width: 24px; height: 24px; padding: 0; border: 0; border-radius: 50%; background: transparent; color: var(--text-dim); cursor: pointer; }
+.info-tip-button:hover, .info-tip-button[aria-expanded=true] { color: var(--gold); background: #ffffff10; }
+.info-tip-button .ui-icon { font-size: .95rem; }
+.info-tip-body { position: absolute; top: calc(100% + 4px); left: -4px; z-index: 8; width: max-content; max-width: min(260px, 70vw); padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface-raised); color: var(--text); font-size: .7rem; font-weight: 400; line-height: 1.6; box-shadow: 0 6px 18px #0009; white-space: normal; }
+.info-tip-body[hidden] { display: none; }
+.suit-ranked .info-tip-body { left: auto; right: 0; transform: none; }
+.stepper-controls button:not(.stepper-value), .deck-card-popover button { display: grid; place-items: center; width: 32px; height: 32px; border: 1px solid var(--border); border-radius: 50%; background: transparent; color: var(--text); cursor: pointer; }
+.stepper-controls button:not(.stepper-value):hover, .deck-card-popover button:hover { border-color: var(--gold); color: var(--gold); }
+.stepper-controls button:not(.stepper-value):disabled, .deck-card-popover button:disabled { opacity: .3; cursor: default; }
 .stepper-controls .ui-icon, .deck-card-popover .ui-icon { font-size: .9rem; }
 /* 札の下に出る −／＋ */
 .deck-contents-pick { display: block; width: 100%; padding: 0; border: 0; background: transparent; color: inherit; cursor: pointer; border-radius: 7px; }
