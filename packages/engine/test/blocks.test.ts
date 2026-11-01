@@ -59,6 +59,23 @@ describe('まとまりへの行き帰り', () => {
   });
 });
 
+describe('隣り合う同じ種類のまとまり', () => {
+  const cases: PatternBlock[][] = [
+    [{ kind: 'fixed', ranks: ['A', '5'] }, { kind: 'fixed', ranks: ['K'] }],
+    [{ kind: 'any', count: 2 }, { kind: 'any', count: 1 }],
+    [{ kind: 'oneOf', ranks: ['J', 'Q'], count: 1 }, { kind: 'oneOf', ranks: ['J', 'Q'], count: 2 }],
+    [{ kind: 'fixed', ranks: ['A'], suit: { kind: 'in', suits: ['spades'] } }, { kind: 'fixed', ranks: ['A'], suit: { kind: 'in', suits: ['spades'] } }],
+  ];
+  it.each(cases.map((blocks) => [blocks.map((b) => b.kind).join('+'), blocks] as const))('%s は合体しない', (_name, blocks) => {
+    expect(toBlocks(fromBlocks(blocks))).toEqual(blocks);
+  });
+
+  it('見分けがつくときは区切りを書かない', () => {
+    const pattern = fromBlocks([{ kind: 'fixed', ranks: ['A'] }, { kind: 'any', count: 2 }, { kind: 'fixed', ranks: ['K'], suit: { kind: 'in', suits: ['hearts'] } }]);
+    expect(pattern.cards.some((card) => card.split)).toBe(false);
+  });
+});
+
 describe('まとまりで表せない形', () => {
   it('同じまとまりの中で札ごとにスートが違う役', () => {
     // 同じ変数の 2枚が別々のスートを指定している。まとまり単位のスートでは言えない。

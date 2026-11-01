@@ -63,12 +63,20 @@ export function fromBlocks(
   /** 直前の連続のまとまり。continues で続けるときに使う。 */
   let lastRun: { name: string; next: number } | null = null;
 
+  let previous: PatternBlock | undefined;
   for (const block of blocks) {
     const suitGroup = block.suit?.kind === 'same' ? suitGroupAt(suitGroups++) : undefined;
     const suits = block.suit?.kind === 'in' ? [...block.suit.suits] : [];
+    // 前のまとまりと見分けがつかないときだけ、最初の札に区切りを置く。
+    let split = previous !== undefined && blockSize(previous) > 0 && mergesWith(previous, block);
+    previous = block;
     // 余計なキーは置かない。書き出した JSON を元のプリセットと一致させるため。
-    const withSuit = (rank: CardCondition['rank']): CardCondition =>
-      suitGroup === undefined ? { rank, suits } : { rank, suits, suitGroup };
+    const withSuit = (rank: CardCondition['rank']): CardCondition => {
+      const cond: CardCondition = suitGroup === undefined ? { rank, suits } : { rank, suits, suitGroup };
+      if (!split) return cond;
+      split = false;
+      return { ...cond, split: true };
+    };
 
     switch (block.kind) {
       case 'sameRank': {
@@ -114,6 +122,18 @@ export function fromBlocks(
   return { cards, global: [...global] };
 }
 
+/**
+ * 区切りが無いと、開き直したときに前のまとまりと1つになってしまうか。
+ * 変数を使う種類（同じランク・連続）は変数名で分かれるので要らない。
+ * 「同じスート」はまとまりごとに別のスートなので、それでも分かれる。
+ */
+function mergesWith(previous: PatternBlock, block: PatternBlock): boolean {
+  if (previous.kind !== block.kind || block.suit?.kind === 'same') return false;
+  if (JSON.stringify(previous.suit ?? null) !== JSON.stringify(block.suit ?? null)) return false;
+  if (block.kind === 'oneOf' && previous.kind === 'oneOf') return previous.ranks.join(',') === block.ranks.join(',');
+  return block.kind === 'fixed' || block.kind === 'any';
+}
+
 /** 札の条件のスートの部分。同じまとまりに入れてよいかを比べる鍵。 */
 const suitKey = (cond: CardCondition): string => `${cond.suits.join(',')}|${cond.suitGroup ?? ''}`;
 
@@ -143,8 +163,9 @@ export function toBlocks(pattern: HandPattern): PatternBlock[] | null {
       seenGroups.add(first.suitGroup);
     }
     const withSuit = <T extends PatternBlock>(block: T): T => (suit === undefined ? block : { ...block, suit });
-    /** スートの指定が同じあいだだけ、同じまとまりに入れる。 */
-    const sameSuit = (at: number) => suitKey(conditions[at]!) === key;
+    /** スートの指定が同じで、区切りが無いあいだだけ、同じまとまりに入れる。 */
+    const blockStart = i;
+    const sameSuit = (at: number) => suitKey(conditions[at]!) === key && (at === blockStart || conditions[at]!.split !== true);
 
     switch (spec.type) {
       case 'variable': {

@@ -329,10 +329,12 @@ function parseCondition(value: unknown, path: string, p: Problems): CardConditio
   const spec = parseRankSpec(cond['rank'], `${path}.rank`, p);
   if (!spec) return undefined;
   const suitGroup = cond['suitGroup'] === undefined ? undefined : p.string(cond['suitGroup'], `${path}.suitGroup`);
+  const split = p.optionalBoolean(cond['split'], `${path}.split`);
   return {
     rank: spec,
     suits: p.each(cond['suits'] ?? [], `${path}.suits`, suit(p)),
     ...optional('suitGroup', suitGroup),
+    ...(split === true ? { split: true as const } : {}),
   };
 }
 

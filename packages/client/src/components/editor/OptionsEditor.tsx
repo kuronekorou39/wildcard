@@ -13,8 +13,12 @@ const SHOW_CARDS: readonly { readonly value: ShowCardsPolicy; readonly label: st
   { value: 'any', label: '好きなだけ' },
 ];
 
-/** 確率の刻み（%）。細かく決めても遊びの差にならない。 */
-const PERCENT_STEP = 5;
+/**
+ * 表にしてしまう確率の上限と刻み（%）。1ハンドあたりなので 1% でも多く感じる。
+ * 0〜5% を100段階で決める。
+ */
+const EXPOSED_MAX = 5;
+const EXPOSED_STEP = 0.05;
 
 function omit<T extends object, K extends keyof T>(value: T, key: K): Omit<T, K> {
   const { [key]: _removed, ...rest } = value;
@@ -42,8 +46,7 @@ function Choice<T extends string | number>({ label, value, options, onChange }: 
  */
 export function OptionsEditor({ options, onChange }: OptionsEditorProps) {
   const set = (patch: Partial<TableOptions>) => onChange({ ...options, ...patch });
-  const percent = (value: number | undefined) => Math.round((value ?? 0) * 100);
-  const exposed = percent(options?.exposedCardChance);
+  const exposed = Number(((options?.exposedCardChance ?? 0) * 100).toFixed(2));
 
   return (
     <section className="panel" aria-label="卓の作法">
@@ -53,11 +56,12 @@ export function OptionsEditor({ options, onChange }: OptionsEditorProps) {
           label="札を表にしてしまう"
           info={<InfoTip label="札を表にしてしまう">配るときにディーラーが札を1枚表にしてしまう確率です（1ハンドあたり）。ミスディールではなく、表になった札を回収して山札の上から引き直します。手札は割れません。</InfoTip>}
           suffix="%"
-          step={PERCENT_STEP}
+          step={EXPOSED_STEP}
           value={exposed}
           min={0}
-          max={100}
-          onChange={(value) => set({ exposedCardChance: value / 100 })}
+          // 前の版で上限より大きく保存したものはそのまま見せ、− を押すと上限に戻る。
+          max={EXPOSED_MAX}
+          onChange={(value) => set({ exposedCardChance: Number((value / 100).toFixed(4)) })}
         />
         {exposed > 0 && <>
           <div className="field checkline-field options-dependent">
