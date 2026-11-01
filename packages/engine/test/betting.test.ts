@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { createGame, legalActions, reduce } from '../src/game/reduce.js';
 import { STANDARD_VARIANT } from '../src/rules/presets.js';
-import type { Action, BettingRules, GameState, Variant } from '../src/types.js';
+import { STRADDLE_UNLIMITED, type Action, type BettingRules, type GameState, type Variant } from '../src/types.js';
 
 /**
  * 賭け方の制度。
@@ -296,6 +296,25 @@ describe('ストラドル', () => {
     expect(state.currentBet).toBe(80);
     // 上限2回なので3人目には回らない。
     expect(state.turnPlayerId).toBe('p1');
+  });
+
+  it('無制限でも、ブラインドの席まで回ったら止まる', () => {
+    let state = tableOf(4, withBetting({ limit: 'no-limit', straddle: { max: STRADDLE_UNLIMITED } }));
+    // dealer=p0, SB=p1, BB=p2, UTG=p3。全員が出すつもりでも、重なるのは p3 と p0 まで。
+    for (const id of ['p0', 'p1', 'p2', 'p3']) state = reduce(state, { type: 'setStraddle', playerId: id, on: true });
+    state = reduce(state, { type: 'startHand', seed: 1 });
+    expect(state.players.find((p) => p.id === 'p3')!.bet).toBe(40);
+    expect(state.players.find((p) => p.id === 'p0')!.bet).toBe(80);
+    expect(state.players.find((p) => p.id === 'p1')!.bet).toBe(10);
+    expect(state.players.find((p) => p.id === 'p2')!.bet).toBe(20);
+    expect(state.currentBet).toBe(80);
+  });
+
+  it('ヘッズアップでは出せない（最初に行動するのが SB なので）', () => {
+    let state = tableOf(2, withBetting({ limit: 'no-limit', straddle: { max: STRADDLE_UNLIMITED } }));
+    for (const id of ['p0', 'p1']) state = reduce(state, { type: 'setStraddle', playerId: id, on: true });
+    state = reduce(state, { type: 'startHand', seed: 1 });
+    expect(state.currentBet).toBe(20);
   });
 
   it('出した人ももう一度行動できる', () => {

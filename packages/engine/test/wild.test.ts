@@ -369,3 +369,27 @@ describe('ワイルドが何に化けたかを返す', () => {
     expect(result.resolved).toBe(result.cards);
   });
 });
+
+describe('ジョーカーの既定の扱い', () => {
+  it('ワイルドの設定が無くても、ジョーカーは何にでも化ける', () => {
+    // 以前はジョーカーが表示用の仮の札（A♠）として判定され、JOKER A♥ … がワンペアになっていた。
+    const variant: Variant = { ...STANDARD_VARIANT, deck: { ...STANDARD_VARIANT.deck, jokers: 1 } };
+    const joker = { rank: 'A' as const, suit: 'spades' as const, joker: 0 };
+    expect(hasWilds(variant)).toBe(true);
+    expect(isWild(joker, variant)).toBe(true);
+    const hand = [joker, { rank: 'A', suit: 'hearts' }, { rank: 'A', suit: 'clubs' }, { rank: 'A', suit: 'diamonds' }, { rank: '9', suit: 'clubs' }] as const;
+    expect(evaluateExact([...hand], variant)?.rankingId).toBe('four_of_a_kind');
+  });
+
+  it('ジョーカーの規則があれば、そちらに従う', () => {
+    const variant: Variant = {
+      ...STANDARD_VARIANT,
+      deck: { ...STANDARD_VARIANT.deck, jokers: 1 },
+      ranking: { ...STANDARD_VARIANT.ranking, wilds: [{ cards: { kind: 'joker' }, becomes: { ranks: ['A'] } }] },
+    };
+    const joker = { rank: 'A' as const, suit: 'spades' as const, joker: 0 };
+    const hand = [joker, { rank: '7', suit: 'hearts' }, { rank: '7', suit: 'clubs' }, { rank: '7', suit: 'diamonds' }, { rank: '9', suit: 'clubs' }] as const;
+    // A にしか化けられないので、7 のフォーカードにはならない。
+    expect(evaluateExact([...hand], variant)?.rankingId).not.toBe('four_of_a_kind');
+  });
+});

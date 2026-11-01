@@ -507,7 +507,7 @@ function startHand(state: GameState, seed: number, automaticFolds: AutomaticFold
 function postStraddles(
   players: readonly Player[],
   seats: readonly number[],
-  blinds: { readonly firstToActSeat: number },
+  blinds: { readonly firstToActSeat: number; readonly smallBlindSeat: number; readonly bigBlindSeat: number },
   state: GameState,
 ): { players: Player[]; currentBet: number; firstToActSeat: number } {
   const max = state.variant.betting.straddle?.max ?? 0;
@@ -517,6 +517,8 @@ function postStraddles(
   let seat = blinds.firstToActSeat;
 
   for (let i = 0; i < max; i++) {
+    // 一周してブラインドの席まで回ったら止める。上限が無制限（STRADDLE_UNLIMITED）でもここで終わる。
+    if (seat === blinds.smallBlindSeat || seat === blinds.bigBlindSeat) break;
     const player = current.find((p) => p.seat === seat);
     if (!player || !player.straddleOn || !player.inHand || player.chips <= 0) break;
 

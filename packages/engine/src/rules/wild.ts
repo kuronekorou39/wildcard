@@ -42,8 +42,17 @@ export function isWild(card: Card, variant: Variant): boolean {
 
 /** そのバリアントがワイルドを使うか。使わないなら置き換えの処理ごと飛ばせる。 */
 export function hasWilds(variant: Variant): boolean {
-  return (variant.ranking.wilds ?? []).length > 0;
+  return (variant.ranking.wilds ?? []).length > 0 || (variant.deck.jokers ?? 0) > 0;
 }
+
+/**
+ * ジョーカーの既定の扱い。ワイルドの設定にジョーカーの規則が無くても、
+ * ジョーカーは何にでも化けるワイルドとして扱う。
+ *
+ * 規則が無いと、ジョーカーは表示用の仮の札（A♠）として判定されてしまっていた。
+ * ジョーカーをデッキに入れただけで A♠ が増えたのと同じになり、意図と違う。
+ */
+const JOKER_ANYTHING: WildRule = { cards: { kind: 'joker' } };
 
 /** 手札の中でワイルドが入っている位置。 */
 export function wildPositions(cards: readonly Card[], variant: Variant): number[] {
@@ -56,7 +65,9 @@ export function wildPositions(cards: readonly Card[], variant: Variant): number[
 }
 
 function matchingRule(card: Card, variant: Variant): WildRule | undefined {
-  for (const rule of variant.ranking.wilds ?? []) {
+  const rules = variant.ranking.wilds ?? [];
+  if (card.joker !== undefined && (variant.deck.jokers ?? 0) > 0 && !rules.some((rule) => rule.cards.kind === 'joker')) return JOKER_ANYTHING;
+  for (const rule of rules) {
     const selector = rule.cards;
     if (selector.kind === 'joker') {
       if (card.joker !== undefined) return rule;

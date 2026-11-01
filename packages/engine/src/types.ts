@@ -143,6 +143,12 @@ export interface StreetCap {
  * **掛け金（SB/BB/アンティ）はここに入れない。** 同じバリアントのまま
  * 額だけ変えられる必要があるため、額は GameState 側に置く。
  */
+/**
+ * ストラドルを何回でも重ねられることを表す上限。
+ * 実際にはブラインドの席まで回ったところで止まる（席数より大きければ同じ意味）。
+ */
+export const STRADDLE_UNLIMITED = 99;
+
 export interface BettingRules {
   readonly limit: LimitKind;
   /**

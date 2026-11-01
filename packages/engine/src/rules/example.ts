@@ -492,7 +492,10 @@ export function describePattern(pattern: HandPattern): string {
  * 順位表に「デッキ 53枚」とだけ出ていても、その1枚が何なのか分からない。
  */
 export function describeWilds(variant: Variant): string | null {
-  const rules = variant.ranking.wilds ?? [];
+  const configured = variant.ranking.wilds ?? [];
+  // ジョーカーは規則が無くても何にでも化ける（→ wild.ts）。その分も説明に入れる。
+  const defaultJoker = (variant.deck.jokers ?? 0) > 0 && !configured.some((rule) => rule.cards.kind === 'joker');
+  const rules = defaultJoker ? [...configured, { cards: { kind: 'joker' as const } }] : configured;
   if (rules.length === 0) return null;
 
   const parts = rules.map((rule) => {
