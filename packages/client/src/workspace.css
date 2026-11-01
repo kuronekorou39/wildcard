@@ -139,12 +139,36 @@
 .editable-field .hint-warn { display: block; font-size: .68rem; }
 .editable-compact>.field-label { display: none !important; }
 .rules-shell .editor-content .field.editable-compact { margin: 0; }
-.usage-field { display: flex; align-items: center; gap: 12px; padding-block: 4px; }
-.usage-field>.field-label { flex: 1; margin: 0; }
-.usage-controls { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-.usage-controls .stepper { margin: 0; }
-.usage-mode { width: 88px; flex: 0 0 88px; padding: 8px 2px; font-size: .8rem; background: transparent; border: 0; border-radius: 0; border-bottom: 1px solid var(--border); }
-.usage-mode option { background: var(--surface); }
+.usage-field { padding-block: 4px; }
+.usage-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.usage-head .field-label { margin: 0; }
+.usage-modes { display: inline-flex; padding: 2px; border: 1px solid var(--border); border-radius: 9px; }
+.usage-modes button { padding: 6px 12px; border: 0; border-radius: 7px; background: transparent; color: var(--text-dim); font-size: .72rem; cursor: pointer; white-space: nowrap; }
+.usage-modes button[aria-pressed=true] { background: #382c31; color: var(--gold); }
+/* 数字は切替の下の行。範囲は「最小」「最大」をラベル付きで並べる */
+.usage-values { display: flex; flex-wrap: wrap; gap: 8px 24px; margin-top: 8px; }
+.rules-shell .editor-content .usage-values .stepper { margin: 0; }
+.usage-bound { display: inline-flex; align-items: center; gap: 8px; }
+.usage-bound>span:first-child { color: var(--text-dim); font-size: .7rem; }
+/* 配り方の図 */
+.structure-preview { display: grid; gap: 10px; margin-bottom: 20px; padding: 14px; border: 1px solid var(--border); border-radius: 12px; background: #18171966; }
+.structure-preview-line { display: grid; grid-template-columns: 3.6em minmax(0, 1fr); align-items: center; gap: 10px; }
+.structure-preview-label { color: var(--text-dim); font-size: .68rem; }
+.structure-backs { display: inline-flex; align-items: center; gap: 3px; flex-wrap: wrap; }
+.structure-backs .card { --card-width: 22px; }
+.structure-backs small { color: var(--text-dim); font-size: .65rem; margin-left: 2px; }
+.structure-streets { display: flex; flex-wrap: wrap; gap: 6px 14px; }
+.structure-street { display: inline-grid; grid-template-columns: auto auto; align-items: end; column-gap: 4px; }
+.structure-street>small { grid-column: 1 / -1; color: var(--text-dim); font-size: .6rem; margin-top: 3px; }
+.structure-burn { opacity: .45; }
+.structure-burn .card { --card-width: 15px; }
+.structure-pattern-list { display: flex; flex-wrap: wrap; gap: 8px 18px; }
+.structure-pattern { display: inline-flex; align-items: center; gap: 8px; }
+.structure-pattern small { color: var(--text-dim); font-size: .66rem; white-space: nowrap; }
+.structure-slots { display: inline-flex; gap: 3px; }
+.structure-slots i { display: grid; place-items: center; width: 22px; height: 31px; border-radius: 4px; font-style: normal; font-size: .6rem; font-weight: 700; }
+.structure-slots i[data-from=hole] { background: #9d343c; color: #fff4ee; }
+.structure-slots i[data-from=board] { background: #3a4f6a; color: #e6eefb; }
 /* ラベル行は道具（並べ替え・デフォルトに戻す）が出入りしても高さを変えない */
 .field-head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px 12px; min-height: 32px; margin-bottom: 6px; }
 .field-head .field-label, .field-head .checkline, .order-toggle { white-space: nowrap; }
@@ -183,7 +207,7 @@
 .stepper .field-label { display: flex; align-items: center; gap: 4px; }
 .stepper-controls { display: inline-flex; align-items: center; gap: 6px; }
 .stepper-value small { margin-left: 2px; color: var(--text-dim); font-size: .7em; font-weight: 400; }
-.stepper-bare { margin: 0; }
+.stepper-bare, .rules-shell .editor-content .field.stepper-bare { margin: 0; }
 .stepper-value { width: 3em; height: 32px; padding: 0; border: 0; border-bottom: 1px solid transparent; border-radius: 0; background: transparent; color: var(--text); font: inherit; font-size: 1.04rem; font-weight: 600; text-align: center; font-variant-numeric: tabular-nums; cursor: text; }
 button.stepper-value:hover { border-bottom-color: var(--gold); color: var(--gold); }
 .stepper-input { border-bottom-color: var(--gold); outline: none; appearance: textfield; -moz-appearance: textfield; }
@@ -195,7 +219,11 @@ button.stepper-value:hover { border-bottom-color: var(--gold); color: var(--gold
 .street-details[open]>summary::before { transform: rotate(45deg); }
 .street-details>summary .field-label { margin: 0; }
 .street-details>summary small { color: var(--text-dim); font-size: .7rem; }
-.street-columns, .rules-shell .street-row { display: grid; grid-template-columns: minmax(0, 1fr) 124px 124px 32px; align-items: center; gap: 12px; }
+.street-columns, .rules-shell .street-row { display: grid; grid-template-columns: minmax(5em, 9em) 124px 104px 32px; align-items: center; gap: 12px 20px; justify-content: start; }
+.street-burn { padding-left: 16px; border-left: 1px solid var(--border); opacity: .75; }
+.street-burn .stepper-controls button:not(.stepper-value) { width: 26px; height: 26px; }
+.street-burn .stepper-value { width: 2em; font-size: .88rem; }
+.street-columns>span:nth-child(3) { padding-left: 16px; }
 .rules-shell .street-num { justify-content: center; }
 .street-columns { margin-top: 12px; color: var(--text-dim); font-size: .65rem; }
 .street-columns>span:nth-child(2), .street-columns>span:nth-child(3) { text-align: center; }
@@ -499,12 +527,17 @@ button.stepper-value:hover { border-bottom-color: var(--gold); color: var(--gold
   .rules-shell .street-row .street-num:nth-of-type(2) { grid-area: open; }
   .rules-shell .street-row .street-num:nth-of-type(3) { grid-area: burn; }
   .rules-shell .street-row .street-remove { grid-area: remove; justify-self: end; }
-  .rules-shell .street-row { grid-template-columns: auto auto minmax(0, 1fr); }
+  /* 名前と × の行、その下に開く・焼く。幅が足りなければ焼くがさらに下へ回る */
+  .rules-shell .street-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; }
+  .rules-shell .street-row .street-name { flex: 1 1 calc(100% - 44px); min-width: 0; }
+  .rules-shell .street-row .street-remove { order: 1; flex: none; }
+  .rules-shell .street-row .street-num { order: 2; flex: none; }
+  .street-burn { padding-left: 8px; }
   .street-num { display: flex; align-items: center; gap: 6px; }
   .street-num::before { content: attr(data-label); color: var(--text-dim); font-size: .66rem; white-space: nowrap; }
   .street-row .stepper-controls { gap: 2px; }
   .street-row .stepper-controls button:not(.stepper-value) { width: 28px; height: 28px; }
-  .street-row .stepper-value { width: 2em; }
+  .street-row .stepper-value { width: 1.8em; }
   .order-item .rank-order-arrow { width: 14px; }
   .order-item .chip { min-width: 32px; padding-inline: 6px; }
   /* 13枚が2行に収まる大きさ */
