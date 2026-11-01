@@ -1,7 +1,9 @@
 import { Icon } from '../Icon.js';
 import { Stepper } from '../Stepper.js';
+import { withExcluded } from './DeckEditor.js';
 import { InfoTip } from '../InfoTip.js';
 import {
+  RANKS,
   blockSize,
   fromBlocks,
   toBlocks,
@@ -196,7 +198,13 @@ export function PatternEditor({ pattern, handSize, ranks, onChange }: PatternEdi
   );
 }
 
-/** ランクの選択。決まったランクを並べるときと、候補を決めるときに使う。 */
+/**
+ * ランクの選択。決まったランクを並べるときと、候補を決めるときに使う。
+ *
+ * デッキで外したランクも出す（点線）。ここはルールの定義なので、デッキの都合で
+ * 選べなくなるのはおかしい。選んで札が無ければ「成立する手が見つかりません」になる。
+ * 並びはデッキの画面と同じく左が強い。
+ */
 function RankChips({
   ranks,
   selected,
@@ -206,19 +214,22 @@ function RankChips({
   readonly selected: readonly Rank[];
   readonly onChange: (ranks: Rank[]) => void;
 }) {
+  const all = withExcluded([...ranks].reverse(), RANKS);
   return (
     <div className="chips chips-ranks">
-      {ranks.map((rank) => (
+      {all.map((rank) => (
         <button
           key={rank}
           type="button"
-          className={`chip chip-sm ${selected.includes(rank) ? 'chip-on' : ''}`}
+          aria-pressed={selected.includes(rank)}
+          aria-label={ranks.includes(rank) ? rank : `${rank}（デッキに無い）`}
+          className={`chip chip-sm ${selected.includes(rank) ? 'chip-on' : ''} ${ranks.includes(rank) ? '' : 'chip-missing'}`}
           onClick={() =>
             onChange(
               selected.includes(rank)
                 ? selected.filter((r) => r !== rank)
-                : // デッキの並び順に揃える。選んだ順に並ぶと読みにくい。
-                  ranks.filter((r) => selected.includes(r) || r === rank),
+                : // 弱い順で持つ（エンジンの並びと同じ）。選んだ順に並ぶと読みにくい。
+                  [...all].reverse().filter((r) => selected.includes(r) || r === rank),
             )
           }
         >

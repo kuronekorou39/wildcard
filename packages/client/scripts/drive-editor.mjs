@@ -86,8 +86,9 @@ console.log(`  条件: ${(await editor.locator('.block-total').innerText()).trim
 
 const exampleOf = async () =>
   (
-    await editor
-      .locator('.rule-row-cards .card')
+    // 例は編集中の役の行の見出しに出る
+    await page.locator('.ranking-item', { has: page.locator('.ranking-editor') })
+      .locator('.ranking-body .rule-row-cards .card')
       .evaluateAll((els) => els.map((el) => el.getAttribute('aria-label')))
   ).join(' ');
 

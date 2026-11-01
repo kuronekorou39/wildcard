@@ -244,8 +244,9 @@ button.stepper-value:hover { border-bottom-color: var(--gold); color: var(--gold
 .info-tip-button { display: grid; place-items: center; width: 24px; height: 24px; padding: 0; border: 0; border-radius: 50%; background: transparent; color: var(--text-dim); cursor: pointer; }
 .info-tip-button:hover, .info-tip-button[aria-expanded=true] { color: var(--gold); background: #ffffff10; }
 .info-tip-button .ui-icon { font-size: .95rem; }
-.info-tip-body { position: absolute; top: calc(100% + 4px); left: -4px; z-index: 8; width: max-content; max-width: min(260px, 70vw); padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface-raised); color: var(--text); font-size: .7rem; font-weight: 400; line-height: 1.6; box-shadow: 0 6px 18px #0009; white-space: normal; }
-.info-tip-body[hidden] { display: none; }
+/* 位置は InfoTip が画面の内側に収まるよう計算する。決まるまでは見せない */
+.info-tip-body { position: fixed; top: 0; left: 0; visibility: hidden; z-index: 1000; width: max-content; max-width: min(260px, 70vw); padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface-raised); color: var(--text); font-size: .7rem; font-weight: 400; line-height: 1.6; box-shadow: 0 6px 18px #0009; white-space: normal; }
+
 
 .stepper-controls button:not(.stepper-value), .deck-card-popover button { display: grid; place-items: center; width: 32px; height: 32px; border: 1px solid var(--border); border-radius: 50%; background: transparent; color: var(--text); cursor: pointer; }
 .stepper-controls button:not(.stepper-value):hover, .deck-card-popover button:hover { border-color: var(--gold); color: var(--gold); }
@@ -415,6 +416,15 @@ button.stepper-value:hover { border-bottom-color: var(--gold); color: var(--gold
 .ranking-delete { display: flex; margin: 12px 0 0 auto; color: var(--danger); background: transparent; font-size: .74rem; }
 .pattern-global-label { margin-top: 6px; }
 .ranking-example .card { --card-width: 28px; }
+/* 成立しないときも札の列と同じ高さを取り、行の高さを変えない */
+.ranking-example-none { display: flex; align-items: center; min-height: 40px; }
+
+/* 開閉は高さを滑らかに */
+.collapse { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .22s ease; }
+.collapse[data-open=true] { grid-template-rows: 1fr; }
+.collapse-inner { min-height: 0; overflow: hidden; }
+@media (prefers-reduced-motion: reduce) { .collapse { transition: none; } }
+.chip-missing { border-style: dashed; opacity: .6; }
 /* 賭け方: 制度とそれに従う設定を1つの枠に。どの制度でも効く設定はその下 */
 .betting-group { margin-bottom: 18px; padding: 14px 16px; border: 1px solid var(--border); border-radius: 12px; background: #18171966; }
 .rules-shell .editor-content .betting-group .field:last-child { margin-bottom: 0; }
@@ -425,7 +435,11 @@ button.stepper-value:hover { border-bottom-color: var(--gold); color: var(--gold
 .choice button { min-width: 40px; padding: 7px 12px; border: 1px solid var(--border); border-radius: 8px; background: transparent; color: var(--text-dim); font-size: .74rem; cursor: pointer; }
 .choice button[aria-pressed=true] { border-color: var(--gold); background: #382c31; color: var(--gold); }
 .checkline-field { display: flex; align-items: center; gap: 4px; }
-.checkline-field .checkline { margin: 0; align-items: center; }
+.checkline-field .checkline { margin: 0; align-items: center; font-size: .76rem; }
+/* 制度のボタン: 名前の下に1行の説明 */
+.limit-choices .segment { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+.limit-choices .segment small { color: var(--text-dim); font-size: .62rem; font-weight: 400; line-height: 1.4; }
+.limit-choices .segment-active small { color: var(--text); }
 .checkline-field .checkline input { margin-top: 0; }
 .rules-shell .ranking-row { display: grid; grid-template-columns: auto auto minmax(0, 1fr) auto auto; align-items: center; gap: 8px; }
 .ranking-handle { display: grid; place-items: center; width: 24px; align-self: stretch; min-height: 44px; border: 0; border-radius: 6px; background: transparent; color: var(--text-dim); font-size: .8rem; letter-spacing: -.2em; cursor: grab; touch-action: none; user-select: none; }
@@ -436,7 +450,7 @@ button.stepper-value:hover { border-bottom-color: var(--gold); color: var(--gold
 .rules-shell .ranking-edit { min-width: 56px; text-align: center; white-space: nowrap; }
 .ranking-example { margin-top: 6px; }
 .ranking-example .card { --card-width: 26px; }
-.ranking-example-none { display: block; margin-top: 6px; color: var(--text-dim); font-size: .62rem; }
+.ranking-example-none { margin-top: 6px; color: var(--text-dim); font-size: .62rem; }
 /* デッキの構成: 種類ごとに1枚。0枚は薄く、2枚以上は右上に枚数。 */
 .deck-contents-card { position: relative; display: block; width: 44px; padding: 0; border: 0; background: transparent; color: inherit; }
 .deck-contents-pick:hover .card, .deck-contents-pick:focus-visible .card { outline: 2px solid var(--gold); outline-offset: 1px; }
@@ -539,6 +553,7 @@ button.stepper-value:hover { border-bottom-color: var(--gold); color: var(--gold
   .rules-shell .ranking-edit { min-width: 48px; padding-inline: 6px; }
   .order-row { gap: 2px; }
   .rules-shell .editor-content .segment { padding: 9px 2px; font-size: .66rem; white-space: nowrap; letter-spacing: -.02em; }
+  .rules-shell .editor-content .limit-choices .segment small { white-space: normal; font-size: .58rem; }
   /* 狭い画面では1つの段階を2行に: 名前と ×、その下に「開く」「焼く」 */
   .street-columns { display: none; }
   .rules-shell .street-row { grid-template-columns: auto auto 1fr; grid-template-areas: "name name remove" "open burn ."; gap: 6px 16px; padding: 10px 0; border-bottom: 1px solid var(--border); }

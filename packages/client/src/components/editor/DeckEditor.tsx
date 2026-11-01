@@ -192,7 +192,7 @@ function OrderRow({ items, ordering, onToggle, onMove }: {
  * 使っているランク（強い順）に、外したランクを「戻したときに入る位置」で差し込む。
  * 本来の順で自分より弱い札のうち、いちばん先に並んでいるものの前に置く。無ければ末尾。
  */
-function withExcluded(strongFirst: readonly Rank[], allRanks: readonly Rank[]): Rank[] {
+export function withExcluded(strongFirst: readonly Rank[], allRanks: readonly Rank[]): Rank[] {
   const step = (rank: Rank) => allRanks.indexOf(rank);
   const excluded = [...allRanks].reverse().filter((rank) => !strongFirst.includes(rank));
   const before = new Map<Rank | null, Rank[]>();

@@ -111,19 +111,19 @@ describe('例は読みやすい並びになっている', () => {
   const ranksOf = (variant: Variant, hand: readonly { rank: string }[]) =>
     hand.map((c) => variant.deck.ranks.indexOf(c.rank as never));
 
-  it('同じ条件が続く区間はランク順に並ぶ', () => {
+  it('同じ条件が続く区間は強い順（左が強い）に並ぶ', () => {
     // 2♥ J♣ K♣ 5♣ 3♥ のように散らばると、何が条件を満たしているのか
-    // 目で追えない。素数ストレートは5枚すべて同じ条件なので全体が昇順になる。
+    // 目で追えない。素数ストレートは5枚すべて同じ条件なので全体が強い順になる。
     const prime = VARIANT_PRESETS.find((v) => v.id === 'prime')!;
     const hand = assertExactly(prime, 'prime');
     const values = ranksOf(prime, hand);
-    expect(values).toEqual([...values].sort((a, b) => a - b));
+    expect(values).toEqual([...values].sort((a, b) => b - a));
   });
 
-  it('フラッシュの例もランク順に並ぶ', () => {
+  it('フラッシュの例も強い順に並ぶ', () => {
     const hand = assertExactly(STANDARD_VARIANT, 'flush');
     const values = ranksOf(STANDARD_VARIANT, hand);
-    expect(values).toEqual([...values].sort((a, b) => a - b));
+    expect(values).toEqual([...values].sort((a, b) => b - a));
   });
 
   it('フルハウスは3枚組が先（条件の順を崩さない）', () => {
@@ -142,10 +142,21 @@ describe('例は読みやすい並びになっている', () => {
     for (const card of hand.slice(2)) expect(card.rank).not.toBe(hand[0]!.rank);
   });
 
-  it('ストレートは下から上へ並ぶ', () => {
+  it('ストレートは上から下へ並ぶ（左が強い）', () => {
     const hand = assertExactly(STANDARD_VARIANT, 'straight');
     const values = ranksOf(STANDARD_VARIANT, hand);
-    expect(values).toEqual([...values].sort((a, b) => a - b));
+    expect(values).toEqual([...values].sort((a, b) => b - a));
+  });
+
+  it('ハイカードも左が強い（任意の1枚とキッカーをまとめて並べる）', () => {
+    const hand = assertExactly(STANDARD_VARIANT, 'high_card');
+    const values = ranksOf(STANDARD_VARIANT, hand);
+    expect(values).toEqual([...values].sort((a, b) => b - a));
+  });
+
+  it('ロイヤルは A K Q J 10、ホイールは 5 4 3 2 A', () => {
+    expect(assertExactly(STANDARD_VARIANT, 'royal_flush').map((c) => c.rank)).toEqual(['A', 'K', 'Q', 'J', '10']);
+    expect(assertExactly(STANDARD_VARIANT, 'wheel').map((c) => c.rank)).toEqual(['5', '4', '3', '2', 'A']);
   });
 
   it('ストレートの例がフラッシュに見えない', () => {

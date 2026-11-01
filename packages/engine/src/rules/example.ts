@@ -254,6 +254,10 @@ function buildCandidate(
  * その並び自体が役の説明になっている。ランクで一律に並べ替えると
  * それが消えるので、**同じ条件が続いている区間の中だけ**で並べ替える。
  * 条件を満たす札が先、キッカーが後、という関係もそのまま保つ。
+ *
+ * **左が強い。** 区間の中は強い順に並べる。ストレートのように1枚ずつの条件が
+ * 下から順に続く並び（X, X+1, … や 10 J Q K A）は、その並びごと逆にする。
+ * こうすると 10 J Q K A は A K Q J 10、ホイールは 5 4 3 2 A になる。
  */
 function arrange(hand: readonly Card[], pattern: HandPattern, variant: Variant): Card[] {
   const specOf = (i: number): string => JSON.stringify(pattern.cards[i]);
@@ -274,11 +278,47 @@ function arrange(hand: readonly Card[], pattern: HandPattern, variant: Variant):
     return rankValue(a.rank, variant.deck) - rankValue(b.rank, variant.deck);
   };
 
-  const out: Card[] = [];
+  const sections: { cards: Card[]; spec: HandPattern['cards'][number] | undefined }[] = [];
   for (let i = 0; i + 1 < bounds.length; i++) {
-    out.push(...hand.slice(bounds[i]!, bounds[i + 1]!).sort(byRank));
+    sections.push({
+      cards: hand.slice(bounds[i]!, bounds[i + 1]!).sort((a, b) => -byRank(a, b) || 0).sort(wildsLast),
+      spec: pattern.cards[bounds[i]!],
+    });
   }
-  return out;
+
+  // 何の条件も無い「任意」の札がキッカーの直前にあるなら、キッカーとまとめて強い順にする。
+  // ハイカードは「任意1枚＋キッカー4枚」なので、そのままだと 9 A 8 6 2 のように並ぶ。
+  const isFree = (section: (typeof sections)[number]) =>
+    section.spec === undefined || (section.spec.rank.type === 'any' && section.spec.suits.length === 0);
+  if (sections.length > 1 && sections[sections.length - 1]!.spec === undefined) {
+    let from = sections.length - 1;
+    while (from > 0 && isFree(sections[from - 1]!)) from--;
+    if (from < sections.length - 1) {
+      const merged = sections.splice(from).flatMap((section) => section.cards);
+      sections.push({ cards: merged.sort((a, b) => -byRank(a, b) || 0).sort(wildsLast), spec: undefined });
+    }
+  }
+
+  // 1枚ずつの区間が続く並び（同じ変数の相対指定、または決まったランクの列）を逆にする。
+  const runKey = (section: (typeof sections)[number]): string | null => {
+    if (section.cards.length !== 1 || !section.spec) return null;
+    const rank = section.spec.rank;
+    return rank.type === 'variable' ? `var:${rank.name}` : rank.type === 'fixed' ? 'fixed' : null;
+  };
+  const ordered: (typeof sections)[number][] = [];
+  for (let i = 0; i < sections.length; ) {
+    const key = runKey(sections[i]!);
+    let j = i + 1;
+    while (key !== null && j < sections.length && runKey(sections[j]!) === key) j++;
+    const group = sections.slice(i, j);
+    ordered.push(...(group.length > 1 ? group.reverse() : group));
+    i = j;
+  }
+  return ordered.flatMap((section) => section.cards);
+
+  function wildsLast(a: Card, b: Card): number {
+    return (isWild(a, variant) ? 1 : 0) - (isWild(b, variant) ? 1 : 0);
+  }
 }
 
 /**

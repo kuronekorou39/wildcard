@@ -7,10 +7,11 @@ interface BettingEditorProps {
   readonly onChange: (betting: BettingRules) => void;
 }
 
+/** 説明はボタンのすぐ下に出す。名前だけでは何が違うのか分からない。 */
 const LIMITS: readonly { readonly kind: LimitKind; readonly label: string; readonly note: string }[] = [
-  { kind: 'no-limit', label: 'ノーリミット', note: 'いつでも手持ち全部まで出せます。' },
-  { kind: 'pot-limit', label: 'ポットリミット', note: 'コールしたあとのポットぶんまで。オマハはこの形が普通です。' },
-  { kind: 'fixed-limit', label: 'フィックスリミット', note: '賭け額が刻みで決まります。1回に動く額が小さくなります。' },
+  { kind: 'no-limit', label: 'ノーリミット', note: '手持ち全部まで賭けられる' },
+  { kind: 'pot-limit', label: 'ポットリミット', note: 'ポットの額まで賭けられる' },
+  { kind: 'fixed-limit', label: 'フィックスリミット', note: '決まった額ずつ賭ける' },
 ];
 
 /** 押して選ぶ小さな選択肢。値の数が少ないものはセレクトより一目で分かる。 */
@@ -35,7 +36,6 @@ function Choice<T extends number>({ label, value, options, onChange }: {
  */
 export function BettingEditor({ betting, structure, onChange }: BettingEditorProps) {
   const set = (patch: Partial<BettingRules>) => onChange({ ...betting, ...patch });
-  const current = LIMITS.find((l) => l.kind === betting.limit);
 
   const noAllInPreflop = betting.streetCaps?.some((cap) => cap.street === PREFLOP && cap.noAllIn) ?? false;
   const toggleNoAllIn = (on: boolean) => {
@@ -49,11 +49,12 @@ export function BettingEditor({ betting, structure, onChange }: BettingEditorPro
     <section className="panel" aria-label="賭け方">
       <div className="betting-group">
         <div className="field">
-          <span className="field-label">制度{current && <InfoTip label={current.label}>{current.note}</InfoTip>}</span>
-          <div className="segmented">
+          <span className="field-label">制度<InfoTip label="制度">ノーリミットのオマハは毎回のようにオールインになりやすいので、オマハはポットリミットで遊ぶのが普通です。</InfoTip></span>
+          <div className="segmented limit-choices">
             {LIMITS.map((limit) => (
-              <button key={limit.kind} type="button" className={`segment ${betting.limit === limit.kind ? 'segment-active' : ''}`} onClick={() => set({ limit: limit.kind })}>
-                {limit.label}
+              <button key={limit.kind} type="button" className={`segment ${betting.limit === limit.kind ? 'segment-active' : ''}`} aria-pressed={betting.limit === limit.kind} onClick={() => set({ limit: limit.kind })}>
+                <span>{limit.label}</span>
+                <small>{limit.note}</small>
               </button>
             ))}
           </div>

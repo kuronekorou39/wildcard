@@ -27,10 +27,8 @@ for (const name of VARIANTS) {
   await chooseRule(page, name);
   await page.getByRole('button', { name: 'ルール詳細', exact: true }).click();
 
-  const sheet = page.locator('details.rule-sheet');
-  if (!(await sheet.evaluate((el) => el.open))) {
-    await page.getByText('役の順位を見る').click();
-  }
+  // ルール詳細はダイアログで、順位表は最初から開いている（折りたたみの枠は無い）。
+  await page.locator('.rule-sheet-list').waitFor();
   await page.waitForTimeout(150);
 
   const rows = page.locator('.rule-sheet-list > li');
