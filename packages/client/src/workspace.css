@@ -151,22 +151,22 @@
 .usage-bound { display: inline-flex; align-items: center; gap: 8px; }
 .usage-bound>span:first-child { color: var(--text-dim); font-size: .7rem; }
 /* 配り方の図 */
-.structure-preview { display: grid; gap: 10px; margin-bottom: 20px; padding: 14px; border: 1px solid var(--border); border-radius: 12px; background: #18171966; }
+.structure-preview { display: grid; gap: 12px; margin-top: 8px; padding: 14px; border: 1px solid var(--border); border-radius: 12px; background: #18171966; }
 .structure-preview-line { display: grid; grid-template-columns: 3.6em minmax(0, 1fr); align-items: center; gap: 10px; }
 .structure-preview-label { color: var(--text-dim); font-size: .68rem; }
 .structure-backs { display: inline-flex; align-items: center; gap: 3px; flex-wrap: wrap; }
-.structure-backs .card { --card-width: 22px; }
+.structure-backs .card { --card-width: 32px; }
 .structure-backs small { color: var(--text-dim); font-size: .65rem; margin-left: 2px; }
 .structure-streets { display: flex; flex-wrap: wrap; gap: 6px 14px; }
 .structure-street { display: inline-grid; grid-template-columns: auto auto; align-items: end; column-gap: 4px; }
 .structure-street>small { grid-column: 1 / -1; color: var(--text-dim); font-size: .6rem; margin-top: 3px; }
 .structure-burn { opacity: .45; }
-.structure-burn .card { --card-width: 15px; }
+.structure-burn .card { --card-width: 22px; }
 .structure-pattern-list { display: flex; flex-wrap: wrap; gap: 8px 18px; }
 .structure-pattern { display: inline-flex; align-items: center; gap: 8px; }
 .structure-pattern small { color: var(--text-dim); font-size: .66rem; white-space: nowrap; }
 .structure-slots { display: inline-flex; gap: 3px; }
-.structure-slots i { display: grid; place-items: center; width: 22px; height: 31px; border-radius: 4px; font-style: normal; font-size: .6rem; font-weight: 700; }
+.structure-slots i { display: grid; place-items: center; width: 32px; height: 45px; border-radius: 5px; font-style: normal; font-size: .72rem; font-weight: 700; }
 .structure-slots i[data-from=hole] { background: #9d343c; color: #fff4ee; }
 .structure-slots i[data-from=board] { background: #3a4f6a; color: #e6eefb; }
 /* ラベル行は道具（並べ替え・デフォルトに戻す）が出入りしても高さを変えない */
@@ -408,7 +408,25 @@ button.stepper-value:hover { border-bottom-color: var(--gold); color: var(--gold
 .editor-leave-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
 .editor-leave-actions .btn { flex: 1 1 auto; }
 /* 役の行: つまみ ↑↓ 本文 使う 編集。狭くても折り返さず、本文だけが縮む。 */
-.rules-shell .ranking-note { margin: 0 0 14px; }
+/* 役の行: 編集は鉛筆つき、消すは控えめに右下 */
+.rules-shell .ranking-edit { display: inline-flex; align-items: center; gap: 4px; }
+.rules-shell .ranking-edit .ui-icon { font-size: .85rem; }
+.rules-shell .ranking-editor { padding: 14px; }
+.ranking-delete { display: flex; margin: 12px 0 0 auto; color: var(--danger); background: transparent; font-size: .74rem; }
+.pattern-global-label { margin-top: 6px; }
+.ranking-example .card { --card-width: 28px; }
+/* 賭け方: 制度とそれに従う設定を1つの枠に。どの制度でも効く設定はその下 */
+.betting-group { margin-bottom: 18px; padding: 14px 16px; border: 1px solid var(--border); border-radius: 12px; background: #18171966; }
+.rules-shell .editor-content .betting-group .field:last-child { margin-bottom: 0; }
+.betting-dependent { margin-top: 14px; padding-top: 14px; border-top: 1px dashed var(--border); }
+.betting-common-title { margin: 0 0 12px; color: var(--text-dim); font-size: .7rem; letter-spacing: .08em; }
+.rules-shell .editor-content .field-label { display: flex; align-items: center; gap: 4px; }
+.choice { display: inline-flex; flex-wrap: wrap; gap: 4px; }
+.choice button { min-width: 40px; padding: 7px 12px; border: 1px solid var(--border); border-radius: 8px; background: transparent; color: var(--text-dim); font-size: .74rem; cursor: pointer; }
+.choice button[aria-pressed=true] { border-color: var(--gold); background: #382c31; color: var(--gold); }
+.checkline-field { display: flex; align-items: center; gap: 4px; }
+.checkline-field .checkline { margin: 0; align-items: center; }
+.checkline-field .checkline input { margin-top: 0; }
 .rules-shell .ranking-row { display: grid; grid-template-columns: auto auto minmax(0, 1fr) auto auto; align-items: center; gap: 8px; }
 .ranking-handle { display: grid; place-items: center; width: 24px; align-self: stretch; min-height: 44px; border: 0; border-radius: 6px; background: transparent; color: var(--text-dim); font-size: .8rem; letter-spacing: -.2em; cursor: grab; touch-action: none; user-select: none; }
 .ranking-handle:hover, .ranking-handle:focus-visible { color: var(--gold); background: #ffffff10; }
@@ -520,6 +538,7 @@ button.stepper-value:hover { border-bottom-color: var(--gold); color: var(--gold
   .rules-shell .ranking-row { gap: 6px; }
   .rules-shell .ranking-edit { min-width: 48px; padding-inline: 6px; }
   .order-row { gap: 2px; }
+  .rules-shell .editor-content .segment { padding: 9px 2px; font-size: .66rem; white-space: nowrap; letter-spacing: -.02em; }
   /* 狭い画面では1つの段階を2行に: 名前と ×、その下に「開く」「焼く」 */
   .street-columns { display: none; }
   .rules-shell .street-row { grid-template-columns: auto auto 1fr; grid-template-areas: "name name remove" "open burn ."; gap: 6px 16px; padding: 10px 0; border-bottom: 1px solid var(--border); }

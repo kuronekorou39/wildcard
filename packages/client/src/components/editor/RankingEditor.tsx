@@ -11,6 +11,8 @@ import {
 } from '@wildcard/engine';
 import { PlayingCard } from '../PlayingCard.js';
 import { PatternEditor } from './PatternEditor.js';
+import { InfoTip } from '../InfoTip.js';
+import { EditableText } from '../EditableValue.js';
 
 interface RankingEditorProps {
   readonly variant: Variant;
@@ -76,7 +78,9 @@ export function RankingEditor({ variant, onChange }: RankingEditorProps) {
 
   return (
     <section className="panel" aria-label="役の強さ">
-      <p className="hint ranking-note">上が強い。つまみを引きずるか、↑↓で並べ替え。</p>
+      <div className="field-head">
+        <span className="field-label">役（上が強い）<InfoTip label="役の並べ替え">左のつまみを引きずるか、↑↓で並べ替えます。チェックを外した役は使いません。</InfoTip></span>
+      </div>
 
       <ol ref={list} className="ranking-list">
         {hands.map((hand, i) => (
@@ -128,21 +132,13 @@ export function RankingEditor({ variant, onChange }: RankingEditorProps) {
                 aria-expanded={editing === hand.id}
                 onClick={() => setEditing(editing === hand.id ? null : hand.id)}
               >
-                {editing === hand.id ? '閉じる' : '編集'}
+                <Icon kind={editing === hand.id ? 'chevron-up' : 'edit'} />{editing === hand.id ? '閉じる' : '編集'}
               </button>
             </div>
 
             {editing === hand.id && (
               <div className="ranking-editor">
-                <label className="field">
-                  <span className="field-label">名前</span>
-                  <input
-                    className="input"
-                    value={hand.name}
-                    maxLength={24}
-                    onChange={(e) => update(hand.id, { name: e.target.value })}
-                  />
-                </label>
+                <EditableText label="名前" value={hand.name} maxLength={24} placeholder="名前を入力" onChange={(name) => update(hand.id, { name })} />
 
                 <PatternEditor
                   pattern={hand.pattern}
@@ -158,7 +154,7 @@ export function RankingEditor({ variant, onChange }: RankingEditorProps) {
 
                 <button
                   type="button"
-                  className="btn btn-danger"
+                  className="btn btn-ghost ranking-delete"
                   onClick={() => {
                     setEditing(null);
                     replace(hands.filter((h) => h.id !== hand.id));
@@ -188,7 +184,7 @@ function Example({ hand, compact = false }: { readonly hand: readonly Card[] | n
     return (
       <div className={`rule-row-cards ${compact ? 'ranking-example' : ''}`}>
         {hand.map((card, i) => (
-          <PlayingCard key={i} card={card} size="sm" />
+          <PlayingCard key={i} card={card} size="sm" faceStyle="four-color" />
         ))}
       </div>
     );

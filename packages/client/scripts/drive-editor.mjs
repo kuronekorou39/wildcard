@@ -73,7 +73,9 @@ await page.getByRole('tab', { name: /役の強さ/ }).click();
 await page.getByRole('button', { name: '役を足す' }).click();
 const editor = page.locator('.ranking-editor');
 await editor.waitFor();
-await editor.getByRole('textbox').first().fill('スリーカード＋ペア（自作）');
+await editor.getByRole('button', { name: '名前を編集', exact: true }).click();
+await editor.getByRole('textbox', { name: '名前', exact: true }).fill('スリーカード＋ペア（自作）');
+await page.keyboard.press('Enter');
 
 // 「ペア＋三連」を組む: 同じランク2枚 ＋ 連続3枚
 await editor.getByRole('button', { name: 'まとまりを足す' }).click();

@@ -37,7 +37,6 @@ export function StructureEditor({ structure, onChange }: StructureEditorProps) {
 
   return (
     <section className="panel" aria-label="配り方">
-      <StructurePreview structure={structure} />
 
       <div className="field-row stepper-row">
         <Stepper label="手札" suffix="枚" value={structure.holeCards} min={0} max={20} onChange={holeCards => set({ holeCards })} />
@@ -103,6 +102,8 @@ export function StructureEditor({ structure, onChange }: StructureEditorProps) {
         </button>
         <p className="hint">バーンの枚数も必要なデッキ枚数に含めます。</p>
       </details>
+
+      <StructurePreview structure={structure} />
     </section>
   );
 }
@@ -153,7 +154,7 @@ function StructurePreview({ structure }: { readonly structure: HandStructure }) 
 function Backs({ count }: { readonly count: number }) {
   const shown = Math.min(count, PREVIEW_CARDS);
   return <span className="structure-backs" role="img" aria-label={`${count}枚`}>
-    {Array.from({ length: shown }, (_, i) => <PlayingCard key={i} card={null} size="sm" />)}
+    {Array.from({ length: shown }, (_, i) => <PlayingCard key={i} card={null} size="sm" backStyle="diamond" />)}
     {count > shown && <small>＋{count - shown}</small>}
   </span>;
 }

@@ -1,4 +1,5 @@
 import { PREFLOP, type BettingRules, type HandStructure, type LimitKind } from '@wildcard/engine';
+import { InfoTip } from '../InfoTip.js';
 
 interface BettingEditorProps {
   readonly betting: BettingRules;
@@ -6,20 +7,21 @@ interface BettingEditorProps {
   readonly onChange: (betting: BettingRules) => void;
 }
 
-const LIMITS: readonly { readonly kind: LimitKind; readonly label: string; readonly note: string }[] =
-  [
-    { kind: 'no-limit', label: 'ノーリミット', note: 'いつでも手持ち全部まで出せます。' },
-    {
-      kind: 'pot-limit',
-      label: 'ポットリミット',
-      note: 'コールしたあとのポットぶんまで。オマハはこの形が普通です。',
-    },
-    {
-      kind: 'fixed-limit',
-      label: 'フィックスリミット',
-      note: '賭け額が刻みで決まります。1回に動く額が小さくなります。',
-    },
-  ];
+const LIMITS: readonly { readonly kind: LimitKind; readonly label: string; readonly note: string }[] = [
+  { kind: 'no-limit', label: 'ノーリミット', note: 'いつでも手持ち全部まで出せます。' },
+  { kind: 'pot-limit', label: 'ポットリミット', note: 'コールしたあとのポットぶんまで。オマハはこの形が普通です。' },
+  { kind: 'fixed-limit', label: 'フィックスリミット', note: '賭け額が刻みで決まります。1回に動く額が小さくなります。' },
+];
+
+/** 押して選ぶ小さな選択肢。値の数が少ないものはセレクトより一目で分かる。 */
+function Choice<T extends number>({ label, value, options, onChange }: {
+  readonly label: string; readonly value: T;
+  readonly options: readonly (readonly [T, string])[]; readonly onChange: (value: T) => void;
+}) {
+  return <div className="choice" role="group" aria-label={label}>
+    {options.map(([id, name]) => <button key={id} type="button" aria-pressed={value === id} onClick={() => onChange(id)}>{name}</button>)}
+  </div>;
+}
 
 /**
  * 賭け方の編集。
@@ -27,14 +29,15 @@ const LIMITS: readonly { readonly kind: LimitKind; readonly label: string; reado
  * 制度を変えると**同じ役・同じデッキでも別のゲームになる**。
  * ノーリミットのオマハが毎回オールインになるのは有名な話で、
  * だから実際のオマハはポットリミットで行われる。
+ *
+ * 制度で変わるのは「賭け額が倍になる段階」（フィックスリミットだけ）。
+ * それは制度の枠の中に出し、どの制度でも効く設定とは分けて並べる。
  */
 export function BettingEditor({ betting, structure, onChange }: BettingEditorProps) {
   const set = (patch: Partial<BettingRules>) => onChange({ ...betting, ...patch });
+  const current = LIMITS.find((l) => l.kind === betting.limit);
 
-  const noAllInPreflop = betting.streetCaps?.some(
-    (cap) => cap.street === PREFLOP && cap.noAllIn,
-  );
-
+  const noAllInPreflop = betting.streetCaps?.some((cap) => cap.street === PREFLOP && cap.noAllIn) ?? false;
   const toggleNoAllIn = (on: boolean) => {
     // 他のストリートの上限は触らない。消すのはプリフロップのぶんだけ。
     const others = (betting.streetCaps ?? []).filter((cap) => cap.street !== PREFLOP);
@@ -44,105 +47,57 @@ export function BettingEditor({ betting, structure, onChange }: BettingEditorPro
 
   return (
     <section className="panel" aria-label="賭け方">
-
-      <div className="field">
-        <span className="field-label">制度</span>
-        <div className="segmented">
-          {LIMITS.map((limit) => (
-            <button
-              key={limit.kind}
-              type="button"
-              className={`segment ${betting.limit === limit.kind ? 'segment-active' : ''}`}
-              onClick={() => set({ limit: limit.kind })}
-            >
-              {limit.label}
-            </button>
-          ))}
+      <div className="betting-group">
+        <div className="field">
+          <span className="field-label">制度{current && <InfoTip label={current.label}>{current.note}</InfoTip>}</span>
+          <div className="segmented">
+            {LIMITS.map((limit) => (
+              <button key={limit.kind} type="button" className={`segment ${betting.limit === limit.kind ? 'segment-active' : ''}`} onClick={() => set({ limit: limit.kind })}>
+                {limit.label}
+              </button>
+            ))}
+          </div>
         </div>
-        <p className="hint">{LIMITS.find((l) => l.kind === betting.limit)?.note}</p>
+        {betting.limit === 'fixed-limit' && <div className="field betting-dependent">
+          <span className="field-label">賭け額が倍になる段階<InfoTip label="賭け額が倍になる段階">昔ながらのリミットホールデムはターンから倍になります。</InfoTip></span>
+          <Choice
+            label="賭け額が倍になる段階"
+            value={betting.bigBetFrom ?? -1}
+            options={[[-1, '倍にしない'], ...structure.streets.map((street, i) => [i, `${street.name}から`] as const)]}
+            onChange={(from) => onChange(from < 0 ? omit(betting, 'bigBetFrom') : { ...betting, bigBetFrom: from })}
+          />
+        </div>}
       </div>
 
-      {betting.limit === 'fixed-limit' && (
-        <label className="field">
-          <span className="field-label">賭け額が倍になる段階</span>
-          <select
-            className="input"
-            value={betting.bigBetFrom ?? -1}
-            onChange={(e) => {
-              const from = Number(e.target.value);
-              onChange(from < 0 ? omit(betting, 'bigBetFrom') : { ...betting, bigBetFrom: from });
-            }}
-          >
-            <option value={-1}>倍にしない</option>
-            {structure.streets.map((street, i) => (
-              <option key={i} value={i}>
-                {street.name}から
-              </option>
-            ))}
-          </select>
-          <p className="hint">昔ながらのリミットホールデムはターンから倍になります。</p>
-        </label>
-      )}
+      <p className="betting-common-title">どの制度でも</p>
 
-      <label className="field">
-        <span className="field-label">1ラウンドのレイズ回数</span>
-        <select
-          className="input"
+      <div className="field">
+        <span className="field-label">1ラウンドのレイズ回数<InfoTip label="レイズ回数">フィックスリミットでは4回（ベット＋レイズ3回）が普通です。</InfoTip></span>
+        <Choice
+          label="1ラウンドのレイズ回数"
           value={betting.maxRaisesPerRound ?? 0}
-          onChange={(e) => {
-            const max = Number(e.target.value);
-            onChange(
-              max < 1 ? omit(betting, 'maxRaisesPerRound') : { ...betting, maxRaisesPerRound: max },
-            );
-          }}
-        >
-          <option value={0}>無制限</option>
-          {[1, 2, 3, 4, 5].map((n) => (
-            <option key={n} value={n}>
-              {n}回まで
-            </option>
-          ))}
-        </select>
-        <p className="hint">フィックスリミットでは4回（ベット＋レイズ3回）が普通です。</p>
-      </label>
-
-      <label className="field">
-        <span className="field-label">ストラドル</span>
-        <select
-          className="input"
-          value={betting.straddle?.max ?? 0}
-          onChange={(e) => {
-            const max = Number(e.target.value);
-            onChange(max < 1 ? omit(betting, 'straddle') : { ...betting, straddle: { max } });
-          }}
-        >
-          <option value={0}>なし</option>
-          {[1, 2, 3].map((n) => (
-            <option key={n} value={n}>
-              {n}回まで重ねられる
-            </option>
-          ))}
-        </select>
-        <p className="hint">
-          BB の左隣が、カードを見ずに倍の賭け金を出せます。出した人がプリフロップで
-          最後に行動するので、順番そのものが変わります。
-        </p>
-      </label>
-
-      <label className="checkline">
-        <input
-          type="checkbox"
-          checked={noAllInPreflop ?? false}
-          onChange={(e) => toggleNoAllIn(e.target.checked)}
+          options={[[0, '無制限'], [1, '1'], [2, '2'], [3, '3'], [4, '4'], [5, '5']]}
+          onChange={(max) => onChange(max < 1 ? omit(betting, 'maxRaisesPerRound') : { ...betting, maxRaisesPerRound: max })}
         />
-        <span>
-          プリフロップはオールイン禁止
-          <small className="checkline-note">
-            最低1枚は残します。縛るのはレイズだけで、コールは縛りません（縛ると
-            相手のベットに応じられない人が出て勝負が進まなくなります）。
-          </small>
-        </span>
-      </label>
+      </div>
+
+      <div className="field">
+        <span className="field-label">ストラドル（重ねられる回数）<InfoTip label="ストラドル">BB の左隣が、カードを見ずに倍の賭け金を出せます。出した人がプリフロップで最後に行動するので、順番そのものが変わります。</InfoTip></span>
+        <Choice
+          label="ストラドル"
+          value={betting.straddle?.max ?? 0}
+          options={[[0, 'なし'], [1, '1'], [2, '2'], [3, '3']]}
+          onChange={(max) => onChange(max < 1 ? omit(betting, 'straddle') : { ...betting, straddle: { max } })}
+        />
+      </div>
+
+      <div className="field checkline-field">
+        <label className="checkline">
+          <input type="checkbox" checked={noAllInPreflop} onChange={(e) => toggleNoAllIn(e.target.checked)} />
+          <span>プリフロップはオールイン禁止</span>
+        </label>
+        <InfoTip label="オールイン禁止">最低1枚は残します。縛るのはレイズだけで、コールは縛りません（縛ると相手のベットに応じられない人が出て勝負が進まなくなります）。</InfoTip>
+      </div>
     </section>
   );
 }

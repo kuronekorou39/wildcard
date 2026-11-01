@@ -1,5 +1,6 @@
 import { Icon } from '../Icon.js';
 import { Stepper } from '../Stepper.js';
+import { InfoTip } from '../InfoTip.js';
 import {
   blockSize,
   fromBlocks,
@@ -77,7 +78,7 @@ export function PatternEditor({ pattern, handSize, ranks, onChange }: PatternEdi
 
   return (
     <div className="field">
-      <span className="field-label">条件（まとまりで組む）</span>
+      <span className="field-label">条件<InfoTip label="条件">同じランク・連続などのまとまりを組み合わせて役を作ります。条件より役の枚数が多いとき、残りはキッカーです。</InfoTip></span>
 
       <ul className="block-list">
         {blocks.map((block, i) => (
@@ -147,6 +148,7 @@ export function PatternEditor({ pattern, handSize, ranks, onChange }: PatternEdi
         {used < handSize && '（残りはキッカー）'}
       </p>
 
+      <span className="field-label pattern-global-label">全体の条件</span>
       <div className="chips">
         {GLOBALS.map((global) => (
           <button
