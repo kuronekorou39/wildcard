@@ -50,7 +50,7 @@ await editValue(page, '名前', '六枚フロップ・素数入り');
 // ---- デッキ: クラブを抜く ----
 await page.getByRole('tab', { name: /デッキ/ }).click();
 await page.getByRole('button', { name: '♣', exact: true }).click();
-const deckLine = await page.locator('#rules-panel .editor-figures').last().innerText();
+const deckLine = await page.locator('.deck-contents-toolbar strong').innerText();
 console.log(`  クラブを抜いた: ${deckLine.trim()}`);
 
 // ---- 配り方: フロップを6枚に ----

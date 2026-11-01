@@ -1,7 +1,7 @@
 import { chromium } from 'playwright';
 import { mkdir } from 'node:fs/promises';
 import assert from 'node:assert/strict';
-import { chooseRule } from './setup-helpers.mjs';
+import { chooseRule, editValue } from './setup-helpers.mjs';
 
 const URL = process.env.WILDCARD_URL ?? 'http://127.0.0.1:5173/';
 const OUT = process.env.WILDCARD_SHOTS ?? 'shots-workspace';
@@ -44,9 +44,12 @@ try {
     assert.match(await page.locator('.selected-rule-title').innerText(), /オマハ/);
     await page.getByRole('button', { name: 'これを元に作る' }).click();
     await page.locator('.rules-shell').waitFor();
-    for (const section of ['ルール情報', 'デッキ', '配り方', '賭け方', '役の強さ', '卓の作法', '受け渡し']) {
+    // 写しは名前が空で始まり、付けるまで保存できない
+    assert.equal(await page.getByRole('button', { name: '保存', exact: true }).isDisabled(), true);
+    await editValue(page, '名前', 'オマハの写し');
+    for (const section of ['概要', 'デッキ', '配り方', '賭け方', '役の強さ', '卓の作法', '受け渡し']) {
       await page.getByRole('tab', { name: new RegExp(section) }).click();
-      if (['ルール情報', 'デッキ', '配り方', '役の強さ'].includes(section)) await page.screenshot({ path: `${OUT}/${width}-editor-${section === 'ルール情報' ? 'info' : section === '配り方' ? 'structure' : section === '役の強さ' ? 'ranking' : 'deck'}.png` });
+      if (['概要', 'デッキ', '配り方', '役の強さ'].includes(section)) await page.screenshot({ path: `${OUT}/${width}-editor-${section === '概要' ? 'info' : section === '配り方' ? 'structure' : section === '役の強さ' ? 'ranking' : 'deck'}.png` });
       const geometry = await page.evaluate(() => {
         const content = document.querySelector('.editor-content').getBoundingClientRect();
         return { docHeight: document.documentElement.scrollHeight, docWidth: document.documentElement.scrollWidth, bottom: content.bottom };
@@ -76,6 +79,7 @@ try {
   await page.getByRole('spinbutton', { name: 'BB', exact: true }).fill('20');
   await page.keyboard.press('Enter');
   await page.getByRole('button', { name: 'これを元に作る', exact: true }).click();
+  await editValue(page, '名前', 'バナー確認用');
   const encoded = await page.evaluate(() => {
     const canvas = document.createElement('canvas'); canvas.width = 900; canvas.height = 300;
     const context = canvas.getContext('2d');

@@ -23,7 +23,7 @@ interface RuleEditorProps {
 
 /** タブ名がそのまま唯一の見出し。パネルの中では繰り返さない。 */
 const SECTIONS = [
-  ['info', 'ルール情報'], ['deck', 'デッキ'], ['structure', '配り方'], ['betting', '賭け方'],
+  ['info', '概要'], ['deck', 'デッキ'], ['structure', '配り方'], ['betting', '賭け方'],
   ['ranking', '役の強さ'], ['options', '卓の作法'], ['share', '受け渡し'],
 ] as const;
 type Section = typeof SECTIONS[number][0];
@@ -38,7 +38,8 @@ const sectionLabel = (section: Section): string => SECTIONS.find(([id]) => id ==
 type Leaving = 'none' | 'confirm' | 'delete';
 
 export function RuleEditor({ source, onClose }: RuleEditorProps) {
-  const [draft, setDraft] = useState<Variant>(() => isCustomVariant(source.id) ? source : { ...source, id: newCustomId(), name: `${source.name}の写し` });
+  // 写しは名前を空で始める。「〜の写し」のまま保存されたルールが並ぶより、自分で付けてもらう。
+  const [draft, setDraft] = useState<Variant>(() => isCustomVariant(source.id) ? source : { ...source, id: newCustomId(), name: '' });
   const [banner, setBanner] = useState<RuleBannerStyle>(() => ruleBanner(source.id));
   // 最後に保存した（または開いた）状態。これと違えば「未保存の変更あり」。
   const [baseline, setBaseline] = useState<{ readonly variant: Variant; readonly banner: RuleBannerStyle }>(() => ({ variant: draft, banner }));
@@ -97,7 +98,7 @@ export function RuleEditor({ source, onClose }: RuleEditorProps) {
       </div>
     </header>
     <div className="editor-heading">
-      <div><h1 className="editor-title">ルールを設定</h1><p className="editor-current-name">{draft.name}</p></div>
+      <div><h1 className="editor-title">ルールを設定</h1><p className="editor-current-name">{draft.name || `${source.name} を元に作成`}</p></div>
       <button type="button" className={`editor-summary ${ready ? '' : 'editor-summary-bad'}`} aria-haspopup="dialog" aria-expanded={inspecting} onClick={() => setInspecting(true)}>
         <span>{cards}枚 · 手札{draft.structure.holeCards} · 場{boardSize(draft.structure)}{seats !== null && Number.isFinite(seats) && ` · 最大${seats}人`}</span>
         <strong>{ready ? <Icon kind="check" /> : '!'} {status}</strong>
@@ -111,8 +112,8 @@ export function RuleEditor({ source, onClose }: RuleEditorProps) {
         </button>)}
       </nav>
       <main className="editor-content" id="rules-panel" role="tabpanel" aria-labelledby={`rules-tab-${section}`} key={section}>
-        {section === 'info' && <section className="panel" id="rules-info" aria-label="ルール情報">
-          <EditableText label="名前" value={draft.name} maxLength={40} onChange={name => update({ name })} />
+        {section === 'info' && <section className="panel" id="rules-info" aria-label="概要">
+          <EditableText label="名前" value={draft.name} maxLength={40} placeholder="名前を入力" onChange={name => update({ name })} />
           <EditableText label="説明" value={draft.description ?? ''} maxLength={120} multiline placeholder="説明を追加" onChange={description => update({ description })} />
           <div className="field"><span className="field-label">選択画面のバナー</span><BannerEditor variant={draft} value={banner} onBusyChange={setBannerBusy} onChange={value => { setBanner(value); setError(''); }} /></div>
         </section>}

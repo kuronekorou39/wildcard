@@ -149,9 +149,16 @@
 .usage-controls .editable-field { flex: 1; }
 .usage-mode { width: 88px; flex: 0 0 88px; padding: 8px 2px; font-size: .8rem; background: transparent; border: 0; border-radius: 0; border-bottom: 1px solid var(--border); }
 .usage-mode option { background: var(--surface); }
-.rank-order-preview { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; width: 100%; color: var(--text); background: transparent; border: 0; border-bottom: 1px solid var(--border); padding: 12px 0; cursor: pointer; }
-.rank-order-preview span { font-size: .85rem; }
-.rank-order-preview small { margin-left: auto; color: var(--gold); font-size: .65rem; }
+.field-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 6px; }
+.field-head .field-label { margin: 0; }
+.order-toggle { padding: 5px 10px; border: 1px solid var(--border); border-radius: 8px; background: transparent; color: var(--gold); font-size: .68rem; cursor: pointer; }
+.order-toggle[aria-pressed=true] { border-color: var(--gold); background: #ffffff10; }
+.order-row { gap: 6px; margin-bottom: 10px; }
+.order-item { display: inline-flex; align-items: center; gap: 2px; }
+.order-item-active { padding: 2px; border: 1px dashed #6a5c61; border-radius: 10px; }
+.chip-off { opacity: .45; border-style: dashed; }
+.deck-contents-toolbar strong small { margin-left: 6px; color: var(--text-dim); font-size: .66rem; font-weight: 400; }
+.deck-contents-toolbar strong.editor-figures-bad { color: #ffb3b0; }
 .editor-note { font-size: .65rem; margin-top: 10px; color: var(--text-dim); }
 .editor-note summary { cursor: pointer; }
 .share-note { margin: 0 0 18px; }

@@ -53,10 +53,10 @@ export function DeckContents({ deck, onChange }: { readonly deck: DeckRules; rea
   };
 
   return <section className="deck-contents" aria-label="デッキの構成">
-    <div className="deck-contents-toolbar"><strong>{Number.isFinite(size) ? `${size} 枚` : '枚数が多すぎます'}</strong>{editable && <span className="hint">札を押して枚数を変えられます</span>}</div>
+    <div className="deck-contents-toolbar"><strong className={tooBig ? 'editor-figures-bad' : ''}>{Number.isFinite(size) ? `${size} 枚` : '枚数が多すぎます'}<small>（上限 {MAX_DECK_SIZE}枚）</small></strong>{editable && <span className="hint">札を押して枚数を変えられます</span>}</div>
     {tooBig && <p className="hint hint-warn">{MAX_DECK_SIZE} 枚を超えています。</p>}
     <div className="deck-contents-cards">
-      {(jokers > 0 || editable) && <div className="deck-contents-row" role="group" aria-label="ジョーカー">{kind(JOKER, jokers, { kind: 'joker' }, false)}</div>}
+      {jokers > 0 && <div className="deck-contents-row" role="group" aria-label="ジョーカー">{kind(JOKER, jokers, { kind: 'joker' }, false)}</div>}
       {suits.map(suit => <div key={suit} className="deck-contents-row" role="group" aria-label={cardLabel({ rank: 'A', suit }).slice(1)}>
         {ranks.map(rank => kind({ rank, suit }, cardCount(deck, rank, suit), { kind: 'card', rank, suit }, hasOverride(deck, rank, suit)))}
       </div>)}

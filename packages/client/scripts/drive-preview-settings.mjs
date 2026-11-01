@@ -21,6 +21,7 @@ try {
     await editValue(page, 'アンティ / 人', 5);
     await page.getByRole('group', { name: 'CPU の人数' }).getByRole('button', { name: '9', exact: true }).click();
     await page.getByRole('button', { name: 'これを元に作る', exact: false }).click();
+    await editValue(page, '名前', '9♥ が3枚');
     await page.getByRole('tab', { name: /デッキ/ }).click();
     await page.getByRole('button', { name: '9♥ 1枚', exact: true }).click();
     await editValue(page, '9♥ の枚数', 3);
@@ -41,7 +42,8 @@ try {
       assert.equal(await page.getByRole('button', { name: '保存', exact: true }).isDisabled(), true);
       await editValue(page, '各カードの枚数', 1);
       await editValue(page, 'ジョーカー', 0);
-      assert.equal(await preview.locator('button[aria-label="JOKER 0枚"][data-empty="true"]').count(), 1);
+      // ジョーカーは0枚なら一覧に出ない
+      assert.equal(await preview.locator('button[aria-label^="JOKER"]').count(), 0);
       assert.equal(await page.getByRole('button', { name: '保存', exact: true }).isDisabled(), false);
     }
     await preview.scrollIntoViewIfNeeded();
@@ -49,8 +51,8 @@ try {
     const scroll = page.locator('.editor-content');
     assert.ok(await scroll.evaluate(el => el.scrollWidth <= el.clientWidth + 1), '一覧: 横スクロールが出ない');
     await page.screenshot({ path: `${out}/deck-${width}.png` });
-    // 一覧は強い順（♠の行の先頭が A）。先頭の行はジョーカー。
-    assert.equal(await preview.locator('.deck-contents-row').nth(1).locator('.card').first().getAttribute('aria-label'), 'A♠');
+    // 一覧は強い順（♠の行の先頭が A）。ジョーカーは0枚なので行が無い。
+    assert.equal(await preview.locator('.deck-contents-row').first().locator('.card').first().getAttribute('aria-label'), 'A♠');
     await page.getByRole('button', { name: '保存', exact: true }).click();
     await page.getByRole('button', { name: '戻る', exact: true }).click();
     await page.getByRole('button', { name: 'このルールを編集', exact: false }).click();
