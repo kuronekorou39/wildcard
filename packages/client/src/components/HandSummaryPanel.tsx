@@ -3,6 +3,7 @@ import { evaluateHand, type VisibleState } from '@wildcard/engine';
 import { PlayingCard } from './PlayingCard.js';
 import { HandHistory } from './HandHistory.js';
 import { selectedPositions } from '../showdownSelection.js';
+import { describeHand } from '../handDescription.js';
 
 interface HandSummaryPanelProps {
   readonly state: VisibleState;
@@ -37,11 +38,13 @@ export function HandSummaryPanel({ state, onNextHand, canStartNextHand, blockedR
             highlighted={positions.board[i] === true} dimmed={used.length > 0 && positions.board[i] !== true} />)}</div>
           {run.revealed.length > 0 ? <ul className="summary-hands">{run.revealed.map(h => {
             const win = run.payouts.find(p => p.playerId === h.playerId);
+            const result = evaluateHand(h.holeCards, run.board, state.variant);
+            const words = result ? describeHand(result, state.variant) : { main: h.rankingName, detail: '' };
             return <li key={h.playerId}><button type="button" className="summary-hand" aria-pressed={id === h.playerId} onClick={() => setSelected(old => ({ ...old, [index]: h.playerId }))}>
               <span className="summary-hand-name">{nameOf(h.playerId)}{win && <b className="summary-hand-win">WIN +{win.amount.toLocaleString()}</b>}</span>
               <span className="summary-hand-cards">{h.holeCards.map((card,i) => <PlayingCard key={i} card={card} size="sm"
                 highlighted={id === h.playerId && positions.hole[i] === true} dimmed={id === h.playerId && used.length > 0 && positions.hole[i] !== true} />)}</span>
-              <span className="summary-hand-ranking">{h.rankingName}</span>
+              <span className="summary-hand-ranking">{words.main}{words.detail && <small className="summary-hand-detail">{words.detail}</small>}</span>
             </button></li>;
           })}</ul> : <p className="summary-note">全員が降りたため、手は公開されません。</p>}
         </section>;

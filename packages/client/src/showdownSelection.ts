@@ -1,4 +1,5 @@
 import { evaluateHand, type Card, type Variant, type VisibleState } from '@wildcard/engine';
+import { describeHand } from './handDescription.js';
 
 export const sameCard = (a: Card, b: Card) => a.joker !== undefined || b.joker !== undefined
   ? a.joker === b.joker : a.rank === b.rank && a.suit === b.suit;
@@ -18,9 +19,12 @@ export function showdownSelections(state: VisibleState) {
     payouts: state.summary.awards ?? state.summary.payouts }];
   return runs.flatMap((run, index) => run.payouts.filter(p => p.amount > 0).map(p => {
     const hand = run.revealed.find(h => h.playerId === p.playerId);
+    const result = hand ? evaluateHand(hand.holeCards, run.board, state.variant) : null;
+    const described = result ? describeHand(result, state.variant) : null;
     return { ...p, run: index, name: state.players.find(player => player.id === p.playerId)?.name ?? p.playerId,
-      ranking: `${runs.length > 1 ? `${index + 1}本目 · ` : ''}${hand?.rankingName ?? '全員フォールド'}`,
-      usedCards: hand?.usedCards ?? (hand ? evaluateHand(hand.holeCards, run.board, state.variant)?.cards ?? [] : []),
+      ranking: `${runs.length > 1 ? `${index + 1}本目 · ` : ''}${described?.main ?? hand?.rankingName ?? '全員フォールド'}`,
+      detail: described?.detail ?? '',
+      usedCards: hand?.usedCards ?? result?.cards ?? [],
       positions: hand ? selectedPositions(hand.holeCards, run.board, state.variant) : { hole: [], board: [] },
     };
   }));

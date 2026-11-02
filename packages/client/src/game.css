@@ -54,6 +54,7 @@
 .summary-detail .summary-hand-cards { display: flex; flex-wrap: wrap; max-width: 160px; justify-content: end; gap: 4px; }
 .summary-detail .summary-hand-cards .card { --card-width: 28px; }
 .summary-detail .summary-hand-ranking { grid-column: 1 / -1; }
+.summary-detail .summary-hand-detail { display: block; margin-top: 2px; font-size: .78em; color: var(--text-dim); }
 .summary-detail .summary-payouts small { display: block; color: var(--text-dim); }
 .hand-history { font-variant-numeric: tabular-nums; }
 .history-navigation { display: grid; grid-template-columns: 48px 1fr 48px; gap: 12px; align-items: center; text-align: center; }
@@ -263,6 +264,7 @@
 .winner-caption button { border: 0; border-radius: 8px; background: #d5b48b22; color: #f7dfbe; min-height: 26px; padding: 3px 6px; font-size: 10px; cursor: pointer; }
 .winner-name { width: 100%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: .8rem; line-height: 1.35; color: #fff0db; }
 .winner-ranking { font-size: .64rem; line-height: 1.4; color: #e3c9ac; overflow-wrap: anywhere; }
+.winner-detail { margin-top: -2px; font-size: .56rem; line-height: 1.35; color: #c9ad90; overflow-wrap: anywhere; }
 .winner-amount { max-width: 100%; font-size: .9rem; line-height: 1.1; color: #f5d59d; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
 .table-area[data-settled="true"] .table-center { gap: 10px; }
 .table-command.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: 1px solid #b49b8244; background: linear-gradient(145deg, #41363b, #282227); color: #e5d6c9; box-shadow: inset 0 1px #ffffff0b, 0 4px 12px #0003; font-weight: 500; }
@@ -433,6 +435,7 @@
   .winner-caption button { min-height: 18px; padding: 2px 3px; font-size: 8px; }
   .winner-name { font-size: .7rem; }
   .winner-ranking { font-size: .56rem; }
+  .winner-detail { font-size: .5rem; }
   .winner-amount { font-size: .8rem; }
 }
 @media (max-height: 500px) and (orientation: landscape) {
@@ -541,11 +544,13 @@
   .winner-caption { font-size: 13px; }
   .winner-name { font-size: 1.4rem; }
   .winner-ranking { font-size: 1.05rem; }
+  .winner-detail { font-size: .85rem; }
   .winner-amount { font-size: 1.65rem; }
   .table-player>.showdown-result { grid-column: 3; justify-self: end; align-self: start; width: 340px; max-width: 100%; padding: 10px 18px; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; }
   .table-player>.showdown-result .winner-caption { grid-column: 1 / -1; }
   .table-player>.showdown-result .winner-name { grid-column: 1; grid-row: 2; text-align: left; font-size: 1.2rem; }
   .table-player>.showdown-result .winner-ranking { grid-column: 1 / -1; font-size: .95rem; }
+  .table-player>.showdown-result .winner-detail { grid-column: 1 / -1; font-size: .8rem; }
   .table-player>.showdown-result .winner-amount { grid-column: 2; grid-row: 2; font-size: 1.4rem; }
   .game-dialog { width: 600px; font-size: 1rem; }
   .game-dialog-head h2 { font-size: 1.2rem; }
@@ -572,6 +577,7 @@
   .winner-caption button { min-height: 22px; padding: 2px 4px; font-size: 10px; }
   .winner-name { font-size: 1.1rem; }
   .winner-ranking { font-size: .9rem; }
+  .winner-detail { font-size: .75rem; }
   .winner-amount { font-size: 1.2rem; }
   .table-area[data-result-rail="true"] .community-cards .card { --card-width: 48px; }
 }

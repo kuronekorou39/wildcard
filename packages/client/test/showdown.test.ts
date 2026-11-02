@@ -49,6 +49,7 @@ describe('勝者と役名', () => {
     const winners = showdownWinners(project(state, null));
     expect(winners.length).toBeGreaterThan(0);
     expect(winners.map(w => w.playerId)).toEqual(state.summary!.awards!.map(w => w.playerId));
-    for (const winner of winners) expect(winner.ranking).toBe(state.summary!.revealed.find(h => h.playerId === winner.playerId)!.rankingName);
+    // 役名のあとに、揃った札・キッカーの説明が続く。
+    for (const winner of winners) expect(winner.ranking.startsWith(state.summary!.revealed.find(h => h.playerId === winner.playerId)!.rankingName)).toBe(true);
   });
 });
