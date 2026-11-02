@@ -100,6 +100,16 @@ export function BannerEditor({ variant, value, onChange, onBusyChange }: { reado
         {BANNER_TONES.map(tone => <button type="button" key={tone} className={`banner-tone banner-${tone}`} aria-label={BANNER_TONE_LABELS[tone]} title={BANNER_TONE_LABELS[tone]} aria-pressed={value.tone === tone && !value.image}
           onClick={() => pick({ tone, motif: value.motif })} />)}
       </div>
+    </div>
+    <div className="banner-motifs" role="group" aria-label="バナーの絵柄">
+      {BANNER_MOTIFS.map(motif => <button type="button" key={motif} className="banner-motif" aria-label={`絵柄：${BANNER_MOTIF_LABELS[motif]}`} aria-pressed={value.motif === motif && !value.image}
+        onClick={() => pick({ tone: value.tone, motif })}>
+        <RuleBanner variant={variant} style={{ tone: value.tone, motif }} compact />
+        <span>{BANNER_MOTIF_LABELS[motif]}</span>
+      </button>)}
+    </div>
+    {/* 自分の画像は、色と絵柄を見比べたあとの選択肢なので最後に置く。 */}
+    <div className="banner-image-tools">
       <button type="button" className="btn btn-muted" disabled={busy} onClick={() => input.current?.click()}>{busy ? '読込中…' : '画像を選ぶ'}</button>
       {value.image && <button type="button" className="btn btn-ghost" onClick={() => { generation.current++; markBusy(false); onChange({ tone: value.tone, motif: value.motif }); }}>画像を外す</button>}
       <input ref={input} type="file" accept="image/png,image/jpeg,image/webp" aria-label="バナー画像" className="visually-hidden" onChange={async event => {
@@ -110,13 +120,6 @@ export function BannerEditor({ variant, value, onChange, onBusyChange }: { reado
         catch (cause) { if (token === generation.current) setError(cause instanceof Error ? cause.message : '画像を読み込めませんでした。'); }
         finally { if (token === generation.current) markBusy(false); }
       }} />
-    </div>
-    <div className="banner-motifs" role="group" aria-label="バナーの絵柄">
-      {BANNER_MOTIFS.map(motif => <button type="button" key={motif} className="banner-motif" aria-label={`絵柄：${BANNER_MOTIF_LABELS[motif]}`} aria-pressed={value.motif === motif && !value.image}
-        onClick={() => pick({ tone: value.tone, motif })}>
-        <RuleBanner variant={variant} style={{ tone: value.tone, motif }} compact />
-        <span>{BANNER_MOTIF_LABELS[motif]}</span>
-      </button>)}
     </div>
     <p className="hint">バナーはこのブラウザに保存されます。画像は中央を基準に 3:1 で切り抜きます。</p>
     {error && <p className="hint hint-warn" role="alert">{error}</p>}

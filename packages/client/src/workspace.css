@@ -387,6 +387,7 @@ button.stepper-value:hover { border-bottom-color: var(--gold); color: var(--gold
 .banner-editor>.rule-banner { height: auto; aspect-ratio: 3; border-radius: 10px; }
 .banner-editor-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 14px; }
 .banner-tones { display: flex; gap: 7px; margin-right: auto; }
+.banner-image-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 12px; }
 .banner-tone { width: 28px; height: 28px; border-radius: 50%; border: 2px solid transparent; background: var(--banner-color); cursor: pointer; box-shadow: inset 0 0 0 1px #ffffff20; }
 .banner-tone[aria-pressed=true] { border-color: var(--gold); outline: 2px solid var(--surface); outline-offset: -4px; }
 .banner-editor .btn { font-size: .72rem; padding: 10px 12px; }
@@ -396,7 +397,8 @@ button.stepper-value:hover { border-bottom-color: var(--gold); color: var(--gold
 .setup-rule-dialog .rule-sheet { background: transparent; margin-top: 0; }
 
 /* The editor is a set of pages, not one expanding document. The header matches the top screen so the logo stays put. */
-.rules-shell .editor-head { justify-content: space-between; gap: 16px; }
+/* ヘッダの高さと左右の余白はホームの .setup-header / .setup-shell に揃える。画面を移っても動かない。 */
+.rules-shell .editor-head { justify-content: space-between; gap: 16px; padding: 0; }
 .editor-head-actions { display: flex; align-items: center; gap: 8px; }
 .editor-head-actions .btn { display: inline-flex; align-items: center; gap: 6px; padding: 10px 16px; border-radius: 10px; font-size: .78rem; }
 .editor-head-actions .btn .ui-icon { font-size: .95rem; }
@@ -411,6 +413,15 @@ button.stepper-value:hover { border-bottom-color: var(--gold); color: var(--gold
 .editor-inspect-bad { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 55%, transparent); }
 .editor-inspect-badge { position: absolute; top: -6px; right: -6px; min-width: 17px; height: 17px; padding: 0 4px; border-radius: 9px; background: var(--danger); color: #fff; font-size: .6rem; line-height: 17px; font-weight: 700; text-align: center; }
 .editor-save-error { margin: 0 0 12px; font-size: .75rem; }
+/* 前へ／次へ。スマホの縦向きだけで出す。 */
+.editor-steps { display: none; position: fixed; z-index: 20; left: 16px; right: 16px; bottom: max(14px, env(safe-area-inset-bottom)); justify-content: space-between; gap: 12px; pointer-events: none; }
+.editor-step { pointer-events: auto; display: inline-flex; align-items: center; gap: 10px; min-width: 42%; min-height: 54px; padding: 8px 16px; border: 1px solid #ffffff1f; border-radius: 16px; background: #2e262bf2; color: var(--text); box-shadow: 0 10px 28px #000a; font-size: .86rem; font-weight: 600; cursor: pointer; backdrop-filter: blur(6px); }
+.editor-step > span { display: flex; flex-direction: column; line-height: 1.25; }
+.editor-step small { font-size: .62rem; font-weight: 500; color: var(--text-dim); }
+.editor-step .ui-icon { font-size: 1.15rem; flex: none; }
+.editor-step-back { justify-content: flex-start; text-align: left; }
+.editor-step-next { margin-left: auto; justify-content: flex-end; text-align: right; background: #8f3139f2; border-color: #c4646880; }
+.editor-step-next small { color: #f2cfc8; }
 .rules-shell .editor-workspace { flex: 1; min-height: 0; display: grid; grid-template-columns: 150px minmax(0, 1fr) 230px; gap: 24px; align-items: stretch; overflow: hidden; margin-top: 22px; margin-bottom: max(18px, env(safe-area-inset-bottom)); }
 .rules-shell .editor-nav { position: static; display: flex; flex-direction: column; gap: 5px; padding: 0; overflow-y: auto; border: 0; background: none; }
 .editor-nav button { display: flex; align-items: center; gap: 12px; flex: 0 0 auto; min-height: 46px; padding: 12px; border: 1px solid transparent; border-radius: 9px; color: var(--text-dim); background: transparent; text-align: left; font-size: .8rem; cursor: pointer; }
@@ -554,6 +565,7 @@ button.stepper-value:hover { border-bottom-color: var(--gold); color: var(--gold
 }
 @media (max-width: 760px) and (min-height: 501px) {
   .setup-shell { padding: 0 16px; }
+  .rules-shell { padding-inline: 16px; }
   .setup-header { flex-basis: 58px; }
   .setup-header .brand { font-size: 1.25rem; }
   .setup-header .character-mark { width: 32px; height: 32px; }
@@ -597,8 +609,7 @@ button.stepper-value:hover { border-bottom-color: var(--gold); color: var(--gold
   .join-context p { font-size: .7rem; margin: 0; }
 }
 @media (max-width: 760px) {
-  .rules-shell { padding-inline: 14px; }
-  .rules-shell .editor-head { flex-basis: 58px; gap: 8px; }
+  .rules-shell .editor-head { gap: 8px; }
   .rules-shell .editor-head .brand { font-size: 1.25rem; }
   .rules-shell .editor-head .character-mark { width: 32px; height: 32px; }
   .rules-shell .editor-head .character-mark img { width: 54px; top: -8px; left: -12px; }
@@ -611,7 +622,13 @@ button.stepper-value:hover { border-bottom-color: var(--gold); color: var(--gold
   .rules-shell .editor-workspace { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; margin-bottom: max(12px, env(safe-area-inset-bottom)); }
   .rules-shell .editor-nav { flex: 0 0 auto; flex-direction: row; flex-wrap: nowrap; gap: 4px; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; padding-bottom: 2px; }
   .rules-shell .editor-nav::-webkit-scrollbar { display: none; }
-  .editor-nav button { flex: 0 0 auto; justify-content: center; gap: 4px; padding: 8px 12px; min-height: 38px; font-size: .7rem; border-color: var(--border); border-radius: 7px; white-space: nowrap; }
+  /* 枠なしのタブ。選んでいるものだけ金色の下線。 */
+  .rules-shell .editor-nav { gap: 0; padding-bottom: 0; border-bottom: 1px solid var(--border); }
+  .editor-nav button { flex: 0 0 auto; justify-content: center; gap: 4px; padding: 10px 12px 9px; min-height: 40px; font-size: .74rem; border: 0; border-bottom: 2px solid transparent; border-radius: 0; background: transparent; white-space: nowrap; }
+  .editor-nav button[aria-selected=true] { background: transparent; border-bottom-color: var(--gold); }
+  /* 浮かせた「前へ／次へ」に最後の行が隠れないよう、下に余白を空ける。 */
+  .rules-shell .editor-content { padding-bottom: 76px; }
+  .editor-steps { display: flex; }
   .editor-nav button>span { display: none; }
   .rules-shell .editor-content { flex: 1; }
   .rules-shell .editor-content>.panel { padding: 16px; }
@@ -680,7 +697,6 @@ button.stepper-value:hover { border-bottom-color: var(--gold); color: var(--gold
   .rule-select-trigger { min-height: 120px; }
   .rule-facts { padding-bottom: 14px; margin-bottom: 12px; }
   .setup-footer { flex-basis: 36px; }
-  .rules-shell .editor-head { flex-basis: 52px; }
 }
 @media (max-width: 760px) and (min-height: 501px) and (max-height: 720px) {
   .setup-shell { padding-bottom: 8px; }
@@ -707,7 +723,7 @@ button.stepper-value:hover { border-bottom-color: var(--gold); color: var(--gold
   .setup-footer { display: none; }
 }
 @media (max-height: 500px) {
-  .setup-shell { padding-inline: 18px; }
+  .setup-shell, .rules-shell { padding-inline: 18px; }
   .setup-header { flex-basis: 44px; }
   .setup-header .brand { font-size: 1.15rem; }
   .setup-header .character-mark { display: none; }
@@ -744,12 +760,13 @@ button.stepper-value:hover { border-bottom-color: var(--gold); color: var(--gold
   .selected-rule-title strong { font-size: .85rem; }
   .rule-picker .rule-actions { margin-top: 10px; }
   .rule-actions .rule-edit-button { margin-left: 0; }
-  .rules-shell .editor-head { flex-basis: 44px; }
   .rules-shell .editor-head .brand { font-size: 1.15rem; }
   .rules-shell .editor-head .character-mark { display: none; }
   .editor-head-actions .btn { padding: 7px 10px; font-size: .66rem; }
   .editor-inspect { width: 30px; height: 30px; }
   .rules-shell .editor-workspace { margin-top: 8px; margin-bottom: 8px; display: grid; grid-template-columns: 110px minmax(0, 1fr); }
+  .editor-steps { display: none; }
+  .rules-shell .editor-content { padding-bottom: 0; }
   .rules-shell .editor-nav { display: flex; flex-direction: column; overflow-y: auto; gap: 3px; }
   .editor-nav button { min-height: 32px; font-size: .64rem; }
 }

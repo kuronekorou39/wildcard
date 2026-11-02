@@ -53,6 +53,7 @@ export function RuleEditor({ source, onClose }: RuleEditorProps) {
   const [preview, setPreview] = useState(false);
   const [inspecting, setInspecting] = useState(false);
   const header = useRef<HTMLElement>(null);
+  const nav = useRef<HTMLElement>(null);
 
   const problems = useMemo(() => validateVariant(draft, players), [draft, players]);
   const ready = problems.length === 0 && draft.name.trim().length > 0;
@@ -73,6 +74,14 @@ export function RuleEditor({ source, onClose }: RuleEditorProps) {
   const leave = () => onClose(persisted ? draft.id : null);
   const back = () => { if (dirty) setLeaving('confirm'); else leave(); };
   const jump = (next: Section) => { setSection(next); setInspecting(false); };
+  const position = SECTIONS.findIndex(([id]) => id === section);
+  const previous = SECTIONS[position - 1];
+  const following = SECTIONS[position + 1];
+
+  // 下の「前へ／次へ」で移ったとき、横に流れるタブの列で今のタブが見えるようにする。
+  useEffect(() => {
+    nav.current?.querySelector<HTMLElement>('[aria-selected="true"]')?.scrollIntoView({ block: 'nearest', inline: 'center' });
+  }, [section]);
 
   // タブを閉じる・再読み込みでも、未保存の変更を黙って捨てない。
   useEffect(() => {
@@ -105,7 +114,7 @@ export function RuleEditor({ source, onClose }: RuleEditorProps) {
     </header>
     {error && <p className="editor-save-error hint-warn" role="alert">{error}</p>}
     <div className="editor-workspace">
-      <nav className="editor-nav" role="tablist" aria-label="ルールの編集項目">
+      <nav ref={nav} className="editor-nav" role="tablist" aria-label="ルールの編集項目">
         {SECTIONS.map(([id, label], i) => <button key={id} type="button" role="tab" aria-selected={section === id} id={`rules-tab-${id}`} aria-controls="rules-panel" onClick={() => setSection(id)}>
           <span>{String(i + 1).padStart(2, '0')}</span>{label}{problems.some(problem => sectionOf(problem.field) === id) && <i aria-label="要確認">!</i>}
         </button>)}
@@ -127,6 +136,15 @@ export function RuleEditor({ source, onClose }: RuleEditorProps) {
         }} />}
       </main>
       <aside className="editor-sidebar" aria-label="ルールの検証">{inspector}</aside>
+    </div>
+    {/* スマホだけ。親指で順に進めるよう、画面の下に前後のタブへのボタンを浮かせる。 */}
+    <div className="editor-steps">
+      {previous ? <button type="button" className="editor-step editor-step-back" onClick={() => setSection(previous[0])}>
+        <Icon kind="arrow-left" /><span><small>前へ</small>{previous[1]}</span>
+      </button> : <span />}
+      {following && <button type="button" className="editor-step editor-step-next" onClick={() => setSection(following[0])}>
+        <span><small>次へ</small>{following[1]}</span><Icon kind="arrow-right" />
+      </button>}
     </div>
     {inspecting && <GameDialog title="構成と検証" className="editor-inspector-dialog" anchor={header.current} placement="under" onClose={() => setInspecting(false)}>{inspector}</GameDialog>}
     {preview && <GameDialog title={draft.name} className="setup-rule-dialog" anchor={header.current} placement="under" onClose={() => setPreview(false)}><RuleSheet variant={draft} frame={false} /></GameDialog>}
