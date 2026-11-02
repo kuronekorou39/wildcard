@@ -57,9 +57,7 @@ button, a, input, select, summary { -webkit-tap-highlight-color: transparent; }
 /* A readable editor, with navigation and live validation in view. */
 .screen-editor { max-width: 1320px; padding: 0 32px 40px; gap: 0; }
 .editor-head { padding: 20px 0; justify-content: space-between; border-bottom: 1px solid var(--border); }
-.editor-heading { padding: 36px 0 30px; }
 .editor-title { font-size: 2rem; letter-spacing: -.04em; }
-.editor-heading>p:last-child { color: var(--text-dim); font-size: .9rem; margin-bottom: 0; }
 .editor-workspace { display: grid; grid-template-columns: 130px minmax(0, 1fr) 260px; gap: 24px; align-items: start; }
 .editor-nav { display: flex; flex-direction: column; gap: 4px; position: sticky; top: 20px; }
 .editor-nav a { text-decoration: none; color: var(--text-dim); padding: 12px; border-radius: 8px; font-size: .84rem; }
@@ -116,7 +114,6 @@ button, a, input, select, summary { -webkit-tap-highlight-color: transparent; }
   .setup-intro>p:not(.eyebrow), .setup-rule-note { display: none; }
   .setup-workspace .panel { padding: 20px; }
   .screen-editor { padding: 0 18px 110px; }
-  .editor-heading { padding: 26px 0; }
   .editor-title { font-size: 1.65rem; }
   .editor-workspace { display: flex; flex-direction: column; gap: 18px; }
   .editor-nav { position: sticky; top: 0; z-index: 5; flex-direction: row; flex-wrap: wrap; gap: 0; padding: 8px 0; width: 100%; background: var(--bg-dark); border-block: 1px solid var(--border); }

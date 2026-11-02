@@ -403,15 +403,15 @@ button.stepper-value:hover { border-bottom-color: var(--gold); color: var(--gold
 .editor-head-actions .editor-save { min-width: 96px; justify-content: center; background: #9d343c; border: 1px solid #bf6265; }
 .editor-head-actions .editor-save:disabled { opacity: .55; cursor: default; }
 .editor-head-actions .editor-delete { color: var(--danger); background: transparent; }
-.rules-shell .editor-heading { flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 22px 0; }
-.rules-shell .editor-title { font-size: 1.5rem; margin: 0; }
-.editor-current-name { font-size: .75rem; color: var(--text-dim); margin: 8px 0 0; }
-/* スマホだけの要約。大画面では右の欄が同じ内容を常に出す。 */
-.editor-summary { display: none; flex-direction: column; align-items: flex-end; gap: 4px; max-width: 55%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 10px; background: transparent; color: var(--text-dim); font-size: .62rem; text-align: right; cursor: pointer; }
-.editor-summary strong { display: inline-flex; align-items: center; gap: 4px; color: var(--success); font-size: .66rem; font-weight: 600; }
-.editor-summary-bad strong { color: var(--danger); }
+/* ロゴの横に画面の名前。縦の区切り線で分ける。 */
+.editor-head-title { display: flex; align-items: center; gap: 14px; min-width: 0; }
+.rules-shell .editor-title { margin: 0; padding-left: 14px; border-left: 1px solid var(--border); font-size: 1.05rem; font-weight: 600; white-space: nowrap; }
+/* 構成と検証を開くボタン。右の欄が見えている幅では要らない。 */
+.editor-inspect { position: relative; display: none; align-items: center; justify-content: center; width: 38px; height: 38px; padding: 0; border: 1px solid var(--border); border-radius: 10px; background: transparent; color: var(--success); font-size: 1.1rem; cursor: pointer; }
+.editor-inspect-bad { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 55%, transparent); }
+.editor-inspect-badge { position: absolute; top: -6px; right: -6px; min-width: 17px; height: 17px; padding: 0 4px; border-radius: 9px; background: var(--danger); color: #fff; font-size: .6rem; line-height: 17px; font-weight: 700; text-align: center; }
 .editor-save-error { margin: 0 0 12px; font-size: .75rem; }
-.rules-shell .editor-workspace { flex: 1; min-height: 0; display: grid; grid-template-columns: 150px minmax(0, 1fr) 230px; gap: 24px; align-items: stretch; overflow: hidden; margin-bottom: max(18px, env(safe-area-inset-bottom)); }
+.rules-shell .editor-workspace { flex: 1; min-height: 0; display: grid; grid-template-columns: 150px minmax(0, 1fr) 230px; gap: 24px; align-items: stretch; overflow: hidden; margin-top: 22px; margin-bottom: max(18px, env(safe-area-inset-bottom)); }
 .rules-shell .editor-nav { position: static; display: flex; flex-direction: column; gap: 5px; padding: 0; overflow-y: auto; border: 0; background: none; }
 .editor-nav button { display: flex; align-items: center; gap: 12px; flex: 0 0 auto; min-height: 46px; padding: 12px; border: 1px solid transparent; border-radius: 9px; color: var(--text-dim); background: transparent; text-align: left; font-size: .8rem; cursor: pointer; }
 .editor-nav button>span { font-size: .62rem; color: #8d8187; }
@@ -550,7 +550,7 @@ button.stepper-value:hover { border-bottom-color: var(--gold); color: var(--gold
   .setup-rule-pane, .setup-session-pane { padding: 22px; }
   .rules-shell .editor-workspace { grid-template-columns: 132px minmax(0, 1fr); gap: 18px; }
   .rules-shell .editor-sidebar { display: none; }
-  .editor-summary { display: flex; }
+  .editor-inspect { display: inline-flex; }
 }
 @media (max-width: 760px) and (min-height: 501px) {
   .setup-shell { padding: 0 16px; }
@@ -605,11 +605,10 @@ button.stepper-value:hover { border-bottom-color: var(--gold); color: var(--gold
   .editor-head-actions { gap: 6px; }
   .editor-head-actions .btn { padding: 9px 10px; font-size: .7rem; }
   .editor-head-actions .editor-save { min-width: 64px; }
-  .rules-shell .editor-heading { padding: 12px 0; gap: 10px; }
-  .rules-shell .editor-title { font-size: 1.15rem; }
-  .editor-current-name { margin-top: 4px; font-size: .65rem; max-width: 40vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .editor-summary { padding: 6px 10px; }
-  .rules-shell .editor-workspace { display: flex; flex-direction: column; gap: 10px; margin-bottom: max(12px, env(safe-area-inset-bottom)); }
+  .editor-head-title { gap: 10px; }
+  .rules-shell .editor-title { padding-left: 10px; font-size: .9rem; }
+  .editor-inspect { width: 34px; height: 34px; font-size: 1rem; }
+  .rules-shell .editor-workspace { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; margin-bottom: max(12px, env(safe-area-inset-bottom)); }
   .rules-shell .editor-nav { flex: 0 0 auto; flex-direction: row; flex-wrap: nowrap; gap: 4px; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; padding-bottom: 2px; }
   .rules-shell .editor-nav::-webkit-scrollbar { display: none; }
   .editor-nav button { flex: 0 0 auto; justify-content: center; gap: 4px; padding: 8px 12px; min-height: 38px; font-size: .7rem; border-color: var(--border); border-radius: 7px; white-space: nowrap; }
@@ -682,7 +681,6 @@ button.stepper-value:hover { border-bottom-color: var(--gold); color: var(--gold
   .rule-facts { padding-bottom: 14px; margin-bottom: 12px; }
   .setup-footer { flex-basis: 36px; }
   .rules-shell .editor-head { flex-basis: 52px; }
-  .rules-shell .editor-heading { padding-block: 12px; }
 }
 @media (max-width: 760px) and (min-height: 501px) and (max-height: 720px) {
   .setup-shell { padding-bottom: 8px; }
@@ -750,10 +748,7 @@ button.stepper-value:hover { border-bottom-color: var(--gold); color: var(--gold
   .rules-shell .editor-head .brand { font-size: 1.15rem; }
   .rules-shell .editor-head .character-mark { display: none; }
   .editor-head-actions .btn { padding: 7px 10px; font-size: .66rem; }
-  /* 横向きでは見出しを消し、要約だけを1行に残す */
-  .rules-shell .editor-heading { padding: 6px 0 0; justify-content: flex-end; }
-  .rules-shell .editor-heading>div { display: none; }
-  .editor-summary { display: flex; flex-direction: row; align-items: center; gap: 10px; max-width: none; padding: 4px 10px; }
+  .editor-inspect { width: 30px; height: 30px; }
   .rules-shell .editor-workspace { margin-top: 8px; margin-bottom: 8px; display: grid; grid-template-columns: 110px minmax(0, 1fr); }
   .rules-shell .editor-nav { display: flex; flex-direction: column; overflow-y: auto; gap: 3px; }
   .editor-nav button { min-height: 32px; font-size: .64rem; }
@@ -763,3 +758,9 @@ button.stepper-value:hover { border-bottom-color: var(--gold); color: var(--gold
 .share-hint { margin: 8px 0 0; font-size: .7rem; }
 .share-error { margin-top: 10px; }
 .share-error > p { margin: 0 0 4px; color: #ffb3b0; font-size: .78rem; font-weight: 700; }
+
+@media (max-width: 480px) {
+  .rules-shell .editor-head .brand > span:last-child { display: none; }
+  .rules-shell .editor-head-title { gap: 8px; }
+  .btn-back .btn-back-label { display: none; }
+}

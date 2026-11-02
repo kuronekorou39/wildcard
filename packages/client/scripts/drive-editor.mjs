@@ -37,12 +37,12 @@ await page.goto(URL);
 // ---- 編集画面を開く ----
 await page.getByRole('tab', { name: 'ソロ' }).click();
 await page.getByRole('button', { name: 'これを元に作る' }).click();
-await page.getByRole('heading', { name: 'ルールを設定' }).waitFor();
+await page.getByRole('heading', { name: 'ルール設定' }).waitFor();
 console.log('--- 編集画面を開いた ---');
 
-// 矛盾は見出し下の要約を押すと開く（狭い画面では右の欄が無い）。
+// 矛盾はヘッダの検証ボタンで開く（狭い画面では右の欄が無い）。
 const problems = async () => {
-  await page.locator('.editor-summary').click();
+  await page.locator('.editor-inspect').click();
   await page.locator('.editor-inspector-dialog').waitFor();
   const list = await page.locator('.editor-inspector-dialog .editor-problems li').allInnerTexts();
   await page.keyboard.press('Escape');
@@ -117,7 +117,7 @@ await setNumber(page, '手札', 2);
 console.log(`  戻したら ${(await problems()).length}件`);
 
 // ---- 順位表で確かめる ----
-await page.locator('.editor-summary').click();
+await page.locator('.editor-inspect').click();
 await page.getByRole('button', { name: '役の順位と例' }).click();
 await page.waitForTimeout(200);
 const rows = page.locator('.rule-sheet-list > li');

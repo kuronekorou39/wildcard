@@ -91,20 +91,18 @@ export function RuleEditor({ source, onClose }: RuleEditorProps) {
 
   return <div className="screen screen-editor rules-shell">
     <header ref={header} className="setup-header editor-head">
-      <Brand />
+      <div className="editor-head-title"><Brand /><h1 className="editor-title">ルール設定</h1></div>
       <div className="editor-head-actions">
+        {/* 右の欄が隠れる幅だけ出す。矛盾があれば件数を赤く添える。 */}
+        <button type="button" className={`editor-inspect ${ready ? '' : 'editor-inspect-bad'}`} aria-haspopup="dialog" aria-expanded={inspecting}
+          aria-label={`構成と検証（${status}）`} title={status} onClick={() => setInspecting(true)}>
+          <Icon kind="checklist" />{!ready && <b className="editor-inspect-badge" aria-hidden="true">{problems.length > 0 ? problems.length : '!'}</b>}
+        </button>
         {persisted && <button type="button" className="btn btn-ghost editor-delete" onClick={() => setLeaving('delete')}>削除</button>}
-        <button type="button" className="btn btn-ghost btn-back" onClick={back}><Icon kind="arrow-left" />戻る</button>
+        <button type="button" className="btn btn-ghost btn-back" onClick={back} aria-label="戻る"><Icon kind="arrow-left" /><span className="btn-back-label">戻る</span></button>
         <button type="button" className="btn btn-primary editor-save" disabled={!canSave} onClick={save}>{persisted && !dirty ? '保存済み' : '保存'}</button>
       </div>
     </header>
-    <div className="editor-heading">
-      <div><h1 className="editor-title">ルールを設定</h1><p className="editor-current-name">{draft.name || `${source.name} を元に作成`}</p></div>
-      <button type="button" className={`editor-summary ${ready ? '' : 'editor-summary-bad'}`} aria-haspopup="dialog" aria-expanded={inspecting} onClick={() => setInspecting(true)}>
-        <span>{cards}枚 · 手札{draft.structure.holeCards} · 場{boardSize(draft.structure)}{seats !== null && Number.isFinite(seats) && ` · 最大${seats}人`}</span>
-        <strong>{ready ? <Icon kind="check" /> : '!'} {status}</strong>
-      </button>
-    </div>
     {error && <p className="editor-save-error hint-warn" role="alert">{error}</p>}
     <div className="editor-workspace">
       <nav className="editor-nav" role="tablist" aria-label="ルールの編集項目">
@@ -149,7 +147,7 @@ export function RuleEditor({ source, onClose }: RuleEditorProps) {
 }
 
 /**
- * 構成の要約と検証。大画面では右の欄に常駐し、スマホでは見出し下の要約を押すと開く。
+ * 構成の要約と検証。大画面では右の欄に常駐し、狭い画面ではヘッダの検証ボタンで開く。
  * 想定人数と矛盾の表示はここだけに置く。
  */
 /** これを超えると CPU の勝率推定が目に見えて遅くなる（標準は 21 通り、オマハは 60 通り）。 */
