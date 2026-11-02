@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { STANDARD_VARIANT, VARIANT_PRESETS, validateVariant, variantToJson, type Variant } from '@wildcard/engine';
 import {
+  defaultRuleName,
   CUSTOM_PREFIX,
   allVariants,
   customVariants,
@@ -213,5 +214,16 @@ describe('id の決まり', () => {
   it('続けて作っても重ならない', () => {
     const ids = new Set(Array.from({ length: 50 }, () => newCustomId()));
     expect(ids.size).toBe(50);
+  });
+});
+
+describe('名前を付けずに保存したときの名前', () => {
+  const named = (id: string, name: string): Variant => ({ ...STANDARD_VARIANT, id, name });
+  it('空いている一番小さい番号を使う', () => {
+    expect(defaultRuleName('custom:new', [])).toBe('マイルール1');
+    expect(defaultRuleName('custom:new', [named('custom:a', 'マイルール1'), named('custom:b', 'マイルール3')])).toBe('マイルール2');
+  });
+  it('編集中のルール自身の名前は数えない', () => {
+    expect(defaultRuleName('custom:a', [named('custom:a', 'マイルール1')])).toBe('マイルール1');
   });
 });

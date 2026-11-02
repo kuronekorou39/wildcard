@@ -118,8 +118,8 @@
 .banner-motif:hover, .banner-motif:focus-visible { border-color: #87676e; color: var(--text); }
 .banner-motif[aria-pressed=true] { border-color: var(--gold); color: var(--gold); background: #493d3d66; }
 @media (max-width: 760px) {
-  .banner-editor .banner-tones { grid-template-columns: repeat(6, 28px); gap: 7px; }
-  .banner-editor .banner-tone { width: 28px; height: 28px; }
+  .banner-editor .banner-tones { grid-template-columns: repeat(12, minmax(0, 26px)); gap: 5px; width: 100%; }
+  .banner-editor .banner-tone { width: 100%; height: auto; aspect-ratio: 1; }
 }
 @container (min-aspect-ratio: 5 / 2) {
   .chips-art, .joker-art { top: 20cqh; }

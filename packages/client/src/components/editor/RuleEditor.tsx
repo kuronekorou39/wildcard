@@ -13,7 +13,7 @@ import { BettingEditor } from './BettingEditor.js';
 import { RankingEditor } from './RankingEditor.js';
 import { OptionsEditor } from './OptionsEditor.js';
 import { ShareBox } from './ShareBox.js';
-import { deleteCustomVariant, isCustomVariant, newCustomId, saveCustomVariant } from '../../rules/customVariants.js';
+import { defaultRuleName, deleteCustomVariant, isCustomVariant, newCustomId, saveCustomVariant, useCustomVariants } from '../../rules/customVariants.js';
 import { ruleBanner, saveRuleBanner, type RuleBannerStyle } from '../../rules/ruleBanners.js';
 
 interface RuleEditorProps {
@@ -56,7 +56,11 @@ export function RuleEditor({ source, onClose }: RuleEditorProps) {
   const nav = useRef<HTMLElement>(null);
 
   const problems = useMemo(() => validateVariant(draft, players), [draft, players]);
-  const ready = problems.length === 0 && draft.name.trim().length > 0;
+  // 名前が空なら「マイルールN」で保存する。名前を考えないと保存できない、を無くす。
+  const customs = useCustomVariants();
+  const fallbackName = useMemo(() => defaultRuleName(draft.id, customs), [draft.id, customs]);
+  const name = draft.name.trim() || fallbackName;
+  const ready = problems.length === 0;
   const dirty = draft !== baseline.variant && JSON.stringify(draft) !== JSON.stringify(baseline.variant)
     || banner !== baseline.banner && JSON.stringify(banner) !== JSON.stringify(baseline.banner);
   const canSave = ready && !bannerBusy && (dirty || !persisted);
@@ -64,11 +68,12 @@ export function RuleEditor({ source, onClose }: RuleEditorProps) {
 
   const save = (): boolean => {
     if (!ready || bannerBusy) return false;
-    if (!saveCustomVariant(draft) || !saveRuleBanner(draft.id, banner)) {
+    const named = draft.name.trim() ? draft : { ...draft, name };
+    if (!saveCustomVariant(named) || !saveRuleBanner(named.id, banner)) {
       setError('保存できませんでした。ブラウザの保存容量・設定を確認してください。');
       return false;
     }
-    setBaseline({ variant: draft, banner }); setPersisted(true); setError('');
+    setDraft(named); setBaseline({ variant: named, banner }); setPersisted(true); setError('');
     return true;
   };
   const leave = () => onClose(persisted ? draft.id : null);
@@ -94,7 +99,7 @@ export function RuleEditor({ source, onClose }: RuleEditorProps) {
   const cards = deckSize(draft.deck);
   const need = problems.length === 0 ? requiredCards(draft.structure, players) : null;
   const seats = problems.length === 0 ? maxPlayersFor(draft) : null;
-  const status = problems.length > 0 ? `要確認 ${problems.length}件` : !draft.name.trim() ? '名前を入力してください' : '設定に矛盾なし';
+  const status = problems.length > 0 ? `要確認 ${problems.length}件` : '設定に矛盾なし';
   const inspector = <Inspector cards={cards} draft={draft} players={players} onPlayers={setPlayers} need={need} seats={seats}
     problems={problems} ready={ready} status={status} onJump={jump} onPreview={() => { setInspecting(false); setPreview(true); }} />;
 
@@ -105,7 +110,7 @@ export function RuleEditor({ source, onClose }: RuleEditorProps) {
         {/* 右の欄が隠れる幅だけ出す。矛盾があれば件数を赤く添える。 */}
         <button type="button" className={`editor-inspect ${ready ? '' : 'editor-inspect-bad'}`} aria-haspopup="dialog" aria-expanded={inspecting}
           aria-label={`構成と検証（${status}）`} title={status} onClick={() => setInspecting(true)}>
-          <Icon kind="checklist" />{!ready && <b className="editor-inspect-badge" aria-hidden="true">{problems.length > 0 ? problems.length : '!'}</b>}
+          <Icon kind="checklist" />{!ready && <b className="editor-inspect-badge" aria-hidden="true">{problems.length}</b>}
         </button>
         {persisted && <button type="button" className="btn btn-ghost editor-delete" onClick={() => setLeaving('delete')}>削除</button>}
         <button type="button" className="btn btn-ghost btn-back" onClick={back} aria-label="戻る"><Icon kind="arrow-left" /><span className="btn-back-label">戻る</span></button>
@@ -121,7 +126,7 @@ export function RuleEditor({ source, onClose }: RuleEditorProps) {
       </nav>
       <main className="editor-content" id="rules-panel" role="tabpanel" aria-labelledby={`rules-tab-${section}`} key={section}>
         {section === 'info' && <section className="panel" id="rules-info" aria-label="概要">
-          <EditableText label="名前" value={draft.name} maxLength={40} placeholder="名前を入力" onChange={name => update({ name })} />
+          <EditableText label="名前" value={draft.name} maxLength={40} fallback={fallbackName} onChange={value => update({ name: value.trim() })} />
           <EditableText label="説明" value={draft.description ?? ''} maxLength={120} multiline placeholder="説明を追加" onChange={description => update({ description })} />
           <div className="field"><span className="field-label">選択画面のバナー</span><BannerEditor variant={draft} value={banner} onBusyChange={setBannerBusy} onChange={value => { setBanner(value); setError(''); }} /></div>
         </section>}
@@ -147,7 +152,7 @@ export function RuleEditor({ source, onClose }: RuleEditorProps) {
       </button>}
     </div>
     {inspecting && <GameDialog title="構成と検証" className="editor-inspector-dialog" anchor={header.current} placement="under" onClose={() => setInspecting(false)}>{inspector}</GameDialog>}
-    {preview && <GameDialog title={draft.name} className="setup-rule-dialog" anchor={header.current} placement="under" onClose={() => setPreview(false)}><RuleSheet variant={draft} frame={false} /></GameDialog>}
+    {preview && <GameDialog title={name} className="setup-rule-dialog" anchor={header.current} placement="under" onClose={() => setPreview(false)}><RuleSheet variant={{ ...draft, name }} frame={false} /></GameDialog>}
     {leaving === 'confirm' && <GameDialog title="変更を保存しますか" className="editor-leave-dialog" onClose={() => setLeaving('none')}>
       <p className="hint">保存していない変更があります。{!ready && 'いまの設定は矛盾があるので保存できません。'}</p>
       <div className="editor-leave-actions">
@@ -156,7 +161,7 @@ export function RuleEditor({ source, onClose }: RuleEditorProps) {
       </div>
     </GameDialog>}
     {leaving === 'delete' && <GameDialog title="このルールを削除しますか" className="editor-leave-dialog" onClose={() => setLeaving('none')}>
-      <p className="hint">「{draft.name}」をこのブラウザから消します。元に戻せません。</p>
+      <p className="hint">「{name}」をこのブラウザから消します。元に戻せません。</p>
       <div className="editor-leave-actions">
         <button type="button" className="btn btn-danger" onClick={() => { if (deleteCustomVariant(draft.id)) onClose(null); else { setLeaving('none'); setError('ルールを削除できませんでした。'); } }}>削除する</button>
       </div>

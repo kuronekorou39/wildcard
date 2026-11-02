@@ -272,12 +272,6 @@ button.stepper-value:hover { border-bottom-color: var(--gold); color: var(--gold
 /* ランクの範囲選択 */
 .chip-range { border-style: dashed; color: var(--gold); }
 .chip-anchor { outline: 2px solid var(--gold); outline-offset: 1px; }
-/* ワイルド */
-.wild-editor { margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--border); }
-.wild-line { display: grid; grid-template-columns: 5em minmax(0, 1fr) auto; align-items: center; gap: 8px; padding: 6px 0; }
-.wild-line-label { color: var(--text-dim); font-size: .7rem; }
-.wild-note { font-size: .76rem; }
-.rules-shell .wild-remove { padding: 4px 10px; font-size: .7rem; color: var(--danger); }
 /* まとまりの出入りは高さごと動かす */
 @keyframes block-enter { from { max-height: 0; opacity: 0; padding-block: 0; } to { max-height: 240px; opacity: 1; } }
 @keyframes block-leave { from { max-height: 240px; opacity: 1; } to { max-height: 0; opacity: 0; padding-block: 0; border-top-width: 0; } }
@@ -518,8 +512,11 @@ button.stepper-value:hover { border-bottom-color: var(--gold); color: var(--gold
 .checkline-field { display: flex; align-items: center; gap: 4px; }
 .checkline-field .checkline { margin: 0; align-items: center; font-size: .76rem; }
 /* 制度のボタン: 名前の下に1行の説明 */
-.limit-choices .segment { display: flex; flex-direction: column; align-items: center; gap: 3px; }
-.limit-choices .segment small { color: var(--text-dim); font-size: .62rem; font-weight: 400; line-height: 1.4; }
+/* 制度は縦に並べ、名前の横に説明を置く。 */
+.rules-shell .editor-content .limit-choices { flex-direction: column; gap: 6px; max-width: 520px; }
+.rules-shell .editor-content .limit-choices .segment { display: grid; grid-template-columns: 9.5em minmax(0, 1fr); align-items: center; gap: 14px; padding: 12px 14px; text-align: left; white-space: normal; letter-spacing: 0; }
+.limit-choices .segment>span { white-space: nowrap; font-size: .8rem; }
+.limit-choices .segment small { color: var(--text-dim); font-size: .7rem; font-weight: 400; line-height: 1.4; }
 .limit-choices .segment-active small { color: var(--text); }
 .checkline-field .checkline input { margin-top: 0; }
 .rules-shell .ranking-row { display: grid; grid-template-columns: auto auto minmax(0, 1fr) auto auto; align-items: center; gap: 8px; }
@@ -653,7 +650,9 @@ button.stepper-value:hover { border-bottom-color: var(--gold); color: var(--gold
   .pattern-global-group>span { padding-top: 0; }
   .order-row { gap: 2px; }
   .rules-shell .editor-content .segment { padding: 9px 2px; font-size: .66rem; white-space: nowrap; letter-spacing: -.02em; }
-  .rules-shell .editor-content .limit-choices .segment small { white-space: normal; font-size: .58rem; }
+  .rules-shell .editor-content .limit-choices .segment { padding: 11px 12px; gap: 10px; }
+  .limit-choices .segment>span { font-size: .76rem; }
+  .limit-choices .segment small { font-size: .68rem; }
   /* 狭い画面では1つの段階を2行に: 名前と ×、その下に「開く」「焼く」 */
   .street-columns { display: none; }
   .rules-shell .street-row { grid-template-columns: auto auto 1fr; grid-template-areas: "name name remove" "open burn ."; gap: 6px 16px; padding: 10px 0; border-bottom: 1px solid var(--border); }

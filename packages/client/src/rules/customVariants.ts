@@ -131,6 +131,15 @@ export function deleteCustomVariant(id: string): boolean {
  */
 let created = 0;
 
+/**
+ * 名前を付けずに保存したときの名前。ほかの自作ルールと重ならない最小の番号を使う。
+ * 自分自身（編集中のルール）の名前は数えない。
+ */
+export function defaultRuleName(selfId: string, others: readonly Variant[] = customVariants()): string {
+  const taken = new Set(others.filter((variant) => variant.id !== selfId).map((variant) => variant.name.trim()));
+  for (let n = 1; ; n++) if (!taken.has(`マイルール${n}`)) return `マイルール${n}`;
+}
+
 export const newCustomId = (): string =>
   `${CUSTOM_PREFIX}${Date.now().toString(36)}-${(created++).toString(36)}-${Math.floor(
     Math.random() * 46656,

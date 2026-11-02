@@ -12,10 +12,12 @@ interface Props {
   readonly compact?: boolean;
   /** 複数行の文章。Enter は改行、Ctrl+Enter（⌘+Enter）で確定。 */
   readonly multiline?: boolean;
+  /** 空のときに代わりに使う値。普通の値として見せ、編集を始めると空の欄（薄く見本つき）になる。 */
+  readonly fallback?: string;
 }
 
 /** Values stay readable until explicitly edited; Escape always discards the draft. */
-function EditableValue({ label, value, onChange, min, max, maxLength, suffix, placeholder, compact = false, multiline = false }: Props) {
+function EditableValue({ label, value, onChange, min, max, maxLength, suffix, placeholder, compact = false, multiline = false, fallback }: Props) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState('');
   const [error, setError] = useState('');
@@ -49,12 +51,12 @@ function EditableValue({ label, value, onChange, min, max, maxLength, suffix, pl
       <small className="hint editable-hint">Ctrl+Enter で確定、Esc で取り消し</small>
     </> : editing ? <input className="input editable-input" aria-label={label}
       type={number ? 'number' : 'text'} inputMode={number ? 'numeric' : undefined}
-      min={min} max={max} step={number ? 1 : undefined} maxLength={maxLength} placeholder={placeholder}
+      min={min} max={max} step={number ? 1 : undefined} maxLength={maxLength} placeholder={fallback ?? placeholder}
       value={draft} ref={focusOnMount}
-      onChange={event => setDraft(event.target.value)} onBlur={commit} onKeyDown={onKeyDown} /> : <button type="button" className={`editable-value ${!number && !value ? 'editable-empty' : ''}`} aria-label={`${label}を編集`} aria-describedby={valueId}
+      onChange={event => setDraft(event.target.value)} onBlur={commit} onKeyDown={onKeyDown} /> : <button type="button" className={`editable-value ${!number && !value && !fallback ? 'editable-empty' : ''}`} aria-label={`${label}を編集`} aria-describedby={valueId}
       ref={element => { if (element && restoreFocus.current) { restoreFocus.current = false; element.focus(); } }}
       onClick={() => { cancelled.current = false; setDraft(String(value)); setError(''); setEditing(true); }}>
-      <span id={valueId}>{number ? value.toLocaleString() : value || placeholder || '未設定'}{suffix && <small>{suffix}</small>}</span>
+      <span id={valueId}>{number ? value.toLocaleString() : value || fallback || placeholder || '未設定'}{suffix && <small>{suffix}</small>}</span>
       <svg aria-hidden="true" viewBox="0 0 24 24"><path d="m15 5 4 4M5 15 15 5a2.8 2.8 0 0 1 4 4L9 19l-5 1z" /></svg>
     </button>}
     {error && <small className="hint hint-warn" role="alert">{error}</small>}

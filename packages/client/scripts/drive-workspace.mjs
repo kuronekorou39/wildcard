@@ -44,8 +44,9 @@ try {
     assert.match(await page.locator('.selected-rule-title').innerText(), /オマハ/);
     await page.getByRole('button', { name: 'これを元に作る' }).click();
     await page.locator('.rules-shell').waitFor();
-    // 写しは名前が空で始まり、付けるまで保存できない
-    assert.equal(await page.getByRole('button', { name: '保存', exact: true }).isDisabled(), true);
+    // 写しは名前が空で始まり、空のままなら「マイルールN」で保存できる
+    assert.match(await page.getByRole('button', { name: '名前を編集', exact: true }).innerText(), /マイルール\d+/);
+    assert.equal(await page.getByRole('button', { name: '保存', exact: true }).isDisabled(), false);
     await editValue(page, '名前', 'オマハの写し');
     for (const section of ['概要', 'デッキ', '配り方', '賭け方', '役の強さ', '卓の作法', '受け渡し']) {
       await page.getByRole('tab', { name: new RegExp(section) }).click();
