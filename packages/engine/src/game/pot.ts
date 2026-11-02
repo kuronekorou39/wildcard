@@ -48,7 +48,7 @@ export function returnUncalledBets(players: readonly Player[]): {
 }
 
 /**
- * committed の額ごとにポットを層に分ける。
+ * 降りていない人の出した額ごとにポットを層に分ける（取り合う顔ぶれが変わる所でだけ切る）。
  *
  * オールインしたプレイヤーは自分が出した額までの層しか取り合えない。
  * フォールドしたプレイヤーの出した額はポットに残るが、取り合う資格はない。
@@ -84,6 +84,13 @@ export function buildPotLayers(players: readonly Player[]): PotLayer[] {
       carry = amount;
       continue;
     }
+    // 降りた人の額でも段は切れるが、取り合う顔ぶれが同じなら1つのポットにまとめる。
+    // 分けたままだと層ごとに端数が出て、引き分けの取り分が同じ人に偏る。
+    const last = layers.at(-1);
+    if (last && sameMembers(last.eligiblePlayerIds, eligiblePlayerIds)) {
+      layers[layers.length - 1] = { amount: last.amount + amount, eligiblePlayerIds };
+      continue;
+    }
     layers.push({ amount, eligiblePlayerIds });
   }
 
@@ -93,6 +100,9 @@ export function buildPotLayers(players: readonly Player[]): PotLayer[] {
 
   return layers;
 }
+
+const sameMembers = (a: readonly string[], b: readonly string[]) =>
+  a.length === b.length && a.every((id) => b.includes(id));
 
 /**
  * 各層を最強の手に配る。引き分けなら分割する。
