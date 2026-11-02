@@ -475,9 +475,23 @@ export interface RunResult {
   readonly payouts: readonly Payout[];
 }
 
+/**
+ * 決着したポット1つぶん。最初がメインポット、続きがサイドポット1, 2, …。
+ * 取り合える人が同じ額はまとめてあるので、オールインが無ければ1つだけ。
+ */
+export interface PotResult {
+  readonly amount: number;
+  /** このポットを取り合えた人（降りていない人のうち、この額まで出した人）。 */
+  readonly eligiblePlayerIds: readonly string[];
+  /** 取った人と額。複数本走ったときは全部の走りの合計。 */
+  readonly winners: readonly Payout[];
+}
+
 /** ハンドの決着内容。 */
 export interface HandSummary {
   readonly payouts: readonly Payout[];
+  /** ポットごとの内訳（メイン、サイド1, 2, …）。古い記録には無い。 */
+  readonly pots?: readonly PotResult[];
   /** Pot awards only, excluding uncalled-bet refunds. Optional for older saved hands. */
   readonly awards?: readonly Payout[];
   /**

@@ -101,6 +101,39 @@ export function buildPotLayers(players: readonly Player[]): PotLayer[] {
   return layers;
 }
 
+/**
+ * ハンドの途中で、卓の中央に集まっているチップをポットごとに分ける（表示用）。
+ *
+ * 分かれ目はオールインした人の出した額だけ。オールインが無ければポットは1つ。
+ * まだ前に置いてある賭け（bet）は中央に集まっていないので数えない。
+ * 決着のときの分け方（buildPotLayers）と同じ顔ぶれで切るので、見えている内訳のまま配られる。
+ */
+export function potsInPlay(players: readonly Pick<Player, 'id' | 'committed' | 'bet' | 'allIn' | 'inHand' | 'folded'>[]): PotLayer[] {
+  const live = players.filter((p) => p.inHand && !p.folded);
+  const collected = (p: (typeof players)[number]) => Math.max(0, p.committed - p.bet);
+  const cuts = [...new Set(live.filter((p) => p.allIn).map((p) => p.committed))].sort((a, b) => a - b);
+
+  const pots: PotLayer[] = [];
+  let previous = 0;
+  for (const level of [...cuts, Infinity]) {
+    const amount = players.reduce((sum, p) => sum + Math.max(0, Math.min(collected(p), level) - Math.min(collected(p), previous)), 0);
+    // 最後の「まだ開いているポット」は、最後のオールインより多く出した人が取り合う。
+    const eligiblePlayerIds = live.filter((p) => (level === Infinity ? p.committed > previous : p.committed >= level)).map((p) => p.id);
+    previous = level;
+    if (amount <= 0) continue;
+    const last = pots.at(-1);
+    // 取り合う人がいない（その額まで出した人が全員降りた）分や、顔ぶれが同じ分は前のポットに足す。
+    if (last && (eligiblePlayerIds.length === 0 || sameMembers(last.eligiblePlayerIds, eligiblePlayerIds))) {
+      pots[pots.length - 1] = { ...last, amount: last.amount + amount };
+      continue;
+    }
+    pots.push({ amount, eligiblePlayerIds });
+  }
+  // 1人しか取り合えない分は、誰にも受けられていないので決着のときに本人へ戻る。ポットとしては見せない。
+  const contested = pots.filter((pot, i) => i === 0 || pot.eligiblePlayerIds.length > 1);
+  return contested;
+}
+
 const sameMembers = (a: readonly string[], b: readonly string[]) =>
   a.length === b.length && a.every((id) => b.includes(id));
 

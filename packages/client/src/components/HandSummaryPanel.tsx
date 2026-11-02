@@ -4,6 +4,7 @@ import { PlayingCard } from './PlayingCard.js';
 import { HandHistory } from './HandHistory.js';
 import { selectedPositions } from '../showdownSelection.js';
 import { describeHand } from '../handDescription.js';
+import { potLabel } from '../potBreakdown.js';
 
 interface HandSummaryPanelProps {
   readonly state: VisibleState;
@@ -49,6 +50,10 @@ export function HandSummaryPanel({ state, onNextHand, canStartNextHand, blockedR
           })}</ul> : <p className="summary-note">全員が降りたため、手は公開されません。</p>}
         </section>;
       })}
+      {(summary.pots?.length ?? 0) > 1 && <ul className="summary-pots" aria-label="ポットごとの取り分">{summary.pots!.map((pot, i) =>
+        <li key={i}><span className="summary-pot-name">{potLabel(i)} <b>{pot.amount.toLocaleString()}</b></span>
+          <span className="summary-pot-winners">{pot.winners.length === 1 ? nameOf(pot.winners[0]!.playerId)
+            : pot.winners.map(w => `${nameOf(w.playerId)} ${w.amount.toLocaleString()}`).join(' · ')}</span></li>)}</ul>}
       <ul className="summary-payouts">{summary.payouts.map(p => {
         const award = awards.find(a => a.playerId === p.playerId)?.amount ?? 0;
         const refund = p.amount - award;

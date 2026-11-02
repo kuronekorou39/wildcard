@@ -1,6 +1,7 @@
 import { type VisibleState, boardSize, boardsOf, streetName } from '@wildcard/engine';
 import { useMemo, useState, type CSSProperties } from 'react';
 import { showdownSelections } from '../showdownSelection.js';
+import { shortPotLabel, tablePots } from '../potBreakdown.js';
 import { CardSlot, PlayingCard } from './PlayingCard.js';
 import { Seat } from './Seat.js';
 import { displaySlot } from '../seatLayout.js';
@@ -57,6 +58,8 @@ export function PokerTable({ state, viewerId, shape = 'racetrack', runtime = nul
   };
   const potChips = potCleared ? [] : chips.pot;
   const pot = chipsTotal(potChips);
+  const pots = tablePots(state);
+  const potBreakdown = pots.length > 1 ? pots.map((amount, i) => `${shortPotLabel(i)} ${amount.toLocaleString()}`) : [];
   const showdownReady = now >= (runtime?.showdownAt ?? payoutAt - T.showdownPause);
   const revealShowdown = showdownReady ||
     (revealRunout && runtime?.runoutAt != null && now >= runtime.runoutAt);
@@ -133,9 +136,10 @@ export function PokerTable({ state, viewerId, shape = 'racetrack', runtime = nul
 
           {potCleared ? !resultInHandArea && result
             : <div className="table-pot" data-collected={pot} data-pending={chips.pending}
-                aria-label={`回収済み ${pot.toLocaleString()}、未回収 ${chips.pending.toLocaleString()}`}>
+                aria-label={`回収済み ${pot.toLocaleString()}、未回収 ${chips.pending.toLocaleString()}${potBreakdown.length ? `（${potBreakdown.join('、')}）` : ''}`}>
                 <PotChips stacks={potChips} /><span className="pot-value">{pot.toLocaleString()}</span>
                 {chips.pending > 0 && <span className="pot-pending">（+{chips.pending.toLocaleString()}）</span>}
+                {potBreakdown.length > 0 && <span className="pot-breakdown">{potBreakdown.map((text, i) => <span key={i}>{text}</span>)}</span>}
               </div>}
         </div>
 

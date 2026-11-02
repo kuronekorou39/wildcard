@@ -7,6 +7,7 @@ import {
   type Payout,
   type Player,
   type RejectedAction,
+  type PotResult,
   type RevealedHand,
   type RunResult,
   type Variant,
@@ -1036,9 +1037,20 @@ function settle(state: GameState): GameState {
         }))
       : undefined;
 
+  // ポットごとの内訳。各層を単独で配っても、まとめて配ったときと同じ額になる（層ごとに独立に割るため）。
+  const pots: PotResult[] =
+    live.length === 1
+      ? [{ amount: winnings.reduce((sum, w) => sum + w.amount, 0), eligiblePlayerIds: [live[0]!.id], winners: winnings }]
+      : layers.map((layer) => ({
+          amount: layer.amount,
+          eligiblePlayerIds: layer.eligiblePlayerIds,
+          winners: awardPotsAcrossRuns([layer], handsPerRun, seatOf, state.dealerSeat, state.seatCount).payouts,
+        }));
+
   const summary: HandSummary = {
     payouts: [...credited.entries()].map(([playerId, amount]) => ({ playerId, amount })),
     awards: winnings,
+    pots,
     revealed,
     rabbit,
     ...(runs ? { runs } : {}),
