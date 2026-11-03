@@ -39,7 +39,7 @@ const SUIT_MARK: Record<Suit, string> = { spades: '♠', hearts: '♥', diamonds
 /** まとまりのスートの選択肢。「その他」は1枚ずつのスートの組が他に当てはまらないとき。 */
 type SuitChoice = 'none' | 'same' | 'red' | 'black' | Suit | 'other';
 const SUIT_CHOICES: readonly (readonly [SuitChoice, string])[] = [
-  ['none', '指定なし'], ['same', '同じスート'], ['red', '赤'], ['black', '黒'],
+  ['same', '同じスート'], ['red', '赤'], ['black', '黒'],
   ['spades', '♠ だけ'], ['hearts', '♥ だけ'], ['diamonds', '♦ だけ'], ['clubs', '♣ だけ'],
 ];
 
@@ -71,8 +71,11 @@ function suitFromChoice(choice: SuitChoice, previous: BlockSuit | undefined): Bl
  * `X X X Y Y` ではない。変数名は engine の blocks.ts が振るので、
  * ここには出てこない。
  *
- * まとまりごとにスート（同じスート・色・特定のスート）を決められ、連続には
- * 間隔・回り込み・前のまとまりからの続きがある。全体の条件はランク・スート・色に分けて並べる。
+ * 連続には
+ * 間隔・回り込み・前のまとまりからの続きがある。
+ *
+ * 条件はランクとスートの2つに分ける。ランク条件はまとまりの並び、スート条件は
+ * 「全体」か「どのまとまり」にかけるかを選ぶ行の並び。色（赤＝♥♦）はスートの一種として扱う。
  */
 export function PatternEditor({ pattern, handSize, ranks, onChange }: PatternEditorProps) {
   const blocks = toBlocks(pattern);
@@ -114,24 +117,54 @@ export function PatternEditor({ pattern, handSize, ranks, onChange }: PatternEdi
   const used = blocks.reduce((sum, block) => sum + blockSize(block), 0);
   const global = pattern.global;
   const has = (type: GlobalCondition['type']) => global.some((g) => g.type === type);
-  const setGlobal = (type: GlobalCondition['type'], next: GlobalCondition | null) =>
-    emit(blocks, next === null ? global.filter((g) => g.type !== type) : has(type) ? global.map((g) => (g.type === type ? next : g)) : [...global, next]);
-  const toggle = (type: GlobalCondition['type'], make: () => GlobalCondition) => setGlobal(type, has(type) ? null : make());
+  const toggle = (type: GlobalCondition['type'], make: () => GlobalCondition) =>
+    emit(blocks, has(type) ? global.filter((g) => g.type !== type) : [...global, make()]);
   const consecutive = global.find((g) => g.type === 'consecutive');
-  const suitCount = global.find((g) => g.type === 'suitCount');
-  const suitKinds = global.find((g) => g.type === 'suitKinds');
-  const color = global.find((g) => g.type === 'color');
-  const colorCounts = global.filter((g) => g.type === 'colorCount');
-  const colorCountOf = (c: CardColor) => colorCounts.find((g) => g.type === 'colorCount' && g.color === c);
-  const setColorCount = (c: CardColor, count: number | null) => {
-    const others = global.filter((g) => !(g.type === 'colorCount' && g.color === c));
-    emit(blocks, count === null ? others : [...others, { type: 'colorCount', color: c, count }]);
+
+  // スート条件の行。全体にかかるもの（global の順）と、まとまりにかかるもの（まとまりの順）。
+  const rows: SuitRow[] = [
+    ...global.flatMap((g, at): SuitRow[] => (isSuitGlobal(g) ? [{ target: 'all', at, condition: g }] : [])),
+    ...blocks.flatMap((b, i): SuitRow[] => (b.suit ? [{ target: i, suit: b.suit }] : [])),
+  ];
+  const usedSlots = new Set(rows.flatMap((row) => (row.target === 'all' ? [slotOf(globalKey(row.condition))] : [])));
+  const freeGlobal = (keep?: string) => GLOBAL_CHOICES.find(([key]) => key === keep || !usedSlots.has(slotOf(key)))?.[0];
+  const freeBlock = blocks.findIndex((b) => !b.suit);
+
+  /** 行を差し替える。null で消す。 */
+  const replaceRow = (row: SuitRow, next: SuitRow | null) => {
+    let nextBlocks = blocks;
+    let nextGlobal = global;
+    if (row.target === 'all') nextGlobal = global.filter((_, at) => at !== row.at);
+    else nextBlocks = blocks.map((b, i) => (i === row.target ? withoutSuit(b) : b));
+    if (next?.target === 'all') {
+      // 同じ行の中で種類を変えたときは、並びの位置を保つ
+      const at = row.target === 'all' ? row.at : nextGlobal.length;
+      nextGlobal = [...nextGlobal.slice(0, at), next.condition, ...nextGlobal.slice(at)];
+    } else if (next) {
+      nextBlocks = nextBlocks.map((b, i) => (i === next.target ? { ...b, suit: next.suit } : b));
+    }
+    emit(nextBlocks, nextGlobal);
   };
+  const retarget = (row: SuitRow, value: string) => {
+    if (value === 'all') {
+      const key = freeGlobal();
+      if (key) replaceRow(row, { target: 'all', at: 0, condition: makeGlobal(key) });
+      return;
+    }
+    replaceRow(row, { target: Number(value), suit: row.target === 'all' ? { kind: 'same' } : row.suit });
+  };
+  const addRow = () => {
+    if (!usedSlots.has('allSameSuit')) emit(blocks, [...global, { type: 'allSameSuit' }]);
+    else if (freeBlock >= 0) setBlock(freeBlock, { ...blocks[freeBlock]!, suit: { kind: 'same' } });
+    else { const key = freeGlobal(); if (key) emit(blocks, [...global, makeGlobal(key)]); }
+  };
+  const canAdd = freeBlock >= 0 || freeGlobal() !== undefined;
+  const blockLabel = (i: number) => `${i + 1}つめ（${KINDS.find((k) => k.kind === blocks[i]!.kind)!.label}${blockSize(blocks[i]!)}枚）`;
 
   return (
     <div className="pattern-editor">
       <div className="pattern-head">
-        <span className="field-label">条件<InfoTip label="条件">同じランク・連続などのまとまりを組み合わせて役を作ります。条件より役の枚数が多いとき、残りはキッカーです。連続の「回り込み」は Q K A 2 3 のように端をまたぐ並び、「前に続ける」は直前の連続の続きとして数えます（3枚と2枚で別のスート、など）。スートの「同じスート」は、そのまとまりの札が同じスートで、別の「同じスート」のまとまりとは違うスートになります。</InfoTip></span>
+        <span className="field-label">ランク条件<InfoTip label="ランク条件">同じランク・連続などのまとまりを組み合わせて役の形を作ります。フルハウスなら「同じランク3枚」と「同じランク2枚」です。条件より役の枚数が多いとき、残りはキッカーです。連続の「回り込み」は Q K A 2 3 のように端をまたぐ並び、「前に続ける」は直前の連続の続きとして数えます（3枚と2枚で別のスート、など）。</InfoTip></span>
         <small className={`block-total ${used > handSize ? 'block-total-bad' : ''}`}>
           {used}枚 / 役は{handSize}枚
           {used > handSize && '（多すぎて成立しません）'}
@@ -139,11 +172,10 @@ export function PatternEditor({ pattern, handSize, ranks, onChange }: PatternEdi
         </small>
       </div>
 
-      {blocks.length > 0 && <div className="block-columns" aria-hidden="true"><span>まとまり</span><span>枚数</span><span>ランク・並び</span><span>スート</span><span /></div>}
+      {blocks.length > 0 && <div className="block-columns" aria-hidden="true"><span>まとまり</span><span>枚数</span><span>ランク・並び</span><span /></div>}
       <ul className="block-list">
         {blocks.map((block, i) => {
           const previous = blocks[i - 1];
-          const suitChoice = suitChoiceOf(block.suit);
           return (
           <li key={keys.current[i]} className={`block-row ${leaving === keys.current[i] ? 'block-row-leaving' : ''} ${entering === keys.current[i] ? 'block-row-entering' : ''}`}
             onAnimationEnd={(event) => {
@@ -197,14 +229,6 @@ export function PatternEditor({ pattern, handSize, ranks, onChange }: PatternEdi
                   : <span className="block-ranks-free" aria-hidden="true">—</span>}
             </div>
 
-            <div className="block-suit-cell" data-label="スート">
-              <select className={`input block-suit ${suitChoice === 'none' ? 'block-suit-none' : ''}`} aria-label={`${i + 1}つめのまとまりのスート`} value={suitChoice}
-                onChange={(e) => { const suit = suitFromChoice(e.target.value as SuitChoice, block.suit); setBlock(i, suit === undefined ? withoutSuit(block) : { ...block, suit }); }}>
-                {SUIT_CHOICES.map(([id, label]) => <option key={id} value={id}>{label}</option>)}
-                {suitChoice === 'other' && block.suit?.kind === 'in' && <option value="other">{block.suit.suits.map((s) => SUIT_MARK[s]).join('')}</option>}
-              </select>
-            </div>
-
             <button
               type="button"
               className="btn btn-ghost block-remove"
@@ -223,60 +247,103 @@ export function PatternEditor({ pattern, handSize, ranks, onChange }: PatternEdi
         })}
       </ul>
 
-      <button
-        type="button"
-        className="btn btn-ghost"
-        onClick={() => {
-          const key = nextKey.current++;
-          keys.current = [...keys.current, key];
-          setEntering(key);
-          emit([...blocks, { kind: 'sameRank', count: 2 }]);
-        }}
-      >
-        <Icon kind="plus" />まとまりを足す
-      </button>
-
-      <span className="field-label pattern-global-label">全体の条件<InfoTip label="全体の条件">まとまりに当てはまった札全体にかかる条件です。キッカーは含みません。</InfoTip></span>
-      <div className="pattern-global-groups">
-        <GlobalGroup label="ランク">
-          <span className="pattern-param">
-            <Chip on={!!consecutive} onClick={() => toggle('consecutive', () => ({ type: 'consecutive' }))}>ランクが連続</Chip>
-            {consecutive?.type === 'consecutive' && <label className="checkline"><input type="checkbox" checked={consecutive.wrap === true}
-              onChange={(e) => setGlobal('consecutive', e.target.checked ? { type: 'consecutive', wrap: true } : { type: 'consecutive' })} /><span>回り込み</span></label>}
-          </span>
-          <Chip on={has('allDifferentRank')} onClick={() => toggle('allDifferentRank', () => ({ type: 'allDifferentRank' }))}>すべて違うランク</Chip>
-        </GlobalGroup>
-        <GlobalGroup label="スート">
-          <Chip on={has('allSameSuit')} onClick={() => toggle('allSameSuit', () => ({ type: 'allSameSuit' }))}>すべて同じスート</Chip>
-          <Chip on={has('allDifferentSuit')} onClick={() => toggle('allDifferentSuit', () => ({ type: 'allDifferentSuit' }))}>すべて違うスート</Chip>
-          <span className="pattern-param">
-            <Chip on={!!suitCount} onClick={() => toggle('suitCount', () => ({ type: 'suitCount', count: 3 }))}>同じスートが{suitCount?.type === 'suitCount' ? suitCount.count : 'N'}枚以上</Chip>
-            {suitCount?.type === 'suitCount' && <Stepper hideLabel label="同じスートの枚数" suffix="枚" value={suitCount.count} min={2} max={handSize} onChange={(count) => setGlobal('suitCount', { type: 'suitCount', count })} />}
-          </span>
-          <span className="pattern-param">
-            <Chip on={!!suitKinds} onClick={() => toggle('suitKinds', () => ({ type: 'suitKinds', count: 4 }))}>スートが{suitKinds?.type === 'suitKinds' ? suitKinds.count : 'N'}種類以上</Chip>
-            {suitKinds?.type === 'suitKinds' && <Stepper hideLabel label="スートの種類" suffix="種" value={suitKinds.count} min={2} max={4} onChange={(count) => setGlobal('suitKinds', { type: 'suitKinds', count })} />}
-          </span>
-        </GlobalGroup>
-        <GlobalGroup label="色">
-          <Chip on={has('allSameColor')} onClick={() => toggle('allSameColor', () => ({ type: 'allSameColor' }))}>すべて同じ色</Chip>
-          {(['red', 'black'] as const).map((c) => <Chip key={c} on={color?.type === 'color' && color.color === c}
-            onClick={() => setGlobal('color', color?.type === 'color' && color.color === c ? null : { type: 'color', color: c })}>すべて{c === 'red' ? '赤' : '黒'}</Chip>)}
-          {(['red', 'black'] as const).map((c) => {
-            const current = colorCountOf(c);
-            return <span key={c} className="pattern-param">
-              <Chip on={!!current} onClick={() => setColorCount(c, current ? null : 3)}>{c === 'red' ? '赤' : '黒'}が{current?.type === 'colorCount' ? current.count : 'N'}枚以上</Chip>
-              {current?.type === 'colorCount' && <Stepper hideLabel label={`${c === 'red' ? '赤' : '黒'}の枚数`} suffix="枚" value={current.count} min={1} max={handSize} onChange={(count) => setColorCount(c, count)} />}
-            </span>;
-          })}
-        </GlobalGroup>
+      <div className="pattern-actions">
+        <button
+          type="button"
+          className="btn btn-ghost"
+          onClick={() => {
+            const key = nextKey.current++;
+            keys.current = [...keys.current, key];
+            setEntering(key);
+            emit([...blocks, { kind: 'sameRank', count: 2 }]);
+          }}
+        >
+          <Icon kind="plus" />まとまりを足す
+        </button>
+        <Chip on={has('allDifferentRank')} onClick={() => toggle('allDifferentRank', () => ({ type: 'allDifferentRank' }))}>すべて違うランク</Chip>
+        {/* 連続のまとまりと重なるので新しくは足さない。読み込んだ役に入っていたときだけ出して外せるようにする。 */}
+        {consecutive && <Chip on onClick={() => toggle('consecutive', () => consecutive)}>全体のランクが連続{consecutive.type === 'consecutive' && consecutive.wrap ? '（回り込み）' : ''}</Chip>}
       </div>
+
+      <span className="field-label pattern-suit-label">スート条件<InfoTip label="スート条件">「全体」は、まとまりに当てはまった札すべてにかかります（キッカーは含みません）。まとまりを選ぶと、そのまとまりの札だけにかかります。まとまりの「同じスート」は、別の「同じスート」のまとまりとは違うスートになります。</InfoTip></span>
+      {rows.length > 0 && <ul className="suit-list">
+        {rows.map((row) => {
+          const key = row.target === 'all' ? `all-${globalKey(row.condition)}` : `block-${keys.current[row.target]}`;
+          const where = row.target === 'all' ? '全体' : `${row.target + 1}つめのまとまり`;
+          const choice = row.target === 'all' ? null : suitChoiceOf(row.suit);
+          const param = row.target === 'all' ? countParam(row.condition, handSize) : null;
+          return <li key={key} className="suit-row">
+            <select className="input suit-target" aria-label={`${where}のスート条件の対象`} value={row.target === 'all' ? 'all' : row.target}
+              onChange={(e) => retarget(row, e.target.value)}>
+              <option value="all" disabled={row.target !== 'all' && freeGlobal() === undefined}>全体</option>
+              {blocks.map((b, i) => <option key={i} value={i} disabled={i !== row.target && !!b.suit}>{blockLabel(i)}</option>)}
+            </select>
+            <div className="suit-value">
+              {row.target === 'all'
+                ? <select className="input suit-kind" aria-label={`${where}のスート条件`} value={globalKey(row.condition)}
+                  onChange={(e) => replaceRow(row, { ...row, condition: makeGlobal(e.target.value) })}>
+                  {GLOBAL_CHOICES.map(([id, label]) => <option key={id} value={id} disabled={id !== globalKey(row.condition) && usedSlots.has(slotOf(id)) && slotOf(id) !== slotOf(globalKey(row.condition))}>{label}</option>)}
+                </select>
+                : <select className="input suit-kind" aria-label={`${where}のスート条件`} value={choice!}
+                  onChange={(e) => { const suit = suitFromChoice(e.target.value as SuitChoice, row.suit); if (suit) replaceRow(row, { ...row, suit }); }}>
+                  {SUIT_CHOICES.map(([id, label]) => <option key={id} value={id}>{label}</option>)}
+                  {choice === 'other' && row.suit.kind === 'in' && <option value="other">{row.suit.suits.map((s) => SUIT_MARK[s]).join('')}</option>}
+                </select>}
+              {param && <Stepper hideLabel label={`${where}の${param.label}`} suffix={param.suffix} value={param.value} min={param.min} max={param.max}
+                onChange={(count) => { if (row.target === 'all') replaceRow(row, { ...row, condition: { ...row.condition, count } as GlobalCondition }); }} />}
+            </div>
+            <button type="button" className="btn btn-ghost block-remove" aria-label={`${where}のスート条件を消す`} onClick={() => replaceRow(row, null)}>×</button>
+          </li>;
+        })}
+      </ul>}
+      <button type="button" className="btn btn-ghost" disabled={!canAdd} onClick={addRow}><Icon kind="plus" />スート条件を足す</button>
     </div>
   );
 }
 
-function GlobalGroup({ label, children }: { readonly label: string; readonly children: React.ReactNode }) {
-  return <div className="pattern-global-group" role="group" aria-label={label}><span>{label}</span><div className="chips">{children}</div></div>;
+/** スート条件の1行。全体（global の at 番目）か、まとまり（target 番目）にかかる。 */
+type SuitRow =
+  | { readonly target: 'all'; readonly at: number; readonly condition: GlobalCondition }
+  | { readonly target: number; readonly suit: BlockSuit };
+
+/** 全体にかけるスート条件。色は赤＝♥♦、黒＝♠♣ なのでスートの一種として並べる。 */
+const GLOBAL_CHOICES: readonly (readonly [string, string])[] = [
+  ['allSameSuit', 'すべて同じスート'], ['allDifferentSuit', 'すべて違うスート'],
+  ['suitCount', '同じスートがN枚以上'], ['suitKinds', 'スートがN種類以上'],
+  ['allSameColor', 'すべて同じ色'], ['color:red', 'すべて赤'], ['color:black', 'すべて黒'],
+  ['colorCount:red', '赤がN枚以上'], ['colorCount:black', '黒がN枚以上'],
+];
+
+const SUIT_GLOBALS: ReadonlySet<GlobalCondition['type']> = new Set(['allSameSuit', 'allDifferentSuit', 'suitCount', 'suitKinds', 'allSameColor', 'color', 'colorCount']);
+const isSuitGlobal = (g: GlobalCondition) => SUIT_GLOBALS.has(g.type);
+
+function globalKey(g: GlobalCondition): string {
+  if (g.type === 'color' || g.type === 'colorCount') return `${g.type}:${g.color}`;
+  return g.type;
+}
+
+/** 同時に置けない組。「すべて赤」と「すべて黒」は同じ枠を取り合う。 */
+const slotOf = (key: string) => (key.startsWith('color:') ? 'color' : key);
+
+function makeGlobal(key: string): GlobalCondition {
+  const [type, color] = key.split(':') as [string, CardColor | undefined];
+  switch (type) {
+    case 'suitCount': return { type: 'suitCount', count: 3 };
+    case 'suitKinds': return { type: 'suitKinds', count: 4 };
+    case 'color': return { type: 'color', color: color! };
+    case 'colorCount': return { type: 'colorCount', color: color!, count: 3 };
+    default: return { type } as GlobalCondition;
+  }
+}
+
+/** 枚数・種類を選ぶ条件なら、その数の範囲。 */
+function countParam(g: GlobalCondition, handSize: number) {
+  switch (g.type) {
+    case 'suitCount': return { label: '同じスートの枚数', suffix: '枚', value: g.count, min: 2, max: handSize };
+    case 'suitKinds': return { label: 'スートの種類', suffix: '種', value: g.count, min: 2, max: 4 };
+    case 'colorCount': return { label: `${g.color === 'red' ? '赤' : '黒'}の枚数`, suffix: '枚', value: g.count, min: 1, max: handSize };
+    default: return null;
+  }
 }
 
 function Chip({ on, onClick, children }: { readonly on: boolean; readonly onClick: () => void; readonly children: React.ReactNode }) {
